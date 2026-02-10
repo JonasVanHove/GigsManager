@@ -1,18 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { getOrCreateUser } from "@/lib/auth-helpers";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
-// ── GET /api/gigs/:id ───────────────────────────────────────────────────────
+// ── Auth middleware ──────────────────────────────────────────────────────────
+
+async function requireAuth(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json(
+      { error: "Unauthorized: missing token" },
+      { status: 401 }
+    );
+  }
+
+  const token = authHeader.slice(7);
+  
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data.user) {
+      return NextResponse.json(
+        { error: "Unauthorized: invalid token" },
+        { status: 401 }
+      );
+    }
+    
+    const user = await getOrCreateUser(
+      data.user.id,
+      data.user.email || "",
+      data.user.user_metadata?.name
+    );
+    
+    return { user };
+  } catch (err) {
+    console.error("[Auth]", err);
+    return NextResponse.json(
+      { error: "Unauthorized: token validation failed" },
+      { status: 401 }
+    );
+  }
+}
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: any };
+
   try {
     const gig = await prisma.gig.findUnique({ where: { id: params.id } });
     if (!gig) {
       return NextResponse.json({ error: "Gig not found" }, { status: 404 });
     }
+    
+    // Check ownership
+    if (gig.userId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    
     return NextResponse.json(gig);
   } catch (error) {
     console.error(`[GET /api/gigs/${params.id}]`, error);
@@ -29,7 +77,20 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: any };
+
   try {
+    // Check ownership first
+    const existing = await prisma.gig.findUnique({ where: { id: params.id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Gig not found" }, { status: 404 });
+    }
+    if (existing.userId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
 
     const gig = await prisma.gig.update({
@@ -74,10 +135,23 @@ export async function PUT(
 // ── DELETE /api/gigs/:id ─────────────────────────────────────────────────────
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: any };
+
   try {
+    // Check ownership first
+    const existing = await prisma.gig.findUnique({ where: { id: params.id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Gig not found" }, { status: 404 });
+    }
+    if (existing.userId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await prisma.gig.delete({ where: { id: params.id } });
     return NextResponse.json({ message: "Gig deleted successfully" });
   } catch (error) {

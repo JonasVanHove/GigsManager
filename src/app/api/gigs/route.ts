@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ── Validation helper ────────────────────────────────────────────────────────
 
@@ -56,7 +58,7 @@ function validateGigInput(body: Record<string, unknown>): ValidationError[] {
 
 // ── Sanitize body → Prisma data ──────────────────────────────────────────────
 
-function toGigData(body: Record<string, unknown>) {
+function toGigData(body: Record<string, unknown>, userId: string) {
   return {
     eventName: String(body.eventName).trim(),
     date: new Date(new Date(String(body.date)).toISOString()), // UTC-safe
@@ -73,13 +75,56 @@ function toGigData(body: Record<string, unknown>) {
     bandPaid: Boolean(body.bandPaid),
     bandPaidDate: body.bandPaidDate ? new Date(String(body.bandPaidDate)) : null,
     notes: body.notes ? String(body.notes).trim() : null,
+    userId,
   };
 }
 
 // ── GET /api/gigs ────────────────────────────────────────────────────────────
 // Optional query params: ?take=50&skip=0 (pagination-ready)
+// Requires: Authorization: Bearer <token>
+
+async function requireAuth(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json(
+      { error: "Unauthorized: missing token" },
+      { status: 401 }
+    );
+  }
+
+  const token = authHeader.slice(7);
+  
+  try {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data.user) {
+      return NextResponse.json(
+        { error: "Unauthorized: invalid token" },
+        { status: 401 }
+      );
+    }
+    
+    // Get or create user record
+    const user = await getOrCreateUser(
+      data.user.id,
+      data.user.email || "",
+      data.user.user_metadata?.name
+    );
+    
+    return { user };
+  } catch (err) {
+    console.error("[Auth]", err);
+    return NextResponse.json(
+      { error: "Unauthorized: token validation failed" },
+      { status: 401 }
+    );
+  }
+}
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: any };
+
   try {
     const { searchParams } = new URL(request.url);
     const take = Math.min(Number(searchParams.get("take")) || 100, 200);
@@ -87,11 +132,12 @@ export async function GET(request: NextRequest) {
 
     const [gigs, total] = await Promise.all([
       prisma.gig.findMany({
+        where: { userId: user.id },
         orderBy: { date: "desc" },
         take,
         skip,
       }),
-      prisma.gig.count(),
+      prisma.gig.count({ where: { userId: user.id } }),
     ]);
 
     return NextResponse.json({ data: gigs, total, take, skip });
@@ -107,6 +153,10 @@ export async function GET(request: NextRequest) {
 // ── POST /api/gigs ───────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: any };
+
   try {
     const body = await request.json();
     const errors = validateGigInput(body);
@@ -115,7 +165,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
-    const gig = await prisma.gig.create({ data: toGigData(body) });
+    const gig = await prisma.gig.create({ data: toGigData(body, user.id) });
     return NextResponse.json(gig, { status: 201 });
   } catch (error) {
     console.error("[POST /api/gigs]", error);

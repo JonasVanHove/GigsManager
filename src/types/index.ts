@@ -15,8 +15,33 @@ export interface Gig {
   bandPaid: boolean;
   bandPaidDate: string | null;
   notes: string | null;
+  userId: string; // belongs to this user
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── User entity ──────────────────────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  supabaseId: string;
+  email: string;
+  name: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Auth session ─────────────────────────────────────────────────────────────
+
+export interface AuthSession {
+  user: {
+    id: string;
+    email: string;
+    user_metadata?: {
+      name?: string;
+    };
+  } | null;
+  isLoading: boolean;
 }
 
 // ─── Form data sent to the API ───────────────────────────────────────────────

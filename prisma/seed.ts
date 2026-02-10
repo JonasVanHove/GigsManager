@@ -5,9 +5,27 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database…\n");
 
-  const count = await prisma.gig.count();
-  if (count > 0) {
-    console.log(`   Database already has ${count} gig(s). Skipping seed.`);
+  // Create or get test user
+  let testUser = await prisma.user.findUnique({
+    where: { supabaseId: "demo-user-123" },
+  });
+
+  if (!testUser) {
+    testUser = await prisma.user.create({
+      data: {
+        supabaseId: "demo-user-123",
+        email: "demo@gigmanager.local",
+        name: "Demo User",
+      },
+    });
+    console.log("   ✅ Created demo user:", testUser.email);
+  }
+
+  const gigCount = await prisma.gig.count();
+  if (gigCount > 0) {
+    console.log(
+      `   Database already has ${gigCount} gig(s). Skipping seed.`
+    );
     return;
   }
 
@@ -27,6 +45,7 @@ async function main() {
         bandPaid: true,
         bandPaidDate: new Date("2026-01-22T00:00:00Z"),
         notes: "Great venue — book again next year",
+        userId: testUser.id,
       },
       {
         eventName: "Corporate Awards Night",
@@ -42,6 +61,7 @@ async function main() {
         bandPaid: false,
         bandPaidDate: null,
         notes: "Still need to pay band members",
+        userId: testUser.id,
       },
       {
         eventName: "Summer Wedding — De Smet",
@@ -57,6 +77,7 @@ async function main() {
         bandPaid: false,
         bandPaidDate: null,
         notes: null,
+        userId: testUser.id,
       },
       {
         eventName: "Blues Bar Friday",
@@ -72,11 +93,12 @@ async function main() {
         bandPaid: true,
         bandPaidDate: new Date("2026-02-09T00:00:00Z"),
         notes: null,
+        userId: testUser.id,
       },
     ],
   });
 
-  console.log("   ✅ Seeded 4 demo gigs.\n");
+  console.log("   ✅ Seeded 4 demo gigs for " + testUser.email + ".\n");
 }
 
 main()

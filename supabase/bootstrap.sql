@@ -25,12 +25,28 @@ CREATE TABLE IF NOT EXISTS "Gig" (
     "notes"               TEXT,
     "createdAt"           TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"           TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId"              TEXT         NOT NULL,
 
-    CONSTRAINT "Gig_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Gig_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "Gig_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+);
+
+-- ── Create the User table ───────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS "User" (
+    "id"         TEXT         NOT NULL DEFAULT gen_random_uuid()::text,
+    "supabaseId" TEXT         NOT NULL UNIQUE,
+    "email"      TEXT         NOT NULL UNIQUE,
+    "name"       TEXT,
+    "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- ── Indexes for performance ─────────────────────────────────────────────────
 
+CREATE INDEX IF NOT EXISTS "Gig_userId_idx"         ON "Gig" ("userId");
 CREATE INDEX IF NOT EXISTS "Gig_date_idx"            ON "Gig" ("date");
 CREATE INDEX IF NOT EXISTS "Gig_paymentReceived_idx" ON "Gig" ("paymentReceived");
 CREATE INDEX IF NOT EXISTS "Gig_bandPaid_idx"        ON "Gig" ("bandPaid");
@@ -65,6 +81,12 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS gig_updated_at ON "Gig";
 CREATE TRIGGER gig_updated_at
     BEFORE UPDATE ON "Gig"
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+DROP TRIGGER IF EXISTS user_updated_at ON "User";
+CREATE TRIGGER user_updated_at
+    BEFORE UPDATE ON "User"
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 

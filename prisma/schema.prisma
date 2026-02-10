@@ -35,15 +35,28 @@ model Gig {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // ── Future multi-user support ─────────────────────────────────
-  // userId String?
-  // user   User?   @relation(fields: [userId], references: [id])
+  // ── User ownership — every gig belongs to one user ─────
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // ── Future multi-band support ─────────────────────────────────
-  // bandId String?
-  // band   Band?   @relation(fields: [bandId], references: [id])
-
+  @@index([userId])
   @@index([date])
   @@index([paymentReceived])
   @@index([bandPaid])
+}
+
+model User {
+  id String @id @default(cuid())
+
+  // Supabase Auth UID (from auth.users table)
+  supabaseId String @unique
+
+  email String @unique
+  name  String?
+
+  // All gigs belonging to this user
+  gigs Gig[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

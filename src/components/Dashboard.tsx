@@ -5,7 +5,7 @@ import type { Gig, GigFormData, DashboardSummary } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
-import { LoginForm } from "./LoginForm";
+import LandingPage from "./LandingPage";
 import GigCard from "./GigCard";
 import GigForm from "./GigForm";
 import DeleteConfirm from "./DeleteConfirm";
@@ -241,26 +241,7 @@ export default function Dashboard() {
 
   // Show login if not authenticated
   if (!session?.user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
-        <div className="w-full">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-600 shadow-md">
-                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z" />
-                </svg>
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Welcome to <span className="text-brand-600">GigManager</span>
-            </h1>
-            <p className="mt-2 text-slate-600">Track your performances and manage payments</p>
-          </div>
-          <LoginForm />
-        </div>
-      </div>
-    );
+    return <LandingPage />;
   }
 
   return (

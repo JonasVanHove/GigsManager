@@ -61,8 +61,8 @@ export function LoginForm() {
   const busy = isLoading || submitting;
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">
+    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-xl border border-slate-200 shadow-lg">
+      <h2 className="text-2xl font-bold mb-6 text-center text-slate-900">
         {isSignUp ? "Create Account" : "Sign In"}
       </h2>
 
@@ -76,7 +76,7 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={busy}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-50 text-slate-900 transition"
             placeholder="your@email.com"
             autoComplete="email"
           />
@@ -91,7 +91,7 @@ export function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={busy}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 disabled:opacity-50 text-slate-900 transition"
             placeholder={isSignUp ? "Min. 6 characters" : "••••••••"}
             autoComplete={isSignUp ? "new-password" : "current-password"}
           />
@@ -117,7 +117,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={busy}
-          className="w-full py-2.5 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition flex items-center justify-center gap-2"
+          className="w-full py-2.5 px-4 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed font-medium transition flex items-center justify-center gap-2 shadow-sm"
         >
           {busy ? (
             <>
@@ -143,7 +143,7 @@ export function LoginForm() {
             setSuccessMsg("");
           }}
           disabled={busy}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+          className="text-sm text-brand-600 hover:text-brand-700 font-medium disabled:opacity-50"
         >
           {isSignUp
             ? "Already have an account? Sign in"

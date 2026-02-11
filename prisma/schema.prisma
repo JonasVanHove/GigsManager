@@ -55,7 +55,26 @@ model User {
   name  String?
 
   // All gigs belonging to this user
-  gigs Gig[]
+  gigs     Gig[]
+  settings UserSettings?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserSettings {
+  id String @id @default(cuid())
+
+  // Which currency to display amounts in (ISO 4217 code)
+  currency String @default("EUR")
+
+  // Whether the user (manager) claims these fee components
+  claimPerformanceFee Boolean @default(true)
+  claimTechnicalFee   Boolean @default(true)
+
+  // Owner
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -80,3 +80,17 @@ export interface DashboardSummary {
   pendingClientPayments: number;
   outstandingToBand: number;
 }
+
+// ─── User settings ──────────────────────────────────────────────────────────
+
+export interface UserSettingsData {
+  currency: string;
+  claimPerformanceFee: boolean;
+  claimTechnicalFee: boolean;
+}
+
+export const DEFAULT_SETTINGS: UserSettingsData = {
+  currency: "EUR",
+  claimPerformanceFee: true,
+  claimTechnicalFee: true,
+};

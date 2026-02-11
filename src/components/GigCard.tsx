@@ -3,7 +3,6 @@
 import type { Gig } from "@/types";
 import {
   calculateGigFinancials,
-  formatCurrency,
   formatDate,
 } from "@/lib/calculations";
 
@@ -11,15 +10,27 @@ interface GigCardProps {
   gig: Gig;
   onEdit: (gig: Gig) => void;
   onDelete: (gig: Gig) => void;
+  fmtCurrency: (amount: number) => string;
+  claimPerformanceFee?: boolean;
+  claimTechnicalFee?: boolean;
 }
 
-export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
+export default function GigCard({
+  gig,
+  onEdit,
+  onDelete,
+  fmtCurrency,
+  claimPerformanceFee = true,
+  claimTechnicalFee = true,
+}: GigCardProps) {
   const calc = calculateGigFinancials(
     gig.performanceFee,
     gig.technicalFee,
     gig.managerBonusType,
     gig.managerBonusAmount,
-    gig.numberOfMusicians
+    gig.numberOfMusicians,
+    claimPerformanceFee,
+    claimTechnicalFee
   );
 
   return (
@@ -82,7 +93,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
             Performance
           </p>
           <p className="mt-0.5 font-semibold text-slate-800">
-            {formatCurrency(gig.performanceFee)}
+            {fmtCurrency(gig.performanceFee)}
           </p>
         </div>
 
@@ -91,7 +102,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
             Technical
           </p>
           <p className="mt-0.5 font-semibold text-slate-800">
-            {formatCurrency(gig.technicalFee)}
+            {fmtCurrency(gig.technicalFee)}
           </p>
         </div>
 
@@ -106,7 +117,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
               </span>
             </p>
             <p className="mt-0.5 font-semibold text-slate-800">
-              {formatCurrency(calc.actualManagerBonus)}
+              {fmtCurrency(calc.actualManagerBonus)}
             </p>
           </div>
         )}
@@ -116,7 +127,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
             Total Received
           </p>
           <p className="mt-0.5 font-bold text-slate-900">
-            {formatCurrency(calc.totalReceived)}
+            {fmtCurrency(calc.totalReceived)}
           </p>
         </div>
       </div>
@@ -128,7 +139,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
             Per Musician
           </p>
           <p className="mt-0.5 font-semibold text-slate-700">
-            {formatCurrency(calc.amountPerMusician)}
+            {fmtCurrency(calc.amountPerMusician)}
           </p>
         </div>
         <div>
@@ -136,7 +147,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
             My Earnings
           </p>
           <p className="mt-0.5 font-bold text-brand-700">
-            {formatCurrency(calc.myEarnings)}
+            {fmtCurrency(calc.myEarnings)}
           </p>
         </div>
         {calc.amountOwedToOthers > 0 && (
@@ -145,7 +156,7 @@ export default function GigCard({ gig, onEdit, onDelete }: GigCardProps) {
               Owe to Others
             </p>
             <p className="mt-0.5 font-semibold text-amber-700">
-              {formatCurrency(calc.amountOwedToOthers)}
+              {fmtCurrency(calc.amountOwedToOthers)}
             </p>
           </div>
         )}

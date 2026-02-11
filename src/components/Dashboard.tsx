@@ -10,7 +10,7 @@ import GigForm from "./GigForm";
 import DeleteConfirm from "./DeleteConfirm";
 
 export default function Dashboard() {
-  const { session, isLoading: authLoading, signOut } = useAuth();
+  const { session, isLoading: authLoading, signOut, getAccessToken } = useAuth();
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [totalGigCount, setTotalGigCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -19,46 +19,46 @@ export default function Dashboard() {
   const [deleteGig, setDeleteGig] = useState<Gig | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
-  // Helper to get auth header
-  const getAuthHeader = useCallback(async () => {
-    if (!session?.user) return null;
-    try {
-      const { data } = await require("@/lib/supabase-client").supabaseClient.auth.getSession();
-      return data.session?.access_token ? `Bearer ${data.session.access_token}` : null;
-    } catch {
-      return null;
-    }
-  }, [session?.user]);
-
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   const fetchGigs = useCallback(async () => {
     if (!session?.user) {
+      setGigs([]);
+      setTotalGigCount(0);
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const { supabaseClient } = await import("@/lib/supabase-client");
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const token = await getAccessToken();
 
       if (!token) {
-        flash("No session token found", "err");
+        // Token not available yet — don't show error, just wait
         setLoading(false);
         return;
       }
 
       const res = await fetch("/api/gigs", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
         if (res.status === 401) {
-          flash("Session expired. Please sign in again.", "err");
+          // Token might be expired — try to refresh
+          const newToken = await getAccessToken();
+          if (newToken) {
+            const retryRes = await fetch("/api/gigs", {
+              headers: { Authorization: `Bearer ${newToken}` },
+            });
+            if (retryRes.ok) {
+              const json = await retryRes.json();
+              setGigs(json.data ?? json);
+              setTotalGigCount(json.total ?? (json.data ?? json).length);
+              return;
+            }
+          }
+          flash("Session expired. Please sign out and sign in again.", "err");
         } else {
           flash("Failed to load gigs.", "err");
         }
@@ -75,7 +75,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [session?.user]);
+  }, [session?.user, getAccessToken]);
 
   useEffect(() => {
     fetchGigs();
@@ -92,12 +92,10 @@ export default function Dashboard() {
 
   const handleCreate = async (data: GigFormData) => {
     try {
-      const { supabaseClient } = await import("@/lib/supabase-client");
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const token = await getAccessToken();
 
       if (!token) {
-        flash("No session token. Please sign in again.", "err");
+        flash("Could not get session. Please sign out and sign in again.", "err");
         return;
       }
 
@@ -131,12 +129,10 @@ export default function Dashboard() {
   const handleUpdate = async (data: GigFormData) => {
     if (!editGig) return;
     try {
-      const { supabaseClient } = await import("@/lib/supabase-client");
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const token = await getAccessToken();
 
       if (!token) {
-        flash("No session token. Please sign in again.", "err");
+        flash("Could not get session. Please sign out and sign in again.", "err");
         return;
       }
 
@@ -174,13 +170,11 @@ export default function Dashboard() {
     setGigs((g) => g.filter((x) => x.id !== deleteGig.id));
     setDeleteGig(null);
     try {
-      const { supabaseClient } = await import("@/lib/supabase-client");
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const token = sessionData.session?.access_token;
+      const token = await getAccessToken();
 
       if (!token) {
         setGigs(prev);
-        flash("No session token. Please sign in again.", "err");
+        flash("Could not get session. Please sign out and sign in again.", "err");
         return;
       }
 

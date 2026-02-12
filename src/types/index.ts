@@ -83,6 +83,8 @@ export interface GigCalculations {
 export interface DashboardSummary {
   totalGigs: number;
   totalEarnings: number;
+  totalEarningsReceived: number; // earnings from gigs where paymentReceived = true
+  totalEarningsPending: number; // earnings from gigs where paymentReceived = false
   pendingClientPayments: number;
   outstandingToBand: number;
 }

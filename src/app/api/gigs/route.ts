@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-// ── Validation helper ────────────────────────────────────────────────────────
+// -- Validation helper --------------------------------------------------------
 
 interface ValidationError {
   field: string;
@@ -56,7 +56,7 @@ function validateGigInput(body: Record<string, unknown>): ValidationError[] {
   return errors;
 }
 
-// ── Sanitize body → Prisma data ──────────────────────────────────────────────
+// -- Sanitize body → Prisma data ----------------------------------------------
 
 function toGigData(body: Record<string, unknown>, userId: string) {
   return {
@@ -86,7 +86,7 @@ function toGigData(body: Record<string, unknown>, userId: string) {
   };
 }
 
-// ── GET /api/gigs ────────────────────────────────────────────────────────────
+// -- GET /api/gigs ------------------------------------------------------------
 // Optional query params: ?take=50&skip=0 (pagination-ready)
 // Requires: Authorization: Bearer <token>
 
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ── POST /api/gigs ───────────────────────────────────────────────────────────
+// -- POST /api/gigs -----------------------------------------------------------
 
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth(request);

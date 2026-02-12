@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { LoginForm } from "./LoginForm";
 
-// ── Icon Components ──────────────────────────────────────────────────────────
+// -- Icon Components ----------------------------------------------------------
 
 function MusicIcon({ className }: { className?: string }) {
   return (
@@ -70,7 +70,7 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
-// ── Feature data ─────────────────────────────────────────────────────────────
+// -- Feature data -------------------------------------------------------------
 
 const features = [
   {
@@ -114,14 +114,14 @@ const benefits = [
   "No ads, no tracking, no nonsense",
 ];
 
-// ── Landing Page ─────────────────────────────────────────────────────────────
+// -- Landing Page -------------------------------------------------------------
 
 export default function LandingPage() {
   const [showAuth, setShowAuth] = useState(false);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
-      {/* ── Navbar ────────────────────────────────────────────────────── */}
+      {/* -- Navbar ------------------------------------------------------ */}
       <header className="sticky top-0 z-40 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg transition-colors">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2.5">
@@ -156,7 +156,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      {/* -- Hero -------------------------------------------------------- */}
       <section className="relative overflow-hidden bg-white dark:bg-slate-950 transition-colors">
         {/* Background decoration */}
         <div className="absolute inset-0 -z-10">
@@ -209,7 +209,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* ── Dashboard preview ─────────────────────────────────────── */}
+          {/* -- Dashboard preview --------------------------------------- */}
           <div className="relative mx-auto mt-16 max-w-4xl">
             <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl shadow-slate-200/50 dark:shadow-slate-950/50">
               <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-6 sm:p-8">
@@ -275,7 +275,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ──────────────────────────────────────────────────── */}
+      {/* -- Features ---------------------------------------------------- */}
       <section id="features" className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-20 sm:py-28 transition-colors">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
@@ -304,7 +304,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Benefits ──────────────────────────────────────────────────── */}
+      {/* -- Benefits ---------------------------------------------------- */}
       <section className="py-20 sm:py-28 bg-white dark:bg-slate-950/50 transition-colors">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -359,7 +359,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA / Auth Section ────────────────────────────────────────── */}
+      {/* -- CTA / Auth Section ------------------------------------------ */}
       <section
         id="auth-section"
         className="border-t border-slate-100 dark:border-slate-800 bg-gradient-to-b from-slate-50 dark:from-slate-900 to-white dark:to-slate-950 py-20 sm:py-28 transition-colors"
@@ -397,7 +397,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
+      {/* -- Footer ------------------------------------------------------ */}
       <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-10 transition-colors">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">

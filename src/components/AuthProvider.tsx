@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState, useCallback } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // ── Session management ──────────────────────────────────────────────────
+  // -- Session management --------------------------------------------------
 
   const updateSession = useCallback((user: any | null, token?: string | null) => {
     if (user) {
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [updateSession]);
 
-  // ── Auth actions ────────────────────────────────────────────────────────
+  // -- Auth actions --------------------------------------------------------
 
   const signUp = useCallback(
     async (email: string, password: string): Promise<SignUpResult> => {
@@ -200,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ── Provider ────────────────────────────────────────────────────────────
+  // -- Provider ------------------------------------------------------------
 
   return (
     <AuthContext.Provider

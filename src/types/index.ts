@@ -1,4 +1,4 @@
-// ─── Gig entity as returned by the API ───────────────────────────────────────
+﻿// --- Gig entity as returned by the API ---------------------------------------
 
 export interface Gig {
   id: string;
@@ -28,7 +28,7 @@ export interface Gig {
   updatedAt: string;
 }
 
-// ─── User entity ──────────────────────────────────────────────────────────────
+// --- User entity --------------------------------------------------------------
 
 export interface User {
   id: string;
@@ -39,7 +39,7 @@ export interface User {
   updatedAt: string;
 }
 
-// ─── Auth session ─────────────────────────────────────────────────────────────
+// --- Auth session -------------------------------------------------------------
 
 export interface AuthSession {
   user: {
@@ -52,7 +52,7 @@ export interface AuthSession {
   isLoading: boolean;
 }
 
-// ─── Form data sent to the API ───────────────────────────────────────────────
+// --- Form data sent to the API -----------------------------------------------
 
 export interface GigFormData {
   eventName: string;
@@ -78,7 +78,7 @@ export interface GigFormData {
   bookingDate: string; // "" or "YYYY-MM-DD" - when booking was made
 }
 
-// ─── Computed financial breakdown ────────────────────────────────────────────
+// --- Computed financial breakdown --------------------------------------------
 
 export interface GigCalculations {
   actualManagerBonus: number;
@@ -88,7 +88,7 @@ export interface GigCalculations {
   amountOwedToOthers: number;
 }
 
-// ─── Dashboard summary ──────────────────────────────────────────────────────
+// --- Dashboard summary ------------------------------------------------------
 
 export interface DashboardSummary {
   totalGigs: number;
@@ -99,7 +99,7 @@ export interface DashboardSummary {
   outstandingToBand: number;
 }
 
-// ─── User settings ──────────────────────────────────────────────────────────
+// --- User settings ----------------------------------------------------------
 
 export interface UserSettingsData {
   currency: string;
@@ -115,7 +115,7 @@ export const DEFAULT_SETTINGS: UserSettingsData = {
   theme: "system",
 };
 
-// ─── Investment entity ──────────────────────────────────────────────────────
+// --- Investment entity ------------------------------------------------------
 
 export interface Investment {
   id: string;

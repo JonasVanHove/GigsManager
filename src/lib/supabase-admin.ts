@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Supabase client for server-side operations.
  * Uses the service role key for admin tasks.
  */

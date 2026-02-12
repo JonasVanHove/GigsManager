@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from "react";
 import type { Gig } from "@/types";
@@ -105,7 +105,7 @@ export default function AllGigsTab({
 
   return (
     <div className="space-y-6">
-      {/* ── Controls: Sort & Filter ──────────────────────────────────────── */}
+      {/* -- Controls: Sort & Filter ---------------------------------------- */}
       <div className="space-y-4">
         {/* Sort dropdown */}
         <div>
@@ -164,7 +164,7 @@ export default function AllGigsTab({
         )}
       </div>
 
-      {/* ── Results ──────────────────────────────────────────────────────── */}
+      {/* -- Results -------------------------------------------------------- */}
       <div className="space-y-1">
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
           {sortedGigs.length} of {gigs.length} performances

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
@@ -29,7 +29,7 @@ export default function Dashboard() {
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments">("gigs");
 
-  // ── Data fetching ──────────────────────────────────────────────────────────
+  // -- Data fetching ----------------------------------------------------------
 
   const fetchGigs = useCallback(async () => {
     if (!session?.user) {
@@ -104,14 +104,14 @@ export default function Dashboard() {
     fetchGigs();
   }, [fetchGigs]);
 
-  // ── Toast helper ───────────────────────────────────────────────────────────
+  // -- Toast helper -----------------------------------------------------------
 
   const flash = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── CRUD handlers ──────────────────────────────────────────────────────────
+  // -- CRUD handlers ----------------------------------------------------------
 
   const handleCreate = async (data: GigFormData) => {
     try {
@@ -217,7 +217,7 @@ export default function Dashboard() {
     }
   };
 
-  // ── Summary calculation ────────────────────────────────────────────────────
+  // -- Summary calculation ----------------------------------------------------
 
   const summary: DashboardSummary = gigs.reduce(
     (acc, g) => {
@@ -252,7 +252,7 @@ export default function Dashboard() {
     } as DashboardSummary
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // -- Render -----------------------------------------------------------------
 
   // Show loading state while checking auth
   if (authLoading) {
@@ -273,7 +273,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
-      {/* ── Navbar ──────────────────────────────────────────────────────── */}
+      {/* -- Navbar -------------------------------------------------------- */}
       <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg dark:backdrop-blur-xl transition-colors">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
           {/* Logo & Title */}
@@ -347,12 +347,12 @@ export default function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-950 min-h-screen transition-colors">
-        {/* ── Premium Summary Cards ─────────────────────────────────── */}
+        {/* -- Premium Summary Cards ----------------------------------- */}
         <div className="mb-8">
           <DashboardSummaryComponent summary={summary} gigs={gigs} fmtCurrency={fmtCurrency} />
         </div>
 
-        {/* ── Tabs ───────────────────────────────────────────────────── */}
+        {/* -- Tabs ----------------------------------------------------- */}
         <div className="mb-6 flex gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
           <button
             onClick={() => setActiveTab("gigs")}
@@ -416,10 +416,10 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* ── Content ────────────────────────────────────────────────── */}
+        {/* -- Content -------------------------------------------------- */}
         {activeTab === "gigs" ? (
           <>
-            {/* ── Overview: Smart sorted performances ────────────────────── */}
+            {/* -- Overview: Smart sorted performances ---------------------- */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
@@ -547,7 +547,7 @@ export default function Dashboard() {
         ) : null}
       </main>
 
-      {/* ── Modals ───────────────────────────────────────────────────── */}
+      {/* -- Modals ----------------------------------------------------- */}
       {showForm && (
         <GigForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
       )}
@@ -569,7 +569,7 @@ export default function Dashboard() {
         <SettingsModal onClose={() => setShowSettings(false)} />
       )}
 
-      {/* ── Toast ────────────────────────────────────────────────────── */}
+      {/* -- Toast ------------------------------------------------------ */}
       {toast && (
         <div
           className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg px-5 py-2.5 text-sm font-medium shadow-lg transition ${
@@ -582,7 +582,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
+      {/* -- Footer ------------------------------------------------------ */}
       <Footer />
     </div>
   );

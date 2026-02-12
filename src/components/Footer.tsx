@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { APP_VERSION } from "@/lib/version";
 

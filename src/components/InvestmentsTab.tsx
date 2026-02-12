@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "./AuthProvider";
@@ -22,7 +22,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // ── Fetch investments ──────────────────────────────────────────────────
+  // -- Fetch investments --------------------------------------------------
   const fetchInvestments = async () => {
     if (!session?.user) {
       setInvestments([]);
@@ -62,7 +62,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
     fetchInvestments();
   }, [session?.user]);
 
-  // ── Add investment ─────────────────────────────────────────────────────
+  // -- Add investment -----------------------------------------------------
   const handleAdd = async () => {
     if (!form.amount || form.amount <= 0) {
       setError("Amount must be greater than 0");
@@ -109,7 +109,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
     }
   };
 
-  // ── Delete investment ──────────────────────────────────────────────────
+  // -- Delete investment --------------------------------------------------
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this investment?")) {
       return;
@@ -143,12 +143,12 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
     }
   };
 
-  // ── Calculate totals ───────────────────────────────────────────────────
+  // -- Calculate totals ---------------------------------------------------
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
 
   return (
     <div className="space-y-6">
-      {/* ── Header ────────────────────────────────────────────────────── */}
+      {/* -- Header ------------------------------------------------------ */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -169,7 +169,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
         </button>
       </div>
 
-      {/* ── Form ──────────────────────────────────────────────────────── */}
+      {/* -- Form -------------------------------------------------------- */}
       {showForm && (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-6">
           <h4 className="mb-4 font-semibold text-slate-900 dark:text-white">
@@ -239,7 +239,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
         </div>
       )}
 
-      {/* ── Summary ───────────────────────────────────────────────────── */}
+      {/* -- Summary ----------------------------------------------------- */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-brand-50 dark:from-brand-950/20 to-brand-50/50 dark:to-transparent p-4">
         <div className="text-center">
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -254,7 +254,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
         </div>
       </div>
 
-      {/* ── List ──────────────────────────────────────────────────────── */}
+      {/* -- List -------------------------------------------------------- */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">

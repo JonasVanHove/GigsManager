@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { UserSettingsData } from "@/types";
@@ -22,7 +22,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<UserSettingsData>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
-  // ── Fetch on login ──────────────────────────────────────────────────────
+  // -- Fetch on login ------------------------------------------------------
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +60,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, [session?.user, getAccessToken]);
 
-  // ── Persist changes ─────────────────────────────────────────────────────
+  // -- Persist changes -----------------------------------------------------
 
   const updateSettings = useCallback(
     async (patch: Partial<UserSettingsData>) => {
@@ -102,7 +102,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [getAccessToken]
   );
 
-  // ── Currency helper ─────────────────────────────────────────────────────
+  // -- Currency helper -----------------------------------------------------
 
   const fmtCurrency = useCallback(
     (amount: number) => {

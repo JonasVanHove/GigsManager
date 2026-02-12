@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Extract user ID from Supabase JWT in request headers.
  */
 

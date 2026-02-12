@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-// ── Auth middleware ──────────────────────────────────────────────────────────
+// Auth middleware
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -71,7 +71,7 @@ export async function GET(
   }
 }
 
-// ── PUT /api/gigs/:id ───────────────────────────────────────────────────────
+// PUT /api/gigs/:id
 
 export async function PUT(
   request: NextRequest,
@@ -139,7 +139,7 @@ export async function PUT(
   }
 }
 
-// ── DELETE /api/gigs/:id ─────────────────────────────────────────────────────
+// DELETE /api/gigs/:id
 
 export async function DELETE(
   request: NextRequest,

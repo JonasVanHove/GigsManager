@@ -1,4 +1,4 @@
-import type { GigCalculations } from "@/types";
+﻿import type { GigCalculations } from "@/types";
 
 /**
  * Core financial calculations for a gig.
@@ -99,7 +99,7 @@ export function calculateGigFinancials(
   };
 }
 
-// ─── Formatting helpers ──────────────────────────────────────────────────────
+// --- Formatting helpers ------------------------------------------------------
 
 export function formatCurrency(
   amount: number,
@@ -121,7 +121,7 @@ export function formatDate(dateString: string): string {
   });
 }
 
-// ─── Internal ────────────────────────────────────────────────────────────────
+// --- Internal ----------------------------------------------------------------
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;

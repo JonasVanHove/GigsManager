@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-// ── Auth helper (same pattern as gigs routes) ─────────────────────────────────
+// -- Auth helper (same pattern as gigs routes) ---------------------------------
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -59,7 +59,7 @@ async function requireAuth(request: NextRequest) {
   }
 }
 
-// ── GET /api/settings — return user settings (or defaults) ────────────────────
+// -- GET /api/settings — return user settings (or defaults) --------------------
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ── PUT /api/settings — upsert user settings ─────────────────────────────────
+// -- PUT /api/settings — upsert user settings ---------------------------------
 
 const SUPPORTED_CURRENCIES = [
   "EUR", "USD", "GBP", "CHF", "SEK", "NOK", "DKK",

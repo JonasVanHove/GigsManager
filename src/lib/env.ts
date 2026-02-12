@@ -1,4 +1,4 @@
-// ─── Runtime environment validation ──────────────────────────────────────────
+﻿// --- Runtime environment validation ------------------------------------------
 // Imported once at app startup to fail fast on missing config.
 
 function required(key: string): string {

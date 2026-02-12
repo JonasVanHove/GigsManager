@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import type { DashboardSummary, Gig } from "@/types";
@@ -71,7 +71,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
 
   return (
     <div className="space-y-3">
-      {/* ── Row 1: Total Gigs + My Earnings ──────────────────────────────────── */}
+      {/* -- Row 1: Total Gigs + My Earnings ------------------------------------ */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {/* Total Gigs Card */}
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
@@ -186,7 +186,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </div>
       </div>
 
-      {/* ── Row 2: Pending Payments + Outstanding to Band ────────────────────── */}
+      {/* -- Row 2: Pending Payments + Outstanding to Band ---------------------- */}
       <div className="grid grid-cols-2 gap-3">
         {/* Pending Payments Card */}
         <button
@@ -254,7 +254,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </button>
       </div>
 
-      {/* ── Row 3: Expanded Payment Breakdowns ───────────────────────────────── */}
+      {/* -- Row 3: Expanded Payment Breakdowns --------------------------------- */}
       {expandedCard === "outstanding" && (
         <div className="space-y-2 rounded-xl border-2 border-pink-500 bg-pink-500/10 p-3 dark:border-pink-400 dark:bg-pink-500/15">
           <p className="text-xs font-semibold uppercase tracking-widest text-pink-600 dark:text-pink-300">
@@ -312,7 +312,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </div>
       )}
 
-      {/* ── Helpful callout ────────────────────────────────────────────────────── */}
+      {/* -- Helpful callout ------------------------------------------------------ */}
       {summary.totalGigs === 0 && (
         <div className="rounded-xl border-2 border-cyan-400 bg-cyan-500/10 p-3 dark:bg-cyan-500/15">
           <p className="text-sm font-medium text-cyan-900 dark:text-cyan-200">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AuthProvider } from "./AuthProvider";
 import { SettingsProvider } from "./SettingsProvider";

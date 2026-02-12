@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import type { Gig } from "@/types";
@@ -10,7 +10,7 @@ interface AnalyticsPageProps {
 }
 
 export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps) {
-  // ── Computed stats ──────────────────────────────────────────────────────────
+  // -- Computed stats ----------------------------------------------------------
 
   const stats = useMemo(() => {
     const paid = gigs.filter((g) => g.paymentReceived);
@@ -115,7 +115,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
 
   return (
     <div className="space-y-6 pb-6">
-      {/* ── Key metrics ────────────────────────────────────────────────────── */}
+      {/* -- Key metrics ------------------------------------------------------ */}
       <div>
         <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">Key Metrics</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -142,7 +142,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         </div>
       </div>
 
-      {/* ── Charity & Advance Stats ────────────────────────────────────────── */}
+      {/* -- Charity & Advance Stats ------------------------------------------ */}
       <div>
         <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">Charity & Advances</h2>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -183,7 +183,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         )}
       </div>
 
-      {/* ── Earnings breakdown ─────────────────────────────────────────────── */}
+      {/* -- Earnings breakdown ----------------------------------------------- */}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Income</h3>
@@ -243,7 +243,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         </div>
       </div>
 
-      {/* ── Monthly trend ──────────────────────────────────────────────────── */}
+      {/* -- Monthly trend ---------------------------------------------------- */}
       {stats.months.length > 0 && (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -280,7 +280,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         </div>
       )}
 
-      {/* ── Seasonal Insights ──────────────────────────────────────────────── */}
+      {/* -- Seasonal Insights ------------------------------------------------ */}
       {stats.monthPatterns.length > 0 && (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -362,7 +362,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         </div>
       )}
 
-      {/* ── Payment timeline ───────────────────────────────────────────────── */}
+      {/* -- Payment timeline ------------------------------------------------- */}
       {stats.timeline.length > 0 && (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -401,7 +401,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
   );
 }
 
-// ─── Helper components ──────────────────────────────────────────────────────
+// --- Helper components ------------------------------------------------------
 
 function MetricCard({
   label,

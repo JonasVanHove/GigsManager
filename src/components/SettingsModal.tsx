@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useSettings } from "./SettingsProvider";
@@ -79,7 +79,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
         </div>
 
         <div className="space-y-6 px-6 py-5">
-          {/* ── Currency ────────────────────────── */}
+          {/* -- Currency -------------------------- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               Currency
@@ -100,7 +100,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             </p>
           </div>
 
-          {/* ── Theme ──────────────────────────── */}
+          {/* -- Theme ---------------------------- */}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
               Appearance

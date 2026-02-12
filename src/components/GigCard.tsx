@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { Gig } from "@/types";
 import {
@@ -36,7 +36,7 @@ export default function GigCard({
 
   return (
     <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
-      {/* ── Header ────────────────────────────────────────────────────── */}
+      {/* -- Header ------------------------------------------------------ */}
       <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-700/50 dark:bg-slate-800/50">
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
@@ -87,7 +87,7 @@ export default function GigCard({
         </div>
       </div>
 
-      {/* ── Financial breakdown ────────────────────────────────────────── */}
+      {/* -- Financial breakdown ------------------------------------------ */}
       <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-5 py-4 text-sm sm:grid-cols-4 border-b border-slate-100 dark:border-slate-700/50">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -133,7 +133,7 @@ export default function GigCard({
         </div>
       </div>
 
-      {/* ── Per-person breakdown ───────────────────────────────────────── */}
+      {/* -- Per-person breakdown ----------------------------------------- */}
       <div className="space-y-3 border-t border-slate-100 dark:border-slate-700/50 px-5 py-3">
         {/* Row 1: Per musician + My earnings */}
         <div className="grid grid-cols-3 gap-4 text-sm">
@@ -265,7 +265,7 @@ export default function GigCard({
         )}
       </div>
 
-      {/* ── Payment status badges ──────────────────────────────────────── */}
+      {/* -- Payment status badges ---------------------------------------- */}
       <div className="flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-700/50 px-5 py-3">
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${

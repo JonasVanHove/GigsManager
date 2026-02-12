@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Client-side Supabase auth client.
  * Used in browsers and React components.
  */

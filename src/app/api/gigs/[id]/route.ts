@@ -100,6 +100,7 @@ export async function PUT(
         date: new Date(new Date(String(body.date)).toISOString()),
         performers: String(body.performers).trim(),
         numberOfMusicians: Math.max(1, Math.round(Number(body.numberOfMusicians))),
+        isCharity: Boolean(body.isCharity),
         performanceFee: Math.max(0, Number(body.performanceFee) || 0),
         technicalFee: Math.max(0, Number(body.technicalFee) || 0),
         managerBonusType: (body.managerBonusType as string) || "fixed",

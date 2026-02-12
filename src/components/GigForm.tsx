@@ -15,6 +15,7 @@ const emptyForm: GigFormData = {
   date: "",
   performers: "",
   numberOfMusicians: 1,
+  isCharity: false,
   performanceFee: 0,
   technicalFee: 0,
   managerBonusType: "fixed",
@@ -38,6 +39,7 @@ function gigToFormData(gig: Gig): GigFormData {
     date: gig.date ? gig.date.split("T")[0] : "",
     performers: gig.performers,
     numberOfMusicians: gig.numberOfMusicians,
+    isCharity: gig.isCharity ?? false,
     performanceFee: gig.performanceFee,
     technicalFee: gig.technicalFee,
     managerBonusType: gig.managerBonusType,
@@ -78,7 +80,8 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
         form.claimTechnicalFee,
         form.technicalFeeClaimAmount,
         form.advanceReceivedByManager,
-        form.advanceToMusicians
+        form.advanceToMusicians,
+        form.isCharity
       ),
     [
       form.performanceFee,
@@ -91,6 +94,7 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
       form.technicalFeeClaimAmount,
       form.advanceReceivedByManager,
       form.advanceToMusicians,
+      form.isCharity,
     ]
   );
 
@@ -198,11 +202,22 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                 <input
                   type="number"
                   min={1}
-                  className={inputCls}
-                  value={form.numberOfMusicians}
-                  onChange={(e) =>
-                    set("numberOfMusicians", Math.max(1, Number(e.target.value)))
-                  }
+                  className={`${inputCls} [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                  style={{ MozAppearance: 'textfield' }}
+                  value={form.numberOfMusicians || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val === "") {
+                      set("numberOfMusicians", 0); // Allow empty to enable clearing
+                    } else {
+                      set("numberOfMusicians", Math.max(1, Number(val)));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    if (!form.numberOfMusicians || form.numberOfMusicians < 1) {
+                      set("numberOfMusicians", 1); // Default to 1 on blur if empty
+                    }
+                  }}
                   required
                 />
               </div>
@@ -214,6 +229,25 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
             <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
               Financials
             </legend>
+
+            {/* Charity checkbox */}
+            <div className="mb-4 rounded-lg border border-purple-200 dark:border-purple-700/50 bg-purple-50 dark:bg-purple-950/30 p-3">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-400"
+                  checked={form.isCharity}
+                  onChange={(e) => set("isCharity", e.target.checked)}
+                />
+                <span className="text-sm font-medium text-purple-900 dark:text-purple-300">
+                  Charity / Pro Bono Performance
+                </span>
+              </label>
+              <p className="mt-2 ml-6 text-xs text-purple-700 dark:text-purple-400">
+                Check this if this is a free performance for a good cause (compensation will be $0)
+              </p>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>

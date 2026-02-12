@@ -30,8 +30,20 @@ export function calculateGigFinancials(
   claimTechnicalFee = true,
   technicalFeeClaimAmount: number | null = null,
   advanceReceivedByManager: number = 0,
-  advanceToMusicians: number = 0
+  advanceToMusicians: number = 0,
+  isCharity: boolean = false
 ): GigCalculations {
+  // If it's a charity performance, all fees are $0
+  if (isCharity) {
+    return {
+      actualManagerBonus: 0,
+      totalReceived: 0,
+      amountPerMusician: 0,
+      myEarnings: 0,
+      amountOwedToOthers: 0,
+    };
+  }
+
   const actualManagerBonus =
     managerBonusType === "percentage"
       ? performanceFee * (managerBonusAmount / 100)

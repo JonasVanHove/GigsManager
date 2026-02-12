@@ -19,6 +19,7 @@ model Gig {
   numberOfMusicians Int
 
   // ── Financials ─────────────────────────────────────────
+  isCharity         Boolean @default(false) // whether this is a charity/pro bono performance
   performanceFee    Float           // music fee — split among musicians
   technicalFee      Float  @default(0) // optional — belongs to manager, not split
   managerBonusType  String @default("fixed") // "fixed" | "percentage"

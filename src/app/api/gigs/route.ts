@@ -64,6 +64,7 @@ function toGigData(body: Record<string, unknown>, userId: string) {
     date: new Date(new Date(String(body.date)).toISOString()), // UTC-safe
     performers: String(body.performers).trim(),
     numberOfMusicians: Math.max(1, Math.round(Number(body.numberOfMusicians))),
+    isCharity: Boolean(body.isCharity),
     performanceFee: Math.max(0, Number(body.performanceFee) || 0),
     technicalFee: Math.max(0, Number(body.technicalFee) || 0),
     managerBonusType: (body.managerBonusType as string) || "fixed",

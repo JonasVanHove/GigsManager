@@ -6,6 +6,7 @@ export interface Gig {
   date: string; // ISO string
   performers: string;
   numberOfMusicians: number;
+  isCharity: boolean; // whether this is a charity/pro bono performance
   performanceFee: number;
   technicalFee: number;
   managerBonusType: "fixed" | "percentage";
@@ -57,6 +58,7 @@ export interface GigFormData {
   date: string; // "YYYY-MM-DD"
   performers: string;
   numberOfMusicians: number;
+  isCharity: boolean; // whether this is a charity/pro bono performance
   performanceFee: number;
   technicalFee: number;
   managerBonusType: "fixed" | "percentage";

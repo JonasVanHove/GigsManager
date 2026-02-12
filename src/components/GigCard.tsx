@@ -31,7 +31,10 @@ export default function GigCard({
     gig.numberOfMusicians,
     gig.claimPerformanceFee,
     gig.claimTechnicalFee,
-    gig.technicalFeeClaimAmount
+    gig.technicalFeeClaimAmount,
+    gig.advanceReceivedByManager,
+    gig.advanceToMusicians,
+    gig.isCharity
   );
 
   return (
@@ -152,6 +155,18 @@ export default function GigCard({
             <p className="mt-0.5 font-bold text-brand-700 dark:text-brand-300">
               {fmtCurrency(calc.myEarnings)}
             </p>
+            {gig.advanceReceivedByManager > 0 && (
+              <div className="mt-1.5 space-y-0.5 text-xs">
+                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                  <span>Already Received</span>
+                  <span className="font-medium">{fmtCurrency(calc.myEarningsAlreadyReceived)}</span>
+                </div>
+                <div className="flex items-center justify-between text-orange-600 dark:text-orange-400">
+                  <span>Still Owed to Me</span>
+                  <span className="font-medium">{fmtCurrency(calc.myEarningsStillOwed)}</span>
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-brand-500 dark:text-brand-400">

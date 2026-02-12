@@ -85,6 +85,8 @@ export interface GigCalculations {
   totalReceived: number;
   amountPerMusician: number;
   myEarnings: number;
+  myEarningsAlreadyReceived: number; // Advance received from client
+  myEarningsStillOwed: number; // Still owed from client (myEarnings - advance)
   amountOwedToOthers: number;
 }
 

@@ -40,6 +40,8 @@ export function calculateGigFinancials(
       totalReceived: 0,
       amountPerMusician: 0,
       myEarnings: 0,
+      myEarningsAlreadyReceived: 0,
+      myEarningsStillOwed: 0,
       amountOwedToOthers: 0,
     };
   }
@@ -73,6 +75,11 @@ export function calculateGigFinancials(
   
   const myEarnings = perfShare + techShare + actualManagerBonus;
 
+  // Track advance received from client as part of earnings already received
+  // This can't be more than total earnings (prevents negative still-owed)
+  const myEarningsAlreadyReceived = Math.min(advanceReceivedByManager, myEarnings);
+  const myEarningsStillOwed = Math.max(0, myEarnings - myEarningsAlreadyReceived);
+
   // Owed to band members: always (numberOfMusicians - 1) * per person share
   // Minus any advance already paid to them
   const amountOwedToBand =
@@ -95,6 +102,8 @@ export function calculateGigFinancials(
     totalReceived: round(totalReceived),
     amountPerMusician: round(amountPerMusician),
     myEarnings: round(myEarnings),
+    myEarningsAlreadyReceived: round(myEarningsAlreadyReceived),
+    myEarningsStillOwed: round(myEarningsStillOwed),
     amountOwedToOthers: round(amountOwedToOthers),
   };
 }

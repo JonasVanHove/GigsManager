@@ -481,6 +481,28 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                   </p>
                 </div>
               </div>
+              {/* Show advance breakdown if there's an advance */}
+              {form.advanceReceivedByManager > 0 && (
+                <div className="mt-3 pt-3 border-t border-brand-200 dark:border-brand-700/50">
+                  <p className="mb-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    Advance Payment Breakdown
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400">Already Received</span>
+                      <p className="font-semibold text-emerald-700 dark:text-emerald-300">
+                        {formatCurrency(calc.myEarningsAlreadyReceived)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400">Still Owed to Me</span>
+                      <p className="font-semibold text-orange-700 dark:text-orange-300">
+                        {formatCurrency(calc.myEarningsStillOwed)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </fieldset>
 

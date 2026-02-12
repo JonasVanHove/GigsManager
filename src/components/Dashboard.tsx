@@ -14,6 +14,7 @@ import AnalyticsPage from "./AnalyticsPage";
 import InvestmentsTab from "./InvestmentsTab";
 import AllGigsTab from "./AllGigsTab";
 import Footer from "./Footer";
+import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 
 export default function Dashboard() {
@@ -28,6 +29,7 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments">("gigs");
+  const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
 
   // -- Data fetching ----------------------------------------------------------
 
@@ -216,6 +218,25 @@ export default function Dashboard() {
       flash("Delete failed — restored.", "err");
     }
   };
+
+  const handleExpandAll = () => {
+    setGlobalExpandState(true);
+    flash("Expanded all performances");
+  };
+
+  const handleCollapseAll = () => {
+    setGlobalExpandState(false);
+    flash("Collapsed all performances");
+  };
+
+  // Keyboard shortcuts
+  const shortcuts = [
+    {
+      keys: ["Ctrl", "n"],
+      description: "New performance",
+      action: () => setShowForm(true),
+    },
+  ];
 
   // -- Summary calculation ----------------------------------------------------
 
@@ -482,13 +503,37 @@ export default function Dashboard() {
                       {/* Active Gigs Section */}
                       {activeGigs.length > 0 && (
                         <div>
-                          <div className="mb-4 flex items-center gap-2">
-                            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
-                              Active Performances
-                            </h3>
-                            <span className="rounded-full bg-brand-100 dark:bg-brand-900/40 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">
-                              {activeGigs.length}
-                            </span>
+                          <div className="mb-4 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                                Active Performances
+                              </h3>
+                              <span className="rounded-full bg-brand-100 dark:bg-brand-900/40 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">
+                                {activeGigs.length}
+                              </span>
+                            </div>
+                            {activeGigs.length > 0 && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={handleExpandAll}
+                                  title="Expand all (Cmd+E)"
+                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 15.75-7.5-7.5-7.5 7.5" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={handleCollapseAll}
+                                  title="Collapse all (Cmd+C)"
+                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="grid gap-5">
                             {activeGigs.map((gig) => (
@@ -499,6 +544,7 @@ export default function Dashboard() {
                                 fmtCurrency={fmtCurrency}
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
+                                isExpandedGlobal={globalExpandState}
                               />
                             ))}
                           </div>
@@ -508,13 +554,37 @@ export default function Dashboard() {
                       {/* Handled Gigs Section */}
                       {handledGigs.length > 0 && (
                         <div>
-                          <div className="mb-4 flex items-center gap-2">
-                            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
-                              Handled Performances
-                            </h3>
-                            <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                              {handledGigs.length}
-                            </span>
+                          <div className="mb-4 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                                Handled Performances
+                              </h3>
+                              <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                {handledGigs.length}
+                              </span>
+                            </div>
+                            {handledGigs.length > 0 && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={handleExpandAll}
+                                  title="Expand all (Cmd+E)"
+                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 15.75-7.5-7.5-7.5 7.5" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={handleCollapseAll}
+                                  title="Collapse all (Cmd+C)"
+                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="grid gap-5">
                             {handledGigs.map((gig) => (
@@ -525,6 +595,7 @@ export default function Dashboard() {
                                 fmtCurrency={fmtCurrency}
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
+                                isExpandedGlobal={globalExpandState}
                               />
                             ))}
                           </div>
@@ -575,6 +646,13 @@ export default function Dashboard() {
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />
       )}
+
+      {/* -- Keyboard Shortcuts ----------------------------------------- */}
+      <KeyboardShortcuts
+        shortcuts={shortcuts}
+        onExpandAll={handleExpandAll}
+        onCollapseAll={handleCollapseAll}
+      />
 
       {/* -- Toast ------------------------------------------------------ */}
       {toast && (

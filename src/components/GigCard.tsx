@@ -13,6 +13,7 @@ interface GigCardProps {
   fmtCurrency: (amount: number) => string;
   claimPerformanceFee?: boolean;
   claimTechnicalFee?: boolean;
+  isExpandedGlobal?: boolean;
 }
 
 export default function GigCard({
@@ -21,9 +22,13 @@ export default function GigCard({
   fmtCurrency,
   claimPerformanceFee = true,
   claimTechnicalFee = true,
+  isExpandedGlobal,
 }: GigCardProps) {
-  // Charity gigs start collapsed, others start expanded
+  // Charity gigs start collapsed, others start expanded, but can be overridden by global state
   const [isExpanded, setIsExpanded] = useState(!gig.isCharity);
+  
+  // Use global expand state if provided, otherwise use local state
+  const effectiveIsExpanded = isExpandedGlobal !== undefined ? isExpandedGlobal : isExpanded;
 
   const calc = calculateGigFinancials(
     gig.performanceFee,
@@ -63,7 +68,7 @@ export default function GigCard({
             {/* Expand/collapse chevron */}
             <svg
               className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${
-                isExpanded ? "rotate-180" : ""
+                effectiveIsExpanded ? "rotate-180" : ""
               }`}
               fill="none"
               viewBox="0 0 24 24"
@@ -110,7 +115,7 @@ export default function GigCard({
       </div>
 
       {/* Collapsible content */}
-      {isExpanded && (
+      {effectiveIsExpanded && (
         <>
           {/* -- Financial breakdown ------------------------------------------ */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-5 py-4 text-sm sm:grid-cols-4 border-b border-slate-100 dark:border-slate-700/50">

@@ -496,7 +496,6 @@ export default function Dashboard() {
                                 key={gig.id}
                                 gig={gig}
                                 onEdit={(g) => setEditGig(g)}
-                                onDelete={(g) => setDeleteGig(g)}
                                 fmtCurrency={fmtCurrency}
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
@@ -523,7 +522,6 @@ export default function Dashboard() {
                                 key={gig.id}
                                 gig={gig}
                                 onEdit={(g) => setEditGig(g)}
-                                onDelete={(g) => setDeleteGig(g)}
                                 fmtCurrency={fmtCurrency}
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
@@ -542,7 +540,6 @@ export default function Dashboard() {
           <AllGigsTab 
             gigs={gigs}
             onEdit={(g) => setEditGig(g)}
-            onDelete={(g) => setDeleteGig(g)}
             fmtCurrency={fmtCurrency}
             loading={loading}
           />
@@ -562,6 +559,10 @@ export default function Dashboard() {
           gig={editGig}
           onSubmit={handleUpdate}
           onCancel={() => setEditGig(null)}
+          onDelete={(gig) => {
+            setEditGig(null);
+            setDeleteGig(gig);
+          }}
         />
       )}
       {deleteGig && (

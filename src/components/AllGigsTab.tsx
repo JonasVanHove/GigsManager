@@ -7,7 +7,6 @@ import GigCard from "./GigCard";
 interface AllGigsTabProps {
   gigs: Gig[];
   onEdit: (gig: Gig) => void;
-  onDelete: (gig: Gig) => void;
   fmtCurrency: (amount: number) => string;
   loading: boolean;
 }
@@ -17,7 +16,6 @@ type SortOption = "date-asc" | "date-desc" | "fee-high" | "fee-low";
 export default function AllGigsTab({
   gigs,
   onEdit,
-  onDelete,
   fmtCurrency,
   loading,
 }: AllGigsTabProps) {
@@ -187,7 +185,6 @@ export default function AllGigsTab({
               key={gig.id}
               gig={gig}
               onEdit={onEdit}
-              onDelete={onDelete}
               fmtCurrency={fmtCurrency}
               claimPerformanceFee={gig.claimPerformanceFee}
               claimTechnicalFee={gig.claimTechnicalFee}

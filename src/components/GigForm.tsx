@@ -8,6 +8,7 @@ interface GigFormProps {
   gig?: Gig | null;
   onSubmit: (data: GigFormData) => Promise<void>;
   onCancel: () => void;
+  onDelete?: (gig: Gig) => void;
 }
 
 const emptyForm: GigFormData = {
@@ -62,7 +63,7 @@ function gigToFormData(gig: Gig): GigFormData {
   };
 }
 
-export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
+export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormProps) {
   const [form, setForm] = useState<GigFormData>(
     gig ? gigToFormData(gig) : emptyForm
   );
@@ -677,20 +678,31 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
           </fieldset>
 
           {/* -- Actions ------------------------------------------------- */}
-          <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50"
-            >
+          <div className="flex justify-between border-t border-slate-200 pt-4">
+            {/* Delete button (only when editing) */}
+            {gig && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(gig)}
+                className="rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-slate-800 px-5 py-2 text-sm text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                Delete Performance
+              </button>
+            )}
+            <div className="flex gap-3 ml-auto">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={loading}
+                className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50"
+              >
               {loading && (
                 <svg
                   className="h-4 w-4 animate-spin"
@@ -713,7 +725,8 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                 </svg>
               )}
               {gig ? "Save Changes" : "Add Performance"}
-            </button>
+              </button>
+            </div>
           </div>
         </form>
       </div>

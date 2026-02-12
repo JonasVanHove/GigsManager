@@ -22,6 +22,7 @@ const emptyForm: GigFormData = {
   claimPerformanceFee: true,
   claimTechnicalFee: true,
   technicalFeeClaimAmount: null,
+  managerHandlesDistribution: true,
   paymentReceived: false,
   paymentReceivedDate: "",
   bandPaid: false,
@@ -42,6 +43,7 @@ function gigToFormData(gig: Gig): GigFormData {
     claimPerformanceFee: gig.claimPerformanceFee ?? true,
     claimTechnicalFee: gig.claimTechnicalFee ?? true,
     technicalFeeClaimAmount: gig.technicalFeeClaimAmount ?? null,
+    managerHandlesDistribution: gig.managerHandlesDistribution ?? true,
     paymentReceived: gig.paymentReceived,
     paymentReceivedDate: gig.paymentReceivedDate
       ? gig.paymentReceivedDate.split("T")[0]
@@ -403,18 +405,18 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
               </div>
 
               {/* Band payment */}
-              <div className="rounded-lg border border-slate-200 p-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 dark:bg-slate-800/50">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500"
                     checked={form.bandPaid}
                     onChange={(e) => {
                       set("bandPaid", e.target.checked);
                       if (!e.target.checked) set("bandPaidDate", "");
                     }}
                   />
-                  <span className="text-sm font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     Band members paid
                   </span>
                 </label>
@@ -429,6 +431,25 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                     />
                   </div>
                 )}
+              </div>
+
+              {/* Manager handles distribution */}
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-950/30 p-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+                    checked={form.managerHandlesDistribution}
+                    onChange={(e) => set("managerHandlesDistribution", e.target.checked)}
+                  />
+                  <span className="text-sm font-medium text-cyan-900 dark:text-cyan-300">
+                    I'm responsible for splitting fees to band members
+                  </span>
+                </label>
+                <p className="mt-1.5 text-xs text-cyan-800 dark:text-cyan-400">
+                  ✓ Checked: You handle payment distribution and owe band members their share<br />
+                  ✗ Unchecked: Band members get paid directly (e.g., by the client)
+                </p>
               </div>
             </div>
           </fieldset>

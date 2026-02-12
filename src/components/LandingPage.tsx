@@ -120,16 +120,16 @@ export default function LandingPage() {
   const [showAuth, setShowAuth] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
       {/* ── Navbar ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-lg">
+      <header className="sticky top-0 z-40 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg transition-colors">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 shadow-sm">
               <MusicIcon className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">
-              Gigs<span className="text-brand-600">Manager</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Gigs<span className="text-brand-600 dark:text-brand-400">Manager</span>
             </span>
           </div>
 
@@ -139,7 +139,7 @@ export default function LandingPage() {
                 setShowAuth(true);
                 setTimeout(() => document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }), 50);
               }}
-              className="text-sm font-medium text-slate-600 transition hover:text-brand-600"
+              className="text-sm font-medium text-slate-600 dark:text-slate-400 transition hover:text-brand-600 dark:hover:text-brand-400"
             >
               Sign In
             </button>
@@ -157,28 +157,28 @@ export default function LandingPage() {
       </header>
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-white dark:bg-slate-950 transition-colors">
         {/* Background decoration */}
         <div className="absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-brand-100/60 blur-3xl" />
-          <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-indigo-100/40 blur-3xl" />
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-brand-100/60 dark:bg-brand-500/20 blur-3xl" />
+          <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-indigo-100/40 dark:bg-indigo-500/10 blur-3xl" />
         </div>
 
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-1.5 text-sm font-medium text-brand-700 ring-1 ring-brand-200">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-brand-50 dark:bg-brand-950 px-4 py-1.5 text-sm font-medium text-brand-700 dark:text-brand-300 ring-1 ring-brand-200 dark:ring-brand-800">
               <MusicIcon className="h-4 w-4" />
               Built for live music professionals
             </div>
 
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-5xl lg:text-6xl">
               Manage your gigs,{" "}
-              <span className="bg-gradient-to-r from-brand-600 to-indigo-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 bg-clip-text text-transparent">
                 not spreadsheets
               </span>
             </h1>
 
-            <p className="mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl">
+            <p className="mt-6 text-lg leading-relaxed text-slate-600 dark:text-slate-400 sm:text-xl">
               GigsManager helps musicians and band managers track performances,
               split fees, and manage payments — all in one simple dashboard.
               Stop juggling spreadsheets and start focusing on the music.
@@ -199,7 +199,7 @@ export default function LandingPage() {
               </button>
               <a
                 href="#features"
-                className="inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-base font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-900"
               >
                 See Features
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -211,8 +211,8 @@ export default function LandingPage() {
 
           {/* ── Dashboard preview ─────────────────────────────────────── */}
           <div className="relative mx-auto mt-16 max-w-4xl">
-            <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-200/50">
-              <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 p-6 sm:p-8">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-2xl shadow-slate-200/50 dark:shadow-slate-950/50">
+              <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-6 sm:p-8">
                 {/* Fake dashboard summary */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                   {[
@@ -236,53 +236,53 @@ export default function LandingPage() {
                 </div>
 
                 {/* Fake gig card */}
-                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-slate-900">Jazz Cafe Summer Session</h3>
-                      <p className="mt-0.5 text-sm text-slate-500">Aug 15, 2026 &middot; The Blue Note Quartet &middot; 4 musicians</p>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Jazz Cafe Summer Session</h3>
+                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Aug 15, 2026 &middot; The Blue Note Quartet &middot; 4 musicians</p>
                     </div>
                     <div className="flex gap-1">
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-600/20">
+                      <span className="rounded-full bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-600/20 dark:ring-emerald-500/30">
                         Client Paid
                       </span>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                     <div>
-                      <p className="text-[10px] sm:text-xs font-medium text-slate-400 uppercase">Performance</p>
-                      <p className="font-semibold text-slate-800">€1,200</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase">Performance</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">€1,200</p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs font-medium text-slate-400 uppercase">Technical</p>
-                      <p className="font-semibold text-slate-800">€200</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase">Technical</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-200">€200</p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs font-medium text-brand-500 uppercase">My Earnings</p>
-                      <p className="font-bold text-brand-700">€700</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-brand-500 dark:text-brand-400 uppercase">My Earnings</p>
+                      <p className="font-bold text-brand-700 dark:text-brand-300">€700</p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs font-medium text-amber-500 uppercase">Owe to Others</p>
-                      <p className="font-semibold text-amber-700">€900</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-amber-500 dark:text-amber-400 uppercase">Owe to Others</p>
+                      <p className="font-semibold text-amber-700 dark:text-amber-300">€900</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             {/* Glow effect */}
-            <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-r from-brand-200/30 via-indigo-200/20 to-brand-200/30 blur-2xl" />
+            <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-r from-brand-200/30 dark:from-brand-500/10 via-indigo-200/20 dark:via-indigo-500/5 to-brand-200/30 dark:to-brand-500/10 blur-2xl" />
           </div>
         </div>
       </section>
 
       {/* ── Features ──────────────────────────────────────────────────── */}
-      <section id="features" className="border-t border-slate-100 bg-slate-50/50 py-20 sm:py-28">
+      <section id="features" className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-20 sm:py-28 transition-colors">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
               Everything you need to manage your gigs
             </h2>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
               From booking to payment, GigsManager handles the financial complexity so you can focus on performing.
             </p>
           </div>
@@ -291,13 +291,13 @@ export default function LandingPage() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-brand-200"
+                className="group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-sm transition hover:shadow-md hover:border-brand-200 dark:hover:border-brand-600"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400 transition group-hover:bg-brand-600 group-hover:text-white">
                   <feature.icon className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-slate-900">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{feature.description}</p>
+                <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -305,14 +305,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── Benefits ──────────────────────────────────────────────────── */}
-      <section className="py-20 sm:py-28">
+      <section className="py-20 sm:py-28 bg-white dark:bg-slate-950/50 transition-colors">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
                 Why choose GigsManager?
               </h2>
-              <p className="mt-4 text-lg text-slate-600">
+              <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
                 Built by musicians, for musicians. We know the pain of tracking payments after a
                 gig — so we made something simple that actually works.
               </p>
@@ -320,10 +320,10 @@ export default function LandingPage() {
               <ul className="mt-8 space-y-3">
                 {benefits.map((benefit) => (
                   <li key={benefit} className="flex items-center gap-3">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400">
                       <CheckIcon className="h-3.5 w-3.5" />
                     </div>
-                    <span className="text-slate-700">{benefit}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{benefit}</span>
                   </li>
                 ))}
               </ul>
@@ -362,14 +362,14 @@ export default function LandingPage() {
       {/* ── CTA / Auth Section ────────────────────────────────────────── */}
       <section
         id="auth-section"
-        className="border-t border-slate-100 bg-gradient-to-b from-slate-50 to-white py-20 sm:py-28"
+        className="border-t border-slate-100 dark:border-slate-800 bg-gradient-to-b from-slate-50 dark:from-slate-900 to-white dark:to-slate-950 py-20 sm:py-28 transition-colors"
       >
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
               {showAuth ? "Welcome back" : "Ready to get started?"}
             </h2>
-            <p className="mt-4 text-lg text-slate-600">
+            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400">
               {showAuth
                 ? "Sign in to your account or create a new one."
                 : "Create your free account and start tracking your gigs in minutes."
@@ -398,17 +398,17 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-slate-200 bg-white py-10">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-10 transition-colors">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-600">
               <MusicIcon className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-semibold text-slate-900">
-              Gigs<span className="text-brand-600">Manager</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white">
+              Gigs<span className="text-brand-600 dark:text-brand-400">Manager</span>
             </span>
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             &copy; {new Date().getFullYear()} GigsManager. Free and open-source.
           </p>
         </div>

@@ -29,6 +29,9 @@ model Gig {
   claimTechnicalFee   Boolean @default(true)
   technicalFeeClaimAmount Float? // amount of technical fee to claim (null = claim all)
 
+  // ── Payment handling ───────────────────────────────────
+  managerHandlesDistribution Boolean @default(true) // whether manager handles payment split to band members
+
   // ── Payment tracking ───────────────────────────────────
   paymentReceived     Boolean   @default(false)
   paymentReceivedDate DateTime?

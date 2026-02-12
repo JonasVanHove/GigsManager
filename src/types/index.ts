@@ -61,6 +61,7 @@ export interface GigFormData {
   claimPerformanceFee: boolean; // claim this fee for this gig
   claimTechnicalFee: boolean; // claim this fee for this gig
   technicalFeeClaimAmount: number | null; // amount of technical fee to claim (null = all)
+  managerHandlesDistribution: boolean; // whether manager handles payment split to band members
   paymentReceived: boolean;
   paymentReceivedDate: string; // "" or "YYYY-MM-DD"
   bandPaid: boolean;

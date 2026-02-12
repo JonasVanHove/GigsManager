@@ -8,6 +8,9 @@ import type { GigCalculations } from "@/types";
  *  - Manager bonus is added on top and goes entirely to the manager.
  *  - Technical fee is **not** split — it belongs to the manager.
  *  - "Amount owed to others" = the shares that must be paid to the other musicians.
+ *  - Advance payments are deducted from what's owed:
+ *    - advanceReceivedByManager: reduces what you owe from the client
+ *    - advanceToMusicians: reduces what you owe to band members
  *
  * The `claimPerformanceFee` and `claimTechnicalFee` flags control:
  *  - If NOT claiming performance fee:
@@ -25,7 +28,9 @@ export function calculateGigFinancials(
   numberOfMusicians: number,
   claimPerformanceFee = true,
   claimTechnicalFee = true,
-  technicalFeeClaimAmount: number | null = null
+  technicalFeeClaimAmount: number | null = null,
+  advanceReceivedByManager: number = 0,
+  advanceToMusicians: number = 0
 ): GigCalculations {
   const actualManagerBonus =
     managerBonusType === "percentage"
@@ -57,8 +62,10 @@ export function calculateGigFinancials(
   const myEarnings = perfShare + techShare + actualManagerBonus;
 
   // Owed to band members: always (numberOfMusicians - 1) * per person share
+  // Minus any advance already paid to them
   const amountOwedToBand =
     numberOfMusicians > 1 ? (numberOfMusicians - 1) * amountPerMusician : 0;
+  const netAmountOwedToBand = Math.max(0, amountOwedToBand - advanceToMusicians);
 
   // Owed for technical fee: if claiming but not all of it, owe the rest
   // If not claiming at all, owe everything
@@ -68,8 +75,8 @@ export function calculateGigFinancials(
         ? 0 
         : Math.max(0, technicalFee - technicalFeeClaimAmount));
 
-  // Legacy field: total owed
-  const amountOwedToOthers = amountOwedToBand + amountOwedForTechnical;
+  // Total owed (advance already paid is deducted)
+  const amountOwedToOthers = netAmountOwedToBand + amountOwedForTechnical;
 
   return {
     actualManagerBonus: round(actualManagerBonus),

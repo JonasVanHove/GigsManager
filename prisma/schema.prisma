@@ -38,6 +38,10 @@ model Gig {
   bandPaid            Boolean   @default(false)
   bandPaidDate        DateTime?
 
+  // ── Advance payments ────────────────────────────────────
+  advanceReceivedByManager Float @default(0) // Advance amount you received from client
+  advanceToMusicians Float @default(0)        // Advance amount you paid to musicians
+
   // ── Meta ───────────────────────────────────────────────
   notes     String?
   createdAt DateTime @default(now())

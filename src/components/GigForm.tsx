@@ -23,6 +23,8 @@ const emptyForm: GigFormData = {
   claimTechnicalFee: true,
   technicalFeeClaimAmount: null,
   managerHandlesDistribution: true,
+  advanceReceivedByManager: 0,
+  advanceToMusicians: 0,
   paymentReceived: false,
   paymentReceivedDate: "",
   bandPaid: false,
@@ -44,6 +46,8 @@ function gigToFormData(gig: Gig): GigFormData {
     claimTechnicalFee: gig.claimTechnicalFee ?? true,
     technicalFeeClaimAmount: gig.technicalFeeClaimAmount ?? null,
     managerHandlesDistribution: gig.managerHandlesDistribution ?? true,
+    advanceReceivedByManager: gig.advanceReceivedByManager ?? 0,
+    advanceToMusicians: gig.advanceToMusicians ?? 0,
     paymentReceived: gig.paymentReceived,
     paymentReceivedDate: gig.paymentReceivedDate
       ? gig.paymentReceivedDate.split("T")[0]
@@ -72,7 +76,9 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
         form.numberOfMusicians,
         form.claimPerformanceFee,
         form.claimTechnicalFee,
-        form.technicalFeeClaimAmount
+        form.technicalFeeClaimAmount,
+        form.advanceReceivedByManager,
+        form.advanceToMusicians
       ),
     [
       form.performanceFee,
@@ -83,6 +89,8 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
       form.claimPerformanceFee,
       form.claimTechnicalFee,
       form.technicalFeeClaimAmount,
+      form.advanceReceivedByManager,
+      form.advanceToMusicians,
     ]
   );
 
@@ -449,6 +457,57 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                 <p className="mt-1.5 text-xs text-cyan-800 dark:text-cyan-400">
                   ✓ Checked: You handle payment distribution and owe band members their share<br />
                   ✗ Unchecked: Band members get paid directly (e.g., by the client)
+                </p>
+              </div>
+            </div>
+          </fieldset>
+
+          {/* ── Advance Payments ──────────────────────────────────────── */}
+          <fieldset className="mb-5">
+            <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
+              Advance Payments (Optional)
+            </legend>
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              Track advance payments. If left empty, amounts will be distributed evenly among musicians.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-green-200 dark:border-green-700/50 bg-green-50 dark:bg-green-950/30 p-3">
+                <label className={labelCls}>
+                  Advance Received from Client ($)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className={inputCls}
+                  placeholder="0.00"
+                  value={form.advanceReceivedByManager || ""}
+                  onChange={(e) =>
+                    set("advanceReceivedByManager", Number(e.target.value) || 0)
+                  }
+                />
+                <p className="mt-2 text-xs text-green-700 dark:text-green-400">
+                  Amount you already received as advance
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-orange-200 dark:border-orange-700/50 bg-orange-50 dark:bg-orange-950/30 p-3">
+                <label className={labelCls}>
+                  Advance Paid to Musicians ($)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className={inputCls}
+                  placeholder="0.00"
+                  value={form.advanceToMusicians || ""}
+                  onChange={(e) =>
+                    set("advanceToMusicians", Number(e.target.value) || 0)
+                  }
+                />
+                <p className="mt-2 text-xs text-orange-700 dark:text-orange-400">
+                  Amount you already paid to band members
                 </p>
               </div>
             </div>

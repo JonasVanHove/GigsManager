@@ -18,6 +18,8 @@ export interface Gig {
   paymentReceivedDate: string | null;
   bandPaid: boolean;
   bandPaidDate: string | null;
+  advanceReceivedByManager: number; // Advance amount you received from client
+  advanceToMusicians: number; // Advance amount you paid to musicians
   notes: string | null;
   userId: string; // belongs to this user
   createdAt: string;
@@ -63,6 +65,8 @@ export interface GigFormData {
   claimTechnicalFee: boolean; // claim this fee for this gig
   technicalFeeClaimAmount: number | null; // amount of technical fee to claim (null = all)
   managerHandlesDistribution: boolean; // whether manager handles payment split to band members
+  advanceReceivedByManager: number; // Advance amount you received from client
+  advanceToMusicians: number; // Advance amount you paid to musicians
   paymentReceived: boolean;
   paymentReceivedDate: string; // "" or "YYYY-MM-DD"
   bandPaid: boolean;

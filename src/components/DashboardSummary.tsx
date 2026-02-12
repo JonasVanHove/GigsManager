@@ -40,7 +40,9 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         gig.numberOfMusicians,
         gig.claimPerformanceFee,
         gig.claimTechnicalFee,
-        gig.technicalFeeClaimAmount
+        gig.technicalFeeClaimAmount,
+        gig.advanceReceivedByManager,
+        gig.advanceToMusicians
       );
 
       const key = gig.performers || "Unknown Band";

@@ -265,10 +265,15 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                   min={0}
                   step="0.01"
                   className={inputCls}
-                  value={form.performanceFee || ""}
-                  onChange={(e) =>
-                    set("performanceFee", Number(e.target.value) || 0)
-                  }
+                  value={form.performanceFee ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val === "" || val === "-") {
+                      set("performanceFee", 0);
+                    } else {
+                      set("performanceFee", Math.max(0, Number(val)));
+                    }
+                  }}
                   required
                 />
               </div>

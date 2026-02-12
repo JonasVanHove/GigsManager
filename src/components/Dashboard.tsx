@@ -12,6 +12,7 @@ import DeleteConfirm from "./DeleteConfirm";
 import SettingsModal from "./SettingsModal";
 import AnalyticsPage from "./AnalyticsPage";
 import InvestmentsTab from "./InvestmentsTab";
+import AllGigsTab from "./AllGigsTab";
 import Footer from "./Footer";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 
@@ -26,7 +27,7 @@ export default function Dashboard() {
   const [deleteGig, setDeleteGig] = useState<Gig | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"gigs" | "analytics" | "investments">("gigs");
+  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments">("gigs");
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -352,10 +353,10 @@ export default function Dashboard() {
         </div>
 
         {/* ── Tabs ───────────────────────────────────────────────────── */}
-        <div className="mb-6 flex gap-2 border-b border-slate-200 dark:border-slate-700">
+        <div className="mb-6 flex gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
           <button
             onClick={() => setActiveTab("gigs")}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
               activeTab === "gigs"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
@@ -365,12 +366,27 @@ export default function Dashboard() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25v-2.25Zm9-9.75A2.25 2.25 0 0 1 15 3.75H17.25a2.25 2.25 0 0 1 2.25 2.25V6A2.25 2.25 0 0 1 17.25 8.25H15a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75A2.25 2.25 0 0 1 15 13.5H17.25a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 17.25 20.25H15a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
               </svg>
-              Gigs
+              Recent
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("all-gigs")}
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
+              activeTab === "all-gigs"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
+              All Gigs
             </span>
           </button>
           <button
             onClick={() => setActiveTab("analytics")}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
               activeTab === "analytics"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
@@ -385,7 +401,7 @@ export default function Dashboard() {
           </button>
           <button
             onClick={() => setActiveTab("investments")}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
               activeTab === "investments"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
@@ -403,7 +419,7 @@ export default function Dashboard() {
         {/* ── Content ────────────────────────────────────────────────── */}
         {activeTab === "gigs" ? (
           <>
-            {/* ── Gig list ───────────────────────────────────────────────── */}
+            {/* ── Recent Gigs (chronologically sorted, newest first) ────────– */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
@@ -434,20 +450,30 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="grid gap-5">
-                {gigs.map((gig) => (
-                  <GigCard
-                    key={gig.id}
-                    gig={gig}
-                    onEdit={(g) => setEditGig(g)}
-                    onDelete={(g) => setDeleteGig(g)}
-                    fmtCurrency={fmtCurrency}
-                    claimPerformanceFee={gig.claimPerformanceFee}
-                    claimTechnicalFee={gig.claimTechnicalFee}
-                  />
-                ))}
+                {[...gigs]
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((gig) => (
+                    <GigCard
+                      key={gig.id}
+                      gig={gig}
+                      onEdit={(g) => setEditGig(g)}
+                      onDelete={(g) => setDeleteGig(g)}
+                      fmtCurrency={fmtCurrency}
+                      claimPerformanceFee={gig.claimPerformanceFee}
+                      claimTechnicalFee={gig.claimTechnicalFee}
+                    />
+                  ))}
               </div>
             )}
           </>
+        ) : activeTab === "all-gigs" ? (
+          <AllGigsTab 
+            gigs={gigs}
+            onEdit={(g) => setEditGig(g)}
+            onDelete={(g) => setDeleteGig(g)}
+            fmtCurrency={fmtCurrency}
+            loading={loading}
+          />
         ) : activeTab === "analytics" ? (
           <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
         ) : activeTab === "investments" ? (

@@ -11,6 +11,7 @@ import GigForm from "./GigForm";
 import DeleteConfirm from "./DeleteConfirm";
 import SettingsModal from "./SettingsModal";
 import AnalyticsPage from "./AnalyticsPage";
+import InvestmentsTab from "./InvestmentsTab";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 
 export default function Dashboard() {
@@ -24,7 +25,7 @@ export default function Dashboard() {
   const [deleteGig, setDeleteGig] = useState<Gig | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"gigs" | "analytics">("gigs");
+  const [activeTab, setActiveTab] = useState<"gigs" | "analytics" | "investments">("gigs");
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -350,13 +351,13 @@ export default function Dashboard() {
         </div>
 
         {/* ── Tabs ───────────────────────────────────────────────────── */}
-        <div className="mb-6 flex gap-2 border-b border-slate-200">
+        <div className="mb-6 flex gap-2 border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setActiveTab("gigs")}
             className={`px-4 py-3 text-sm font-medium transition ${
               activeTab === "gigs"
-                ? "border-b-2 border-brand-600 text-brand-600"
-                : "text-slate-600 hover:text-slate-900"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
             <span className="inline-flex items-center gap-2">
@@ -370,8 +371,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("analytics")}
             className={`px-4 py-3 text-sm font-medium transition ${
               activeTab === "analytics"
-                ? "border-b-2 border-brand-600 text-brand-600"
-                : "text-slate-600 hover:text-slate-900"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
             <span className="inline-flex items-center gap-2">
@@ -379,6 +380,21 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 6.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75ZM16.5 6.75c0-.621.504-1.125 1.125-1.125h2.25C20.496 5.625 21 6.129 21 6.75v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75Z" />
               </svg>
               Analytics
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("investments")}
+            className={`px-4 py-3 text-sm font-medium transition ${
+              activeTab === "investments"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 3.07-.879 4.242 0M9.75 17.25c0 .552-.448 1-1 1H5.625c-.552 0-1-.448-1-1m12.621-4.47c.409-.34.659-.934.659-1.591v-2.64c0-1.228-.841-2.265-1.964-2.565A6.521 6.521 0 0 0 12 2.25c-1.466 0-2.869.36-4.095 1.001C6.041 3.476 5.2 4.513 5.2 5.74v2.637c0 .657.25 1.251.659 1.591m0 0c.409.34 1.227.855 2.966 1.694C9.75 15.75 11.565 16.5 12 16.5c.435 0 2.25-.75 3.175-1.32 1.738-.839 2.557-1.354 2.966-1.694" />
+              </svg>
+              Investments
             </span>
           </button>
         </div>
@@ -395,19 +411,19 @@ export default function Dashboard() {
                 </svg>
               </div>
             ) : gigs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 py-20 text-center">
-                <svg className="mb-4 h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 py-20 text-center">
+                <svg className="mb-4 h-12 w-12 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z" />
                 </svg>
-                <h3 className="text-lg font-semibold text-slate-700">
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
                   No performances yet
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   Add your first gig to start tracking.
                 </p>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 dark:hover:bg-brand-700"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -433,6 +449,8 @@ export default function Dashboard() {
           </>
         ) : activeTab === "analytics" ? (
           <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
+        ) : activeTab === "investments" ? (
+          <InvestmentsTab fmtCurrency={fmtCurrency} />
         ) : null}
       </main>
 

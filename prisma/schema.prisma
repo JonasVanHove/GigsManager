@@ -63,8 +63,9 @@ model User {
   name  String?
 
   // All gigs belonging to this user
-  gigs     Gig[]
-  settings UserSettings?
+  gigs        Gig[]
+  settings    UserSettings?
+  investments Investment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,4 +90,23 @@ model UserSettings {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Investment {
+  id String @id @default(cuid())
+
+  // Investment details
+  amount      Float
+  description String?
+  date        DateTime @default(now())
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
 }

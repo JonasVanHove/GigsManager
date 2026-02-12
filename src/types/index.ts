@@ -13,6 +13,7 @@ export interface Gig {
   claimPerformanceFee: boolean; // claim this fee for this gig
   claimTechnicalFee: boolean; // claim this fee for this gig
   technicalFeeClaimAmount: number | null; // amount of technical fee to claim (null = all)
+  managerHandlesDistribution: boolean; // whether manager handles payment split to band members
   paymentReceived: boolean;
   paymentReceivedDate: string | null;
   bandPaid: boolean;
@@ -105,3 +106,21 @@ export const DEFAULT_SETTINGS: UserSettingsData = {
   claimTechnicalFee: true,
   theme: "system",
 };
+
+// ─── Investment entity ──────────────────────────────────────────────────────
+
+export interface Investment {
+  id: string;
+  amount: number;
+  description: string | null;
+  date: string; // ISO string
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvestmentFormData {
+  amount: number;
+  description: string;
+  date: string; // "YYYY-MM-DD"
+}

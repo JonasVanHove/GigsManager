@@ -114,18 +114,18 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
 
   // ── Shared styles ──────────────────────────────────────────────────────────
   const inputCls =
-    "block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:opacity-50";
-  const labelCls = "mb-1 block text-xs font-medium text-slate-600";
+    "block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-400/20 disabled:opacity-50";
+  const labelCls = "mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400";
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-10 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+      <div className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
         {/* Header */}
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">
+        <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             {gig ? "Edit Performance" : "Add Performance"}
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             {gig
               ? "Update the details of this gig."
               : "Enter the details for the new gig."}
@@ -134,14 +134,14 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
 
         <form onSubmit={handleSubmit} className="px-6 py-5">
           {error && (
-            <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-700">
+            <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-2.5 text-sm text-red-700 dark:text-red-400">
               {error}
             </div>
           )}
 
           {/* ── Event details ─────────────────────────────────────────── */}
           <fieldset className="mb-5">
-            <legend className="mb-3 text-sm font-semibold text-slate-800">
+            <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
               Event Details
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -203,7 +203,7 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
 
           {/* ── Financials ────────────────────────────────────────────── */}
           <fieldset className="mb-5">
-            <legend className="mb-3 text-sm font-semibold text-slate-800">
+            <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
               Financials
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -271,20 +271,20 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
             </div>
 
             {/* Fee claims for this gig */}
-            <div className="mt-4 space-y-3 rounded-lg border border-brand-200 bg-brand-50/40 p-3">
+            <div className="mt-4 space-y-3 rounded-lg border border-brand-200 dark:border-brand-700/50 bg-brand-50/40 dark:bg-brand-950/20 p-3">
               <div>
                 <label className="flex items-center gap-2.5">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-500"
+                    className="h-4 w-4 rounded border-brand-300 dark:border-brand-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500 dark:focus:ring-brand-400"
                     checked={form.claimPerformanceFee}
                     onChange={(e) => set("claimPerformanceFee", e.target.checked)}
                   />
-                  <span className="text-sm font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     Claim performance fee
                   </span>
                 </label>
-                <p className="mt-1 ml-6 text-xs text-slate-500">
+                <p className="mt-1 ml-6 text-xs text-slate-500 dark:text-slate-400">
                   {form.claimPerformanceFee 
                     ? `Split among ${form.numberOfMusicians} musicians (your share: ${formatCurrency(form.performanceFee / form.numberOfMusicians)})`
                     : `Fee split among ${Math.max(1, form.numberOfMusicians - 1)} musicians only — you pay all of it to them`
@@ -295,7 +295,7 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
               <label className="flex items-center gap-2.5">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded border-brand-300 dark:border-brand-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500 dark:focus:ring-brand-400"
                   checked={form.claimTechnicalFee}
                   onChange={(e) => {
                     set("claimTechnicalFee", e.target.checked);
@@ -304,14 +304,14 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                     }
                   }}
                 />
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Claim technical fee
                 </span>
               </label>
 
               {/* Technical fee claim amount — only if claiming */}
               {form.claimTechnicalFee && form.technicalFee > 0 && (
-                <div className="ml-6 mt-2 rounded border border-brand-300/50 bg-white p-2">
+                <div className="ml-6 mt-2 rounded border border-brand-300/50 dark:border-brand-700/50 bg-white dark:bg-slate-800 p-2">
                   <label className={labelCls}>
                     Amount to claim (default: all)
                   </label>
@@ -326,7 +326,7 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                       set("technicalFeeClaimAmount", Number(e.target.value) || 0)
                     }
                   />
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Leave blank to claim the full {formatCurrency(form.technicalFee)}
                   </p>
                 </div>
@@ -334,32 +334,32 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
             </div>
 
             {/* Live calculation preview */}
-            <div className="mt-4 rounded-lg bg-brand-50/60 p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-600">
+            <div className="mt-4 rounded-lg bg-brand-50/60 dark:bg-brand-950/20 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">
                 Calculated Preview
               </p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
                 <div>
-                  <span className="text-slate-500">Total</span>
-                  <p className="font-bold text-slate-900">
+                  <span className="text-slate-500 dark:text-slate-400">Total</span>
+                  <p className="font-bold text-slate-900 dark:text-slate-100">
                     {formatCurrency(calc.totalReceived)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-slate-500">Per Musician</span>
-                  <p className="font-semibold text-slate-700">
+                  <span className="text-slate-500 dark:text-slate-400">Per Musician</span>
+                  <p className="font-semibold text-slate-700 dark:text-slate-300">
                     {formatCurrency(calc.amountPerMusician)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-brand-600">My Earnings</span>
-                  <p className="font-bold text-brand-700">
+                  <span className="text-brand-600 dark:text-brand-400">My Earnings</span>
+                  <p className="font-bold text-brand-700 dark:text-brand-300">
                     {formatCurrency(calc.myEarnings)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-amber-600">Owe Others</span>
-                  <p className="font-semibold text-amber-700">
+                  <span className="text-amber-600 dark:text-amber-400">Owe Others</span>
+                  <p className="font-semibold text-amber-700 dark:text-amber-300">
                     {formatCurrency(calc.amountOwedToOthers)}
                   </p>
                 </div>
@@ -369,23 +369,23 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
 
           {/* ── Payment status ────────────────────────────────────────── */}
           <fieldset className="mb-5">
-            <legend className="mb-3 text-sm font-semibold text-slate-800">
+            <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">
               Payment Status
             </legend>
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Client payment */}
-              <div className="rounded-lg border border-slate-200 p-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 dark:bg-slate-800/50">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-brand-600 dark:text-brand-400 focus:ring-brand-500 dark:focus:ring-brand-400"
                     checked={form.paymentReceived}
                     onChange={(e) => {
                       set("paymentReceived", e.target.checked);
                       if (!e.target.checked) set("paymentReceivedDate", "");
                     }}
                   />
-                  <span className="text-sm font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     Payment received from client
                   </span>
                 </label>
@@ -409,7 +409,7 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-brand-600 dark:text-brand-400 focus:ring-brand-500 dark:focus:ring-brand-400"
                     checked={form.bandPaid}
                     onChange={(e) => {
                       set("bandPaid", e.target.checked);
@@ -434,11 +434,11 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
               </div>
 
               {/* Manager handles distribution */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-cyan-50 dark:bg-cyan-950/30 p-3">
+              <div className="rounded-lg border border-cyan-200 dark:border-cyan-700/50 bg-cyan-50 dark:bg-cyan-950/30 p-3 sm:col-span-2">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-cyan-600 focus:ring-cyan-500"
+                    className="h-4 w-4 rounded border-cyan-300 dark:border-cyan-700 text-cyan-600 dark:text-cyan-400 focus:ring-cyan-500 dark:focus:ring-cyan-400"
                     checked={form.managerHandlesDistribution}
                     onChange={(e) => set("managerHandlesDistribution", e.target.checked)}
                   />

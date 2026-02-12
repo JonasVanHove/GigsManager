@@ -366,7 +366,7 @@ export default function Dashboard() {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25v-2.25Zm9-9.75A2.25 2.25 0 0 1 15 3.75H17.25a2.25 2.25 0 0 1 2.25 2.25V6A2.25 2.25 0 0 1 17.25 8.25H15a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75A2.25 2.25 0 0 1 15 13.5H17.25a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 17.25 20.25H15a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
               </svg>
-              Recent
+              Overview
             </span>
           </button>
           <button
@@ -419,7 +419,7 @@ export default function Dashboard() {
         {/* ── Content ────────────────────────────────────────────────── */}
         {activeTab === "gigs" ? (
           <>
-            {/* ── Recent Gigs (chronologically sorted, newest first) ────────– */}
+            {/* ── Overview: Smart sorted performances ────────────────────── */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">

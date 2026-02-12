@@ -449,20 +449,86 @@ export default function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className="grid gap-5">
-                {[...gigs]
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((gig) => (
-                    <GigCard
-                      key={gig.id}
-                      gig={gig}
-                      onEdit={(g) => setEditGig(g)}
-                      onDelete={(g) => setDeleteGig(g)}
-                      fmtCurrency={fmtCurrency}
-                      claimPerformanceFee={gig.claimPerformanceFee}
-                      claimTechnicalFee={gig.claimTechnicalFee}
-                    />
-                  ))}
+              <div className="space-y-6">
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  
+                  // Smart sorting: active gigs (upcoming or unpaid) vs handled gigs (past & fully paid)
+                  const activeGigs = gigs.filter((gig) => {
+                    const gigDate = new Date(gig.date);
+                    gigDate.setHours(0, 0, 0, 0);
+                    const isUpcoming = gigDate >= today;
+                    const isUnpaid = !gig.paymentReceived || !gig.bandPaid;
+                    return isUpcoming || isUnpaid;
+                  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                  const handledGigs = gigs.filter((gig) => {
+                    const gigDate = new Date(gig.date);
+                    gigDate.setHours(0, 0, 0, 0);
+                    const isPast = gigDate < today;
+                    const isFullyPaid = gig.paymentReceived && gig.bandPaid;
+                    return isPast && isFullyPaid;
+                  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                  return (
+                    <>
+                      {/* Active Gigs Section */}
+                      {activeGigs.length > 0 && (
+                        <div>
+                          <div className="mb-4 flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                              Active Performances
+                            </h3>
+                            <span className="rounded-full bg-brand-100 dark:bg-brand-900/40 px-2.5 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-300">
+                              {activeGigs.length}
+                            </span>
+                          </div>
+                          <div className="grid gap-5">
+                            {activeGigs.map((gig) => (
+                              <GigCard
+                                key={gig.id}
+                                gig={gig}
+                                onEdit={(g) => setEditGig(g)}
+                                onDelete={(g) => setDeleteGig(g)}
+                                fmtCurrency={fmtCurrency}
+                                claimPerformanceFee={gig.claimPerformanceFee}
+                                claimTechnicalFee={gig.claimTechnicalFee}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Handled Gigs Section */}
+                      {handledGigs.length > 0 && (
+                        <div>
+                          <div className="mb-4 flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                              Handled Performances
+                            </h3>
+                            <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                              {handledGigs.length}
+                            </span>
+                          </div>
+                          <div className="grid gap-5">
+                            {handledGigs.map((gig) => (
+                              <GigCard
+                                key={gig.id}
+                                gig={gig}
+                                onEdit={(g) => setEditGig(g)}
+                                onDelete={(g) => setDeleteGig(g)}
+                                fmtCurrency={fmtCurrency}
+                                claimPerformanceFee={gig.claimPerformanceFee}
+                                claimTechnicalFee={gig.claimTechnicalFee}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </>

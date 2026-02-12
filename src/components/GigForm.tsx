@@ -30,6 +30,7 @@ const emptyForm: GigFormData = {
   paymentReceivedDate: "",
   bandPaid: false,
   bandPaidDate: "",
+  bookingDate: new Date().toISOString().split("T")[0],
   notes: "",
 };
 
@@ -56,6 +57,7 @@ function gigToFormData(gig: Gig): GigFormData {
       : "",
     bandPaid: gig.bandPaid,
     bandPaidDate: gig.bandPaidDate ? gig.bandPaidDate.split("T")[0] : "",
+    bookingDate: gig.bookingDate ? gig.bookingDate.split("T")[0] : "",
     notes: gig.notes ?? "",
   };
 }
@@ -201,6 +203,18 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                   onChange={(e) => set("date", e.target.value)}
                   required
                 />
+              </div>
+              <div>
+                <label className={labelCls}>Booking Date</label>
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={form.bookingDate}
+                  onChange={(e) => set("bookingDate", e.target.value)}
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  When the booking was made (default: today)
+                </p>
               </div>
               <div>
                 <label className={labelCls}>

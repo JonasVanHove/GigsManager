@@ -22,6 +22,7 @@ export interface Gig {
   advanceReceivedByManager: number; // Advance amount you received from client
   advanceToMusicians: number; // Advance amount you paid to musicians
   notes: string | null;
+  bookingDate: string; // ISO string - when booking was made
   userId: string; // belongs to this user
   createdAt: string;
   updatedAt: string;
@@ -74,6 +75,7 @@ export interface GigFormData {
   bandPaid: boolean;
   bandPaidDate: string; // "" or "YYYY-MM-DD"
   notes: string;
+  bookingDate: string; // "" or "YYYY-MM-DD" - when booking was made
 }
 
 // ─── Computed financial breakdown ────────────────────────────────────────────

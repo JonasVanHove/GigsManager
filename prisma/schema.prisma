@@ -44,6 +44,7 @@ model Gig {
   advanceToMusicians Float @default(0)        // Advance amount you paid to musicians
 
   // ── Meta ───────────────────────────────────────────────
+  bookingDate DateTime @default(now()) // when the booking was made (default: now, but editable)
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

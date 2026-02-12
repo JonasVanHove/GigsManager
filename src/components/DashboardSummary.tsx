@@ -31,17 +31,17 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
       {/* ── Row 1: Total Gigs + My Earnings ──────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {/* Total Gigs Card */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Performances
               </p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-cyan-400">
                 {summary.totalGigs}
               </p>
             </div>
-            <svg className="h-8 w-8 text-gradient-to-r from-brand-400 to-brand-600" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="h-8 w-8 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 24 24">
               <path d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
@@ -51,14 +51,14 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
         <div className="sm:col-span-3">
           <button
             onClick={() => toggleCard("earnings")}
-            className="w-full rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 to-brand-100/50 p-3 shadow-sm transition hover:shadow-md dark:border-brand-800/50 dark:from-brand-900/30 dark:to-brand-900/20"
+            className="w-full rounded-xl border-2 border-brand-600 bg-gradient-to-br from-brand-600/10 to-brand-500/5 p-3 shadow-sm transition hover:shadow-lg hover:border-brand-500 dark:border-brand-500 dark:from-brand-500/20 dark:to-brand-600/10 dark:hover:border-brand-400"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 text-left">
-                <p className="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
                   My Earnings
                 </p>
-                <p className="mt-1 text-xl font-bold text-brand-700 dark:text-brand-300">
+                <p className="mt-1 text-xl font-bold text-brand-800 dark:text-brand-300">
                   {fmtCurrency(summary.totalEarnings)}
                 </p>
                 <p className="mt-1 text-xs text-brand-600 dark:text-brand-400">
@@ -74,7 +74,7 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
                   "Click card to see received vs pending",
                 ]}
               >
-                <span className="text-brand-600" />
+                <span className="text-brand-600 dark:text-brand-400" />
               </XAITooltip>
             </div>
           </button>
@@ -82,25 +82,25 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
           {/* Expanded earnings breakdown */}
           {expandedCard === "earnings" && (
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-green-200 bg-green-50/40 p-2.5 dark:border-green-900/30 dark:bg-green-900/20">
-                <p className="text-xs font-medium text-green-700 dark:text-green-400">
+              <div className="rounded-lg border-2 border-lime-500 bg-lime-500/10 p-2.5 dark:border-lime-400 dark:bg-lime-500/20">
+                <p className="text-xs font-medium text-lime-700 dark:text-lime-300">
                   ✓ Received
                 </p>
-                <p className="mt-0.5 font-bold text-green-800 dark:text-green-300">
+                <p className="mt-0.5 font-bold text-lime-800 dark:text-lime-200">
                   {fmtCurrency(summary.totalEarningsReceived)}
                 </p>
-                <p className="mt-1 text-xs text-green-600 dark:text-green-500">
+                <p className="mt-1 text-xs text-lime-600 dark:text-lime-400">
                   From paid gigs
                 </p>
               </div>
-              <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-2.5 dark:border-amber-900/30 dark:bg-amber-900/20">
-                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              <div className="rounded-lg border-2 border-orange-500 bg-orange-500/10 p-2.5 dark:border-orange-400 dark:bg-orange-500/20">
+                <p className="text-xs font-medium text-orange-700 dark:text-orange-300">
                   ⏳ Pending
                 </p>
-                <p className="mt-0.5 font-bold text-amber-800 dark:text-amber-300">
+                <p className="mt-0.5 font-bold text-orange-800 dark:text-orange-200">
                   {fmtCurrency(summary.totalEarningsPending)}
                 </p>
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
                   Awaiting payment
                 </p>
               </div>
@@ -114,18 +114,18 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
         {/* Pending Payments Card */}
         <button
           onClick={() => toggleCard("pending")}
-          className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 shadow-sm transition hover:shadow-md dark:border-amber-900/30 dark:bg-amber-900/20"
+          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 dark:border-orange-400 dark:bg-orange-500/15"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 text-left">
-              <p className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-400">
+              <p className="text-xs font-medium uppercase tracking-wide text-orange-700 dark:text-orange-300">
                 Client Awaiting
               </p>
-              <p className="mt-1 text-lg font-bold text-amber-800 dark:text-amber-300">
+              <p className="mt-1 text-lg font-bold text-orange-800 dark:text-orange-200">
                 {summary.pendingClientPayments}
               </p>
               {expandedCard === "pending" && (
-                <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-500">
+                <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400">
                   Gigs awaiting payment
                 </p>
               )}
@@ -138,7 +138,7 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
                 "Mark as paid when money arrives",
               ]}
             >
-              <span className="text-amber-700 dark:text-amber-400" />
+              <span className="text-orange-700 dark:text-orange-400" />
             </XAITooltip>
           </div>
         </button>
@@ -146,18 +146,18 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
         {/* Outstanding to Band Card */}
         <button
           onClick={() => toggleCard("outstanding")}
-          className="rounded-xl border border-purple-200 bg-purple-50/40 p-3 shadow-sm transition hover:shadow-md dark:border-purple-900/30 dark:bg-purple-900/20"
+          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 dark:border-pink-400 dark:bg-pink-500/15"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 text-left">
-              <p className="text-xs font-medium uppercase tracking-wide text-purple-700 dark:text-purple-400">
+              <p className="text-xs font-medium uppercase tracking-wide text-pink-700 dark:text-pink-300">
                 Owe to Band
               </p>
-              <p className="mt-1 text-lg font-bold text-purple-800 dark:text-purple-300">
+              <p className="mt-1 text-lg font-bold text-pink-800 dark:text-pink-200">
                 {fmtCurrency(summary.outstandingToBand)}
               </p>
               {expandedCard === "outstanding" && (
-                <p className="mt-1.5 text-xs text-purple-600 dark:text-purple-500">
+                <p className="mt-1.5 text-xs text-pink-600 dark:text-pink-400">
                   From performance splits
                 </p>
               )}
@@ -171,7 +171,7 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
                 "Track in Band Payments tab",
               ]}
             >
-              <span className="text-purple-700 dark:text-purple-400" />
+              <span className="text-pink-700 dark:text-pink-400" />
             </XAITooltip>
           </div>
         </button>
@@ -179,11 +179,11 @@ export function DashboardSummary({ summary, fmtCurrency }: DashboardSummaryProps
 
       {/* ── Helpful callout ────────────────────────────────────────────────────── */}
       {summary.totalGigs === 0 && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900/30 dark:bg-blue-900/20">
-          <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+        <div className="rounded-xl border-2 border-cyan-400 bg-cyan-500/10 p-3 dark:bg-cyan-500/15">
+          <p className="text-sm font-medium text-cyan-900 dark:text-cyan-200">
             👋 Ready to add your first performance?
           </p>
-          <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+          <p className="mt-1 text-xs text-cyan-700 dark:text-cyan-400">
             Click the "Add" button above to get started tracking your gigs and earnings.
           </p>
         </div>

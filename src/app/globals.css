@@ -9,12 +9,28 @@
   --background: 248 250 252; /* slate-50  */
 }
 
+html.dark {
+  --foreground: 240 240 255; /* bright white/near-white */
+  --background: 10 10 15;    /* deep black */
+}
+
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* ── Dark mode specific ────────────────────────────────────────────────── */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0a0a0f;
 }
 
 /* ── Scrollbar polish ──────────────────────────────────────────────────── */
@@ -23,20 +39,31 @@ body {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 3px;
 }
 
-/* ── Smooth focus rings ────────────────────────────────────────────────── */
+html.dark ::-webkit-scrollbar-thumb {
+  background: #4a5568;
+}
+
+/* ── Smooth focus rings - Neon bright ──────────────────────────────── */
 
 *:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid #6969ff;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+html.dark *:focus-visible {
+  outline: 2px solid #00d9ff;
+  box-shadow: 0 0 8px rgba(0, 217, 255, 0.3);
 }
 
 /* ── Form reset for date inputs on Chrome ──────────────────────────────── */
@@ -45,3 +72,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 0.5;
   cursor: pointer;
 }
+
+html.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* ── Selection highlight - Neon ────────────────────────────────────────── */
+
+::selection {
+  background: #6969ff;
+  color: white;
+}
+
+html.dark ::selection {
+  background: #00d9ff;
+  color: #0a0a0f;
+}
+

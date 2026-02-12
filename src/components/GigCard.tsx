@@ -35,14 +35,14 @@ export default function GigCard({
   );
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+    <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
+      <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-700/50 dark:bg-slate-800/50">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-lg font-semibold text-slate-900">
+          <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
             {gig.eventName}
           </h3>
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />

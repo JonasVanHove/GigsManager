@@ -50,9 +50,8 @@ export default function GigCard({
       <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-700/50 dark:bg-slate-800/50">
         {/* Left side: Event info (clickable to expand/collapse) */}
         <button
-          onClick={() => gig.managerHandlesDistribution && setIsExpanded(!isExpanded)}
-          disabled={!gig.managerHandlesDistribution}
-          className="min-w-0 flex-1 text-left transition-opacity hover:opacity-80 disabled:cursor-default disabled:hover:opacity-100"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="min-w-0 flex-1 text-left transition-opacity hover:opacity-80"
         >
           <div className="flex items-center gap-2">
             <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
@@ -67,19 +66,17 @@ export default function GigCard({
               </span>
             )}
             {/* Expand/collapse chevron */}
-            {gig.managerHandlesDistribution && (
-              <svg
-                className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${
-                  effectiveIsExpanded ? "rotate-180" : ""
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
-            )}
+            <svg
+              className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${
+                effectiveIsExpanded ? "rotate-180" : ""
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
@@ -118,7 +115,7 @@ export default function GigCard({
       </div>
 
       {/* Collapsible content */}
-      {effectiveIsExpanded && gig.managerHandlesDistribution && (
+      {effectiveIsExpanded && (
         <>
           {/* -- Financial breakdown ------------------------------------------ */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-5 py-4 text-sm sm:grid-cols-4 border-b border-slate-100 dark:border-slate-700/50">
@@ -313,11 +310,8 @@ export default function GigCard({
       {/* -- Payment status badges ---------------------------------------- */}
       <div className="flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-700/50 px-5 py-3">
         {!gig.managerHandlesDistribution ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-950 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 ring-1 ring-green-600/20 dark:ring-green-500/30">
-            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-              <path d="m9.653 16.915-.005-.003-.019-.01a20.759 20.759 0 0 1-1.162-.682 22.045 22.045 0 0 1-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 0 1 8-2.828A4.5 4.5 0 0 1 18 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 0 1-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 0 1-.69.001l-.002-.001Z" />
-            </svg>
-            Band pays own musicians
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-400">
+            Band payment direct
           </span>
         ) : (
           <>

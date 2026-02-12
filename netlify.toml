@@ -3,16 +3,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 [build]
-  command   = "npm run build"
+  command   = "git fetch --unshallow --tags 2>/dev/null || git fetch --tags 2>/dev/null || true && npm run build"
   publish   = ".next"
-  # Fetch git tags for version extraction
-  [build.processing]
-    skip_processing = false
-  [build.processing.git]
-    depth = 0
 
 [build.environment]
   NODE_VERSION        = "18"
+  # Git clone settings
+  GIT_LFS_ENABLED = "false"
   # Prisma needs the engine for the Lambda runtime
   PRISMA_CLI_QUERY_ENGINE_TYPE = "library"
   # Suppress false positive: NEXT_PUBLIC_* vars are intentionally public

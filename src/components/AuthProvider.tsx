@@ -157,31 +157,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     try {
-      // If we have a cached token, return it immediately
-      if (accessToken) {
-        console.log("[getAccessToken] Using cached token");
-        return accessToken;
-      }
-
-      // Try to get session from Supabase
+      // Always try to get fresh session from Supabase first
+      // Don't rely on cached token, as it may be expired
+      console.log("[getAccessToken] Fetching fresh session from Supabase...");
       let {
         data: { session },
       } = await supabaseClient.auth.getSession();
 
-      // If we got a token from session, cache it and return
       if (session?.access_token) {
-        console.log("[getAccessToken] Got token from session");
+        console.log("[getAccessToken] Got valid token from session");
         setAccessToken(session.access_token);
         return session.access_token;
       }
 
-      // If no session, try to refresh
+      // If no valid session, try to refresh
       console.log("[getAccessToken] No session, attempting refresh...");
       const { data: refreshedData, error: refreshError } =
         await supabaseClient.auth.refreshSession();
 
       if (refreshError) {
         console.error("[getAccessToken] Refresh failed:", refreshError.message);
+        setAccessToken(null); // Clear cache on refresh failure
         return null;
       }
 
@@ -192,15 +188,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.warn("[getAccessToken] No token after refresh attempt");
+      setAccessToken(null); // Clear cache
       return null;
     } catch (err) {
       console.error(
         "[getAccessToken] Exception:",
         err instanceof Error ? err.message : String(err)
       );
+      setAccessToken(null); // Clear cache on error
       return null;
     }
-  }, [accessToken]);
+  }, []);
 
   // ── Provider ────────────────────────────────────────────────────────────
 

@@ -98,13 +98,28 @@ async function requireAuth(request: NextRequest) {
 
   const token = authHeader.slice(7);
   console.log("[API Auth] Token received, length:", token.length);
+  console.log("[API Auth] Token starts with:", token.substring(0, 20));
   
   try {
+    console.log("[API Auth] Calling supabaseAdmin.auth.getUser...");
     const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !data.user) {
-      console.error("[API Auth] Supabase validation failed:", error?.message || "No user data");
+    
+    if (error) {
+      console.error("[API Auth] Supabase error:", {
+        message: error.message,
+        status: (error as any).status,
+        code: (error as any).code,
+      });
       return NextResponse.json(
-        { error: "Unauthorized: invalid token" },
+        { error: "Unauthorized: invalid token", details: error.message },
+        { status: 401 }
+      );
+    }
+    
+    if (!data.user) {
+      console.error("[API Auth] No user in response");
+      return NextResponse.json(
+        { error: "Unauthorized: no user data" },
         { status: 401 }
       );
     }
@@ -122,9 +137,12 @@ async function requireAuth(request: NextRequest) {
     return { user };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error("[API Auth] Exception during token validation:", errorMsg, err);
+    console.error("[API Auth] Exception during token validation:", {
+      message: errorMsg,
+      error: err,
+    });
     return NextResponse.json(
-      { error: "Unauthorized: token validation failed" },
+      { error: "Unauthorized: token validation failed", details: errorMsg },
       { status: 401 }
     );
   }

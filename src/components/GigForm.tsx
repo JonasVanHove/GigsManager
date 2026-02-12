@@ -289,7 +289,6 @@ export default function GigForm({ gig, onSubmit, onCancel }: GigFormProps) {
                   }
                 </p>
               </div>
-              </div>
               
               <label className="flex items-center gap-2.5">
                 <input

@@ -84,18 +84,22 @@ export async function PUT(request: NextRequest) {
   const auth = await requireAuth(request);
   if ("error" in auth) return auth.error;
 
+  let currency: string | undefined;
+  let claimPerformanceFee: boolean | undefined;
+  let claimTechnicalFee: boolean | undefined;
+
   try {
     const body = await request.json();
 
-    const currency =
+    currency =
       typeof body.currency === "string" && SUPPORTED_CURRENCIES.includes(body.currency.toUpperCase())
         ? body.currency.toUpperCase()
         : undefined;
 
-    const claimPerformanceFee =
+    claimPerformanceFee =
       typeof body.claimPerformanceFee === "boolean" ? body.claimPerformanceFee : undefined;
 
-    const claimTechnicalFee =
+    claimTechnicalFee =
       typeof body.claimTechnicalFee === "boolean" ? body.claimTechnicalFee : undefined;
 
     const data: Record<string, any> = {};

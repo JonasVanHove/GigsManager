@@ -83,21 +83,21 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
     .sort((a, b) => b[1].totalReceived - a[1].totalReceived);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 sm:space-y-3">
       {/* -- Row 1: Total Gigs + My Earnings ------------------------------------ */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
         {/* Total Gigs Card */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-2 sm:p-3 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Performances
               </p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-cyan-400">
+              <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-slate-900 dark:text-cyan-400">
                 {summary.totalGigs}
               </p>
             </div>
-            <svg className="h-8 w-8 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 24 24">
               <path d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
@@ -201,21 +201,21 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
       </div>
 
       {/* -- Row 2: Pending Payments + Outstanding to Band ---------------------- */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {/* Pending Payments Card */}
         <div
           role="button"
           tabIndex={0}
           onClick={() => toggleCard("pending")}
           onKeyDown={(event) => handleCardKeyDown(event, "pending")}
-          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/40 dark:border-orange-400 dark:bg-orange-500/15"
+          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-2 sm:p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/40 dark:border-orange-400 dark:bg-orange-500/15"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 text-left">
               <p className="text-xs font-medium uppercase tracking-wide text-orange-700 dark:text-orange-300">
                 Client Awaiting
               </p>
-              <p className="mt-1 text-lg font-bold text-orange-800 dark:text-orange-200">
+              <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-orange-800 dark:text-orange-200">
                 {summary.pendingClientPayments}
               </p>
               {expandedCard === "pending" && (
@@ -267,14 +267,14 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
           tabIndex={0}
           onClick={() => toggleCard("outstanding")}
           onKeyDown={(event) => handleCardKeyDown(event, "outstanding")}
-          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400/40 dark:border-pink-400 dark:bg-pink-500/15"
+          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-2 sm:p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400/40 dark:border-pink-400 dark:bg-pink-500/15"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 text-left">
               <p className="text-xs font-medium uppercase tracking-wide text-pink-700 dark:text-pink-300">
                 Owe to Band
               </p>
-              <p className="mt-1 text-lg font-bold text-pink-800 dark:text-pink-200">
+              <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-pink-800 dark:text-pink-200">
                 {fmtCurrency(summary.outstandingToBand)}
               </p>
               {expandedCard === "outstanding" && (

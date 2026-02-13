@@ -269,6 +269,41 @@ This ensures you're only paid for fees you claim and performers get fair compens
 | `npm run db:seed`    | Seed demo data                       |
 | `npm run db:studio`  | Open Prisma Studio (DB browser)      |
 | `npm run db:reset`   | Reset database + re-seed             |
+| `npm run release:patch` | Bump patch version (1.5.0 → 1.5.1) |
+| `npm run release:minor` | Bump minor version (1.5.0 → 1.6.0) |
+| `npm run release:major` | Bump major version (1.5.0 → 2.0.0) |
+
+---
+
+## Versioning & Releases
+
+The app uses **automated semantic versioning** that updates the footer version automatically:
+
+### Quick Release
+
+```bash
+# For bug fixes (1.5.0 → 1.5.1)
+npm run release:patch
+
+# For new features (1.5.0 → 1.6.0)
+npm run release:minor
+
+# For breaking changes (1.5.0 → 2.0.0)
+npm run release:major
+```
+
+### What happens automatically:
+1. ✅ **package.json** version updated
+2. ✅ **src/lib/version.ts** regenerated
+3. ✅ Git commit created
+4. ✅ Git tag created (e.g., `v1.5.1`)
+5. ✅ Everything pushed to GitHub
+6. ✅ **Netlify rebuilds automatically**
+7. ✅ Footer shows new version
+
+**No manual steps needed!** The footer version will always match package.json.
+
+---
 
 ## License
 

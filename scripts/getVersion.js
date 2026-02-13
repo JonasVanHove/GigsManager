@@ -9,24 +9,25 @@ const fs = require('fs');
 const path = require('path');
 
 try {
-  // Try to get the most recent git tag
-  let version = 'dev';
+  // Primary source: package.json version (most reliable)
+  let version = 'unknown';
   
   try {
-    const tag = execSync('git describe --tags --always', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
-    }).trim();
-    
-    // Clean up the tag (remove 'v' prefix if present, and any trailing commits)
-    version = tag.replace(/^v/, '').split('-')[0];
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
+    version = pkg.version;
   } catch (err) {
-    // If git fails, fallback to package.json version
+    // Fallback 1: Try git tags
     try {
-      const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
-      version = pkg.version;
+      const tag = execSync('git describe --tags --always', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
+      }).trim();
+      
+      // Clean up the tag (remove 'v' prefix if present, and any trailing commits)
+      version = tag.replace(/^v/, '').split('-')[0];
     } catch {
-      version = 'unknown';
+      // Fallback 2: Use 'dev' for development
+      version = 'dev';
     }
   }
 

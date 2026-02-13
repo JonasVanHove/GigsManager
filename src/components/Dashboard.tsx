@@ -285,7 +285,8 @@ export default function Dashboard() {
         
         // Track pending amount by band/performer
         const bandName = g.performers || "Unknown";
-        const pendingAmount = c.totalGigValue - g.advanceReceivedByManager;
+        const totalGigValue = g.performanceFee + g.technicalFee;
+        const pendingAmount = totalGigValue - g.advanceReceivedByManager;
         const existing = acc.pendingByBand.find(b => b.band === bandName);
         if (existing) {
           existing.amount += pendingAmount;

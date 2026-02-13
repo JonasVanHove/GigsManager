@@ -24,9 +24,15 @@ interface DashboardSummaryProps {
  */
 export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummaryProps) {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [expandedBand, setExpandedBand] = useState<string | null>(null);
 
   const toggleCard = (cardId: string) => {
     setExpandedCard(expandedCard === cardId ? null : cardId);
+    setExpandedBand(null); // Reset band expansion when switching cards
+  };
+
+  const toggleBand = (bandName: string) => {
+    setExpandedBand(expandedBand === bandName ? null : bandName);
   };
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, cardId: string) => {
@@ -227,24 +233,128 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                     <div className="space-y-1.5">
                       {summary.pendingByBand
                         .sort((a, b) => b.amount - a.amount)
-                        .map((item) => (
-                          <div
-                            key={item.band}
-                            className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-orange-500/10 dark:bg-orange-500/20"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-orange-800 dark:text-orange-200 truncate">
-                                {item.band}
-                              </p>
-                              <p className="text-xs text-orange-600 dark:text-orange-400">
-                                {item.count} {item.count === 1 ? 'gig' : 'gigs'}
-                              </p>
+                        .map((item) => {
+                          const bandGigs = gigs.filter(
+                            (g) => (g.performers || "Unknown Band") === item.band && !g.paymentReceived
+                          );
+                          const isExpanded = expandedBand === item.band;
+                          const now = new Date();
+
+                          return (
+                            <div key={item.band}>
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => toggleBand(item.band)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    toggleBand(item.band);
+                                  }
+                                }}
+                                className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-orange-500/10 dark:bg-orange-500/20 cursor-pointer hover:bg-orange-500/20 dark:hover:bg-orange-500/30 transition-colors"
+                              >
+                                <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                                  <svg
+                                    className={`h-3 w-3 text-orange-700 dark:text-orange-300 transition-transform ${
+                                      isExpanded ? "rotate-90" : ""
+                                    }`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium text-orange-800 dark:text-orange-200 truncate">
+                                      {item.band}
+                                    </p>
+                                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                                      {item.count} {item.count === 1 ? "gig" : "gigs"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <p className="text-xs font-semibold text-orange-800 dark:text-orange-200 ml-2">
+                                  {fmtCurrency(item.amount)}
+                                </p>
+                              </div>
+
+                              {isExpanded && bandGigs.length > 0 && (
+                                <div className="mt-1 ml-4 space-y-1 border-l-2 border-orange-300 dark:border-orange-600 pl-2">
+                                  {bandGigs
+                                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                                    .map((gig) => {
+                                      const calc = calculateGigFinancials(
+                                        gig.performanceFee,
+                                        gig.technicalFee,
+                                        gig.managerBonusType,
+                                        gig.managerBonusAmount,
+                                        gig.numberOfMusicians,
+                                        gig.claimPerformanceFee,
+                                        gig.claimTechnicalFee,
+                                        gig.technicalFeeClaimAmount,
+                                        gig.advanceReceivedByManager,
+                                        gig.advanceToMusicians,
+                                        gig.isCharity
+                                      );
+                                      const gigDate = new Date(gig.date);
+                                      const isOverdue = gigDate < now && !gig.paymentReceived;
+
+                                      return (
+                                        <div
+                                          key={gig.id}
+                                          className={`rounded px-2 py-1.5 text-xs ${
+                                            isOverdue
+                                              ? "bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700"
+                                              : "bg-orange-50 dark:bg-orange-900/20"
+                                          }`}
+                                        >
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div className="flex-1 min-w-0">
+                                              <p
+                                                className={`font-medium truncate ${
+                                                  isOverdue
+                                                    ? "text-red-800 dark:text-red-200"
+                                                    : "text-orange-800 dark:text-orange-200"
+                                                }`}
+                                              >
+                                                {gig.venue || "Unnamed gig"}
+                                              </p>
+                                              <p
+                                                className={`text-xs ${
+                                                  isOverdue
+                                                    ? "text-red-600 dark:text-red-400"
+                                                    : "text-orange-600 dark:text-orange-400"
+                                                }`}
+                                              >
+                                                {new Date(gig.date).toLocaleDateString("nl-NL", {
+                                                  day: "numeric",
+                                                  month: "short",
+                                                  year: "numeric",
+                                                })}
+                                                {isOverdue && (
+                                                  <span className="ml-1.5 font-semibold">⚠ OVERDUE</span>
+                                                )}
+                                              </p>
+                                            </div>
+                                            <p
+                                              className={`font-semibold whitespace-nowrap ${
+                                                isOverdue
+                                                  ? "text-red-800 dark:text-red-200"
+                                                  : "text-orange-800 dark:text-orange-200"
+                                              }`}
+                                            >
+                                              {fmtCurrency(calc.myEarnings)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              )}
                             </div>
-                            <p className="text-xs font-semibold text-orange-800 dark:text-orange-200 ml-2">
-                              {fmtCurrency(item.amount)}
-                            </p>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   )}
                 </div>

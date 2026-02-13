@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { calculateGigFinancials } from "@/lib/calculations";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -215,6 +216,45 @@ export async function POST(request: NextRequest) {
     }
 
     const gig = await prisma.gig.create({ data: toGigData(body, user.id) });
+
+    const bandMemberIds = Array.isArray(body.bandMemberIds)
+      ? body.bandMemberIds.filter((id: unknown) => typeof id === "string")
+      : [];
+
+    if (bandMemberIds.length > 0) {
+      const members = await prisma.bandMember.findMany({
+        where: {
+          id: { in: bandMemberIds },
+          userId: user.id,
+        },
+      });
+
+      if (members.length > 0) {
+        const calc = calculateGigFinancials(
+          gig.performanceFee,
+          gig.technicalFee,
+          gig.managerBonusType as "fixed" | "percentage",
+          gig.managerBonusAmount,
+          gig.numberOfMusicians,
+          gig.claimPerformanceFee,
+          gig.claimTechnicalFee,
+          gig.technicalFeeClaimAmount,
+          gig.advanceReceivedByManager,
+          gig.advanceToMusicians,
+          gig.isCharity
+        );
+
+        await prisma.gigBandMember.createMany({
+          data: members.map((member) => ({
+            gigId: gig.id,
+            bandMemberId: member.id,
+            earnedAmount: calc.amountPerMusician,
+            paidAmount: 0,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
     return NextResponse.json(gig, { status: 201 });
   } catch (error) {
     console.error("[POST /api/gigs]", error);

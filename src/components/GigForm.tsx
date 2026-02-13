@@ -3,6 +3,13 @@
 import { useState, useMemo, useEffect } from "react";
 import type { Gig, GigFormData } from "@/types";
 import { calculateGigFinancials, formatCurrency } from "@/lib/calculations";
+import { useAuth } from "./AuthProvider";
+
+interface BandMemberOption {
+  id: string;
+  name: string;
+  bands?: string[];
+}
 
 interface GigFormProps {
   gig?: Gig | null;
@@ -64,11 +71,23 @@ function gigToFormData(gig: Gig): GigFormData {
 }
 
 export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormProps) {
+  const { getAccessToken } = useAuth();
   const [form, setForm] = useState<GigFormData>(
     gig ? gigToFormData(gig) : emptyForm
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [bandMembers, setBandMembers] = useState<BandMemberOption[]>([]);
+  const [bandMembersLoading, setBandMembersLoading] = useState(false);
+  const [allGigs, setAllGigs] = useState<Gig[]>([]);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [syncFromMembers, setSyncFromMembers] = useState(!gig);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [savingMember, setSavingMember] = useState(false);
+  const [customBands, setCustomBands] = useState<string[]>([]);
+  const [selectedBandName, setSelectedBandName] = useState("");
+  const [newBandName, setNewBandName] = useState("");
 
   // Live financial preview
   const calc = useMemo(
@@ -124,6 +143,193 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     }
   }, [form.isCharity, form.date]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      const confirmed = window.confirm("Discard this performance?");
+      if (confirmed) {
+        onCancel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel]);
+  const fetchBandMembers = async () => {
+    try {
+      setBandMembersLoading(true);
+      const token = await getAccessToken();
+      if (!token) return;
+      const response = await fetch("/api/band-members", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const options = Array.isArray(data)
+        ? data.map((member) => ({
+            id: member.id,
+            name: member.name,
+            bands: member.bands || [],
+          }))
+        : [];
+      setBandMembers(options);
+    } finally {
+      setBandMembersLoading(false);
+    }
+  };
+
+  const fetchAllGigs = async () => {
+    const token = await getAccessToken();
+    if (!token) return;
+    const response = await fetch("/api/gigs?take=200&skip=0", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    const gigsArray = Array.isArray(data) ? data : (data.data ?? []);
+    setAllGigs(gigsArray);
+  };
+
+  useEffect(() => {
+    fetchBandMembers();
+    fetchAllGigs();
+  }, []);
+
+  useEffect(() => {
+    if (!bandMembers.length || selectedMemberIds.length > 0) return;
+    if (!form.performers) return;
+    const names = form.performers
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    if (!names.length) return;
+    const matched = bandMembers
+      .filter((member) => names.some((n) => n.toLowerCase() === member.name.toLowerCase()))
+      .map((member) => member.id);
+    if (matched.length) {
+      setSelectedMemberIds(matched);
+    }
+  }, [bandMembers, form.performers, selectedMemberIds.length]);
+
+  useEffect(() => {
+    if (!syncFromMembers) return;
+    if (!selectedMemberIds.length) return;
+    const selected = bandMembers.filter((member) => selectedMemberIds.includes(member.id));
+    if (!selected.length) return;
+    set("performers", selected.map((member) => member.name).join(", "));
+    set("numberOfMusicians", selected.length);
+  }, [syncFromMembers, selectedMemberIds, bandMembers]);
+
+  const filteredMembers = useMemo(() => {
+    const search = memberSearch.trim().toLowerCase();
+    if (!search) return bandMembers;
+    return bandMembers.filter((member) => {
+      const inName = member.name.toLowerCase().includes(search);
+      const inBand = (member.bands || []).some((band) => band.toLowerCase().includes(search));
+      return inName || inBand;
+    });
+  }, [bandMembers, memberSearch]);
+
+  const bandOptions = useMemo(() => {
+    const fromMembers = bandMembers.flatMap((member) => member.bands || []);
+    const fromGigs = allGigs.map((gig) => gig.performers).filter((name) => name && name.trim());
+    const set = new Set(
+      [...fromMembers, ...fromGigs, ...customBands]
+        .map((name) => name.trim())
+        .filter(Boolean)
+    );
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [bandMembers, allGigs, customBands]);
+
+  const getDefaultMemberIds = (band: string) => {
+    const normalized = band.trim().toLowerCase();
+    return bandMembers
+      .filter((member) =>
+        (member.bands || []).some((b) => b.trim().toLowerCase() === normalized)
+      )
+      .map((member) => member.id);
+  };
+
+  useEffect(() => {
+    if (!form.performers) {
+      setSelectedBandName("");
+      return;
+    }
+    const exact = bandOptions.find(
+      (band) => band.toLowerCase() === form.performers.trim().toLowerCase()
+    );
+    setSelectedBandName(exact || "");
+  }, [form.performers, bandOptions]);
+
+  useEffect(() => {
+    if (!selectedBandName) return;
+    if (!bandMembers.length) return;
+    if (selectedMemberIds.length > 0) return;
+    const defaults = getDefaultMemberIds(selectedBandName);
+    if (defaults.length > 0) {
+      setSelectedMemberIds(defaults);
+      setSyncFromMembers(true);
+    }
+  }, [selectedBandName, bandMembers, selectedMemberIds.length]);
+
+  const toggleMember = (id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleAddMember = async () => {
+    const name = newMemberName.trim();
+    if (!name) return;
+    try {
+      setSavingMember(true);
+      const token = await getAccessToken();
+      if (!token) return;
+      const response = await fetch("/api/band-members", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) return;
+      const member = await response.json();
+      const option = { id: member.id, name: member.name, bands: member.bands || [] };
+      setBandMembers((prev) => [...prev, option]);
+      setSelectedMemberIds((prev) => [...prev, option.id]);
+      setNewMemberName("");
+      setSyncFromMembers(true);
+    } finally {
+      setSavingMember(false);
+    }
+  };
+
+  const handleSelectBand = (band: string) => {
+    setSelectedBandName(band);
+    if (band) {
+      set("performers", band);
+      const defaults = getDefaultMemberIds(band);
+      setSelectedMemberIds(defaults);
+      setSyncFromMembers(true);
+      setMemberSearch(band);
+    } else {
+      setMemberSearch("");
+    }
+  };
+
+  const handleAddBand = () => {
+    const name = newBandName.trim();
+    if (!name) return;
+    setCustomBands((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setNewBandName("");
+    setSelectedBandName(name);
+    set("performers", name);
+    setSelectedMemberIds([]);
+    setSyncFromMembers(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -139,7 +345,10 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
 
     setLoading(true);
     try {
-      await onSubmit(form);
+      await onSubmit({
+        ...form,
+        bandMemberIds: selectedMemberIds,
+      });
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -231,6 +440,41 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                 />
               </div>
               <div>
+                <label className={labelCls}>Band / Artist</label>
+                <select
+                  className={inputCls}
+                  value={selectedBandName}
+                  onChange={(e) => handleSelectBand(e.target.value)}
+                >
+                  <option value="">Select a band</option>
+                  {bandOptions.map((band) => (
+                    <option key={band} value={band}>
+                      {band}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={newBandName}
+                    onChange={(e) => setNewBandName(e.target.value)}
+                    placeholder="Add new band"
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddBand}
+                    disabled={!newBandName.trim()}
+                    className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-700 dark:hover:bg-slate-600"
+                  >
+                    Add
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Selecting a band fills the performers field.
+                </p>
+              </div>
+              <div>
                 <label className={labelCls}>
                   Number of Musicians <span className="text-red-500">*</span>
                 </label>
@@ -255,6 +499,90 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                   }}
                   required
                 />
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    Band members
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Select members to auto-fill performers and count.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={syncFromMembers}
+                    onChange={(e) => setSyncFromMembers(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  Sync to fields
+                </label>
+              </div>
+
+              <div className="mt-3">
+                <input
+                  type="text"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search by name or band"
+                  className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                {bandMembersLoading ? (
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    Loading band members...
+                  </div>
+                ) : filteredMembers.length === 0 ? (
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    No band members found.
+                  </div>
+                ) : (
+                  filteredMembers.map((member) => (
+                    <label
+                      key={member.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedMemberIds.includes(member.id)}
+                          onChange={() => toggleMember(member.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        <span className="font-medium">{member.name}</span>
+                      </div>
+                      {member.bands && member.bands.length > 0 && (
+                        <span className="text-xs text-slate-400">
+                          {member.bands.join(", ")}
+                        </span>
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input
+                  type="text"
+                  value={newMemberName}
+                  onChange={(e) => setNewMemberName(e.target.value)}
+                  placeholder="Add new member"
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddMember}
+                  disabled={savingMember || !newMemberName.trim()}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-700 dark:hover:bg-slate-600"
+                >
+                  {savingMember ? "Adding..." : "Add & select"}
+                </button>
               </div>
             </div>
           </fieldset>

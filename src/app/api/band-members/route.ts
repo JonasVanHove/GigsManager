@@ -1,19 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserIdFromHeader } from "@/lib/auth-helpers";
+import { calculateGigFinancials } from "@/lib/calculations";
+import { getOrCreateUser } from "@/lib/auth-helpers";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
+async function requireAuth(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const token = authHeader.slice(7);
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !data.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await getOrCreateUser(
+    data.user.id,
+    data.user.email || "",
+    data.user.user_metadata?.name
+  );
+
+  return { user };
+}
 
 // GET /api/band-members - List all band members for current user
 export async function GET(req: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(req);
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireAuth(req);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult as { user: { id: string } };
 
     // Get all band members for this user with their gig participation
     const bandMembers = await prisma.bandMember.findMany({
-      where: { userId },
+      where: { userId: user.id },
       include: {
         gigs: {
           include: {
@@ -22,6 +44,20 @@ export async function GET(req: NextRequest) {
                 id: true,
                 eventName: true,
                 date: true,
+                isCharity: true,
+                performanceFee: true,
+                technicalFee: true,
+                managerBonusType: true,
+                managerBonusAmount: true,
+                numberOfMusicians: true,
+                claimPerformanceFee: true,
+                claimTechnicalFee: true,
+                technicalFeeClaimAmount: true,
+                advanceReceivedByManager: true,
+                advanceToMusicians: true,
+                paymentReceived: true,
+                bandPaid: true,
+                managerHandlesDistribution: true,
               },
             },
           },
@@ -32,15 +68,53 @@ export async function GET(req: NextRequest) {
 
     // Calculate totals for each band member
     const bandMembersWithTotals = bandMembers.map((member) => {
-      const totalEarned = member.gigs.reduce(
-        (sum, g) => sum + (g.earnedAmount || 0),
-        0
-      );
-      const totalPaid = member.gigs.reduce(
-        (sum, g) => sum + (g.paidAmount || 0),
-        0
-      );
-      const totalOwed = totalEarned - totalPaid;
+      let totalEarned = 0;
+      let totalReceived = 0;
+      let totalPending = 0;
+
+      const gigs = member.gigs.map((g) => {
+        const gig = g.gig;
+        const calc = calculateGigFinancials(
+          gig.performanceFee,
+          gig.technicalFee,
+          gig.managerBonusType as "fixed" | "percentage",
+          gig.managerBonusAmount,
+          gig.numberOfMusicians,
+          gig.claimPerformanceFee,
+          gig.claimTechnicalFee,
+          gig.technicalFeeClaimAmount,
+          gig.advanceReceivedByManager,
+          gig.advanceToMusicians,
+          gig.isCharity
+        );
+
+        const earned = gig.isCharity ? 0 : calc.amountPerMusician;
+        const paidDirectlyComplete = !gig.managerHandlesDistribution && gig.paymentReceived;
+        const received = gig.isCharity
+          ? 0
+          : (gig.bandPaid || paidDirectlyComplete
+              ? earned
+              : (gig.managerHandlesDistribution ? (g.paidAmount || 0) : 0));
+        const pending = gig.isCharity
+          ? 0
+          : ((gig.bandPaid || paidDirectlyComplete)
+              ? 0
+              : (gig.managerHandlesDistribution
+                  ? Math.max(0, earned - (g.paidAmount || 0))
+                  : earned));
+
+        totalEarned += earned;
+        totalReceived += received;
+        totalPending += pending;
+
+        return {
+          gigId: gig.id,
+          gigName: gig.eventName,
+          gigDate: gig.date,
+          earned,
+          paid: received,
+        };
+      });
 
       return {
         id: member.id,
@@ -48,17 +122,13 @@ export async function GET(req: NextRequest) {
         email: member.email,
         phone: member.phone,
         notes: member.notes,
+        bands: member.bands,
+        updatedAt: member.updatedAt,
         totalEarned,
-        totalPaid,
-        totalOwed,
+        totalPaid: totalReceived,
+        totalOwed: totalPending,
         gigsCount: member.gigs.length,
-        gigs: member.gigs.map((g) => ({
-          gigId: g.gig.id,
-          gigName: g.gig.eventName,
-          gigDate: g.gig.date,
-          earned: g.earnedAmount,
-          paid: g.paidAmount,
-        })),
+        gigs,
       };
     });
 
@@ -75,14 +145,18 @@ export async function GET(req: NextRequest) {
 // POST /api/band-members - Create a new band member
 export async function POST(req: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(req);
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireAuth(req);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult as { user: { id: string } };
 
     const body = await req.json();
     const { name, email, phone, notes } = body;
+    const bands = Array.isArray(body.bands)
+      ? body.bands
+          .filter((band: unknown) => typeof band === "string")
+          .map((band: string) => band.trim())
+          .filter((band: string) => band.length > 0)
+      : [];
 
     if (!name || name.trim() === "") {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -95,7 +169,8 @@ export async function POST(req: NextRequest) {
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         notes: notes?.trim() || null,
-        userId,
+        bands,
+        userId: user.id,
       },
     });
 

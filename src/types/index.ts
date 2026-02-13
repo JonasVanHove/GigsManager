@@ -76,6 +76,7 @@ export interface GigFormData {
   bandPaidDate: string; // "" or "YYYY-MM-DD"
   notes: string;
   bookingDate: string; // "" or "YYYY-MM-DD" - when booking was made
+  bandMemberIds?: string[];
 }
 
 // --- Computed financial breakdown --------------------------------------------

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { calculateGigFinancials } from "@/lib/calculations";
 import { Prisma } from "@prisma/client";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
@@ -122,6 +123,49 @@ export async function PUT(
         notes: body.notes ? String(body.notes).trim() : null,
       },
     });
+
+    if (Array.isArray(body.bandMemberIds)) {
+      const bandMemberIds = body.bandMemberIds.filter(
+        (id: unknown) => typeof id === "string"
+      );
+
+      const members = await prisma.bandMember.findMany({
+        where: {
+          id: { in: bandMemberIds },
+          userId: user.id,
+        },
+      });
+
+      await prisma.gigBandMember.deleteMany({
+        where: { gigId: gig.id },
+      });
+
+      if (members.length > 0) {
+        const calc = calculateGigFinancials(
+          gig.performanceFee,
+          gig.technicalFee,
+          gig.managerBonusType as "fixed" | "percentage",
+          gig.managerBonusAmount,
+          gig.numberOfMusicians,
+          gig.claimPerformanceFee,
+          gig.claimTechnicalFee,
+          gig.technicalFeeClaimAmount,
+          gig.advanceReceivedByManager,
+          gig.advanceToMusicians,
+          gig.isCharity
+        );
+
+        await prisma.gigBandMember.createMany({
+          data: members.map((member) => ({
+            gigId: gig.id,
+            bandMemberId: member.id,
+            earnedAmount: calc.amountPerMusician,
+            paidAmount: 0,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    }
 
     return NextResponse.json(gig);
   } catch (error) {

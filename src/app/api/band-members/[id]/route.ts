@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdFromHeader } from "@/lib/auth-helpers";
+import { getOrCreateUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
+async function requireAuth(request: NextRequest) {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const token = authHeader.slice(7);
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !data.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await getOrCreateUser(
+    data.user.id,
+    data.user.email || "",
+    data.user.user_metadata?.name
+  );
+
+  return { user };
+}
 
 // GET /api/band-members/[id] - Get single band member
 export async function GET(
@@ -8,15 +31,14 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await getUserIdFromHeader(req);
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireAuth(req);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult as { user: { id: string } };
 
     const bandMember = await prisma.bandMember.findFirst({
       where: {
         id: params.id,
-        userId: userId,
+        userId: user.id,
       },
       include: {
         gigs: {
@@ -55,16 +77,15 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await getUserIdFromHeader(req);
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireAuth(req);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult as { user: { id: string } };
 
     // Check ownership
     const existing = await prisma.bandMember.findFirst({
       where: {
         id: params.id,
-        userId: userId,
+        userId: user.id,
       },
     });
 
@@ -77,6 +98,12 @@ export async function PATCH(
 
     const body = await req.json();
     const { name, email, phone, notes } = body;
+    const bands = Array.isArray(body.bands)
+      ? body.bands
+          .filter((band: unknown) => typeof band === "string")
+          .map((band: string) => band.trim())
+          .filter((band: string) => band.length > 0)
+      : undefined;
 
     const bandMember = await prisma.bandMember.update({
       where: { id: params.id },
@@ -85,6 +112,7 @@ export async function PATCH(
         ...(email !== undefined && { email: email?.trim() || null }),
         ...(phone !== undefined && { phone: phone?.trim() || null }),
         ...(notes !== undefined && { notes: notes?.trim() || null }),
+        ...(bands !== undefined && { bands }),
       },
     });
 
@@ -112,16 +140,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await getUserIdFromHeader(req);
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireAuth(req);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult as { user: { id: string } };
 
     // Check ownership
     const existing = await prisma.bandMember.findFirst({
       where: {
         id: params.id,
-        userId: userId,
+        userId: user.id,
       },
     });
 

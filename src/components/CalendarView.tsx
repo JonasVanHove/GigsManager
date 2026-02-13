@@ -6,6 +6,12 @@ import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useAuth } from "./AuthProvider";
 
+moment.updateLocale("en", {
+  week: {
+    dow: 1,
+  },
+});
+
 const localizer = momentLocalizer(moment);
 
 interface Gig {
@@ -177,7 +183,7 @@ export default function CalendarView({ fmtCurrency, onEditGig }: CalendarViewPro
             onNavigate={setDate}
             eventPropGetter={eventStyleGetter}
             onSelectEvent={handleSelectEvent}
-            views={["month", "week", "day", "agenda"]}
+            views={["month", "agenda"]}
             popup
           />
         </div>

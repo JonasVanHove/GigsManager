@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { DashboardSummary, Gig } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { XAITooltip } from "./XAITooltip";
@@ -27,6 +27,13 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
 
   const toggleCard = (cardId: string) => {
     setExpandedCard(expandedCard === cardId ? null : cardId);
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, cardId: string) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleCard(cardId);
+    }
   };
 
   // Calculate band breakdown
@@ -98,9 +105,12 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
 
         {/* Total Earnings Card - Expandable */}
         <div className="sm:col-span-3">
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => toggleCard("earnings")}
-            className="w-full rounded-xl border-2 border-brand-600 bg-gradient-to-br from-brand-600/10 to-brand-500/5 p-3 shadow-sm transition hover:shadow-lg hover:border-brand-500 dark:border-brand-500 dark:from-brand-500/20 dark:to-brand-600/10 dark:hover:border-brand-400"
+            onKeyDown={(event) => handleCardKeyDown(event, "earnings")}
+            className="w-full rounded-xl border-2 border-brand-600 bg-gradient-to-br from-brand-600/10 to-brand-500/5 p-3 shadow-sm transition hover:shadow-lg hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-500 dark:from-brand-500/20 dark:to-brand-600/10 dark:hover:border-brand-400"
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 text-left">
@@ -124,7 +134,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 ]}
               />
             </div>
-          </button>
+          </div>
 
           {/* Expanded earnings breakdown with band details */}
           {expandedCard === "earnings" && (
@@ -193,9 +203,12 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
       {/* -- Row 2: Pending Payments + Outstanding to Band ---------------------- */}
       <div className="grid grid-cols-2 gap-3">
         {/* Pending Payments Card */}
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => toggleCard("pending")}
-          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 dark:border-orange-400 dark:bg-orange-500/15"
+          onKeyDown={(event) => handleCardKeyDown(event, "pending")}
+          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/40 dark:border-orange-400 dark:bg-orange-500/15"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 text-left">
@@ -218,16 +231,17 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 "Track follow-ups for unpaid gigs",
                 "Mark as paid when money arrives",
               ]}
-            >
-              <span className="text-orange-700 dark:text-orange-400" />
-            </XAITooltip>
+            />
           </div>
-        </button>
+        </div>
 
         {/* Outstanding to Band Card */}
-        <button
+        <div
+          role="button"
+          tabIndex={0}
           onClick={() => toggleCard("outstanding")}
-          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 dark:border-pink-400 dark:bg-pink-500/15"
+          onKeyDown={(event) => handleCardKeyDown(event, "outstanding")}
+          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400/40 dark:border-pink-400 dark:bg-pink-500/15"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 text-left">
@@ -251,11 +265,9 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 "Pay out when you receive payment",
                 "Track in Band Payments tab",
               ]}
-            >
-              <span className="text-pink-700 dark:text-pink-400" />
-            </XAITooltip>
+            />
           </div>
-        </button>
+        </div>
       </div>
 
       {/* -- Row 3: Expanded Payment Breakdowns --------------------------------- */}

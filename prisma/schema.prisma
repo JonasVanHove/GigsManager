@@ -130,6 +130,7 @@ model BandMember {
   email String?
   phone String?
   notes String?
+  bands String[] @default([])
 
   // Owner (the user who manages this band member)
   userId String

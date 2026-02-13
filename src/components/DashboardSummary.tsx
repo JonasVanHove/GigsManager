@@ -318,7 +318,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                                     : "text-orange-800 dark:text-orange-200"
                                                 }`}
                                               >
-                                                {gig.venue || "Unnamed gig"}
+                                                {gig.eventName || "Unnamed gig"}
                                               </p>
                                               <p
                                                 className={`text-xs ${

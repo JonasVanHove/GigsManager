@@ -84,7 +84,14 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
         .from("avatars")
         .upload(fileName, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Avatar upload error:", uploadError);
+        throw new Error(
+          uploadError.message.includes("not found") || uploadError.statusCode === "404"
+            ? "Storage bucket 'avatars' not found. Please create it in Supabase (see AVATAR_SETUP.md)"
+            : uploadError.message
+        );
+      }
 
       const { data: { publicUrl } } = supabaseClient.storage
         .from("avatars")
@@ -92,6 +99,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
       setAvatarUrl(publicUrl);
     } catch (err: any) {
+      console.error("Avatar upload failed:", err);
       setError(err.message || "Failed to upload image");
     } finally {
       setUploading(false);

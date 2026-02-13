@@ -13,6 +13,9 @@ import SettingsModal from "./SettingsModal";
 import AnalyticsPage from "./AnalyticsPage";
 import InvestmentsTab from "./InvestmentsTab";
 import AllGigsTab from "./AllGigsTab";
+import BandMembers from "./BandMembers";
+import FinancialReports from "./FinancialReports";
+import CalendarView from "./CalendarView";
 import Footer from "./Footer";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
@@ -28,7 +31,7 @@ export default function Dashboard() {
   const [deleteGig, setDeleteGig] = useState<Gig | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments">("gigs");
+  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar">("gigs");
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
 
   // -- Data fetching ----------------------------------------------------------
@@ -441,6 +444,51 @@ export default function Dashboard() {
               Investments
             </span>
           </button>
+          <button
+            onClick={() => setActiveTab("band-members")}
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
+              activeTab === "band-members"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+              </svg>
+              Band Members
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("reports")}
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
+              activeTab === "reports"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+              </svg>
+              Reports
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("calendar")}
+            className={`px-4 py-3 text-sm font-medium transition whitespace-nowrap ${
+              activeTab === "calendar"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
+              Calendar
+            </span>
+          </button>
         </div>
 
         {/* -- Content -------------------------------------------------- */}
@@ -618,6 +666,18 @@ export default function Dashboard() {
           <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
         ) : activeTab === "investments" ? (
           <InvestmentsTab fmtCurrency={fmtCurrency} />
+        ) : activeTab === "band-members" ? (
+          <BandMembers fmtCurrency={fmtCurrency} flash={flash} />
+        ) : activeTab === "reports" ? (
+          <FinancialReports fmtCurrency={fmtCurrency} flash={flash} />
+        ) : activeTab === "calendar" ? (
+          <CalendarView 
+            fmtCurrency={fmtCurrency} 
+            onEditGig={(gigId) => {
+              const gig = gigs.find(g => g.id === gigId);
+              if (gig) setEditGig(gig);
+            }} 
+          />
         ) : null}
       </main>
 

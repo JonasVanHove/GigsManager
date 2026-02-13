@@ -17,6 +17,9 @@ model Gig {
   date            DateTime
   performers      String // band name or comma-separated member names
   numberOfMusicians Int
+  
+  // ── Band members for this gig ──────────────────────────
+  bandMembers     GigBandMember[]
 
   // ── Financials ─────────────────────────────────────────
   isCharity         Boolean @default(false) // whether this is a charity/pro bono performance
@@ -72,6 +75,7 @@ model User {
   gigs        Gig[]
   settings    UserSettings?
   investments Investment[]
+  bandMembers BandMember[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,4 +119,51 @@ model Investment {
 
   @@index([userId])
   @@index([date])
+}
+
+// ── Band Members & Relationships ─────────────────────────────────
+model BandMember {
+  id String @id @default(cuid())
+
+  // Member details
+  name  String
+  email String?
+  phone String?
+  notes String?
+
+  // Owner (the user who manages this band member)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Gigs this member participated in
+  gigs GigBandMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name]) // unique member name per user
+  @@index([userId])
+}
+
+// ── Junction table: which band members performed in which gigs ────
+model GigBandMember {
+  id String @id @default(cuid())
+
+  // The gig and band member
+  gigId String
+  gig   Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  bandMemberId String
+  bandMember   BandMember @relation(fields: [bandMemberId], references: [id], onDelete: Cascade)
+
+  // How much did this member earn for this gig?
+  earnedAmount Float @default(0)
+  paidAmount   Float @default(0)  // how much has been paid to them already
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gigId, bandMemberId])
+  @@index([gigId])
+  @@index([bandMemberId])
 }

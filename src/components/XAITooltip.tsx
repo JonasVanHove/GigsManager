@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 interface XAITooltipProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   title: string;
   description: string;
   tips?: string[];
@@ -18,17 +18,17 @@ interface XAITooltipProps {
  * - Optional tips for how to use it
  * - Accessible and mobile-friendly
  */
-export function XAITooltip({ children, title, description, tips = [] }: XAITooltipProps) {
+export function XAITooltip({ title, description, tips = [] }: XAITooltipProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="group relative inline-flex items-center">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         title={title}
-        className="inline-flex items-center gap-1 text-slate-400 transition hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 rounded"
+        className="inline-flex items-center gap-1 text-slate-400 transition hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/20 rounded p-0 bg-none border-none"
       >
-        {children}
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 0 1 5.304 0l1.06-1.06a5.25 5.25 0 0 0-7.424 0l1.06 1.06zm0-4.95a5.25 5.25 0 0 1 7.424 0l-1.06 1.06a3.75 3.75 0 0 0-5.304 0l-1.06-1.06zm7.424-2.89a7.5 7.5 0 0 0-10.604 0l1.06 1.06a5.25 5.25 0 0 1 7.424 0l1.06-1.06zM17.25 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0z" />
         </svg>

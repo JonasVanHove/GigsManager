@@ -122,9 +122,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                   "Updates when payment status changes",
                   "Click card to see received vs pending",
                 ]}
-              >
-                <span className="text-brand-600 dark:text-brand-400" />
-              </XAITooltip>
+              />
             </div>
           </button>
 

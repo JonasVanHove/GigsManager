@@ -48,7 +48,9 @@ export default function CalendarView({ fmtCurrency, onEditGig }: CalendarViewPro
       });
       if (!response.ok) throw new Error("Failed to fetch");
       const data = await response.json();
-      setGigs(data);
+      // Handle both array and object response
+      const gigsArray = Array.isArray(data) ? data : (data.data ?? []);
+      setGigs(gigsArray);
     } catch (error) {
       console.error("Failed to load gigs:", error);
     } finally {

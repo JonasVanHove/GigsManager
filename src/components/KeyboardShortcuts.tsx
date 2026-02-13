@@ -79,17 +79,7 @@ export default function KeyboardShortcuts({
   }, [shortcuts, showHelp]);
 
   if (!showHelp) {
-    return (
-      <button
-        onClick={() => setShowHelp(true)}
-        title="Press ? for keyboard shortcuts"
-        className="fixed bottom-24 right-4 z-40 rounded-full bg-slate-800 dark:bg-slate-700 text-white p-2.5 shadow-lg transition hover:bg-slate-700 dark:hover:bg-slate-600"
-      >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.921v.003m0 5.042a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-        </svg>
-      </button>
-    );
+    return null;
   }
 
   return (

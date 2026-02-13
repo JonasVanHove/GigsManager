@@ -57,11 +57,9 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
       if (gig.paymentReceived) {
         acc[key].received += calc.myEarnings;
       } else {
-        acc[key].pending += calc.myEarnings;
-      }
-      // Add advance to what's already received
-      if (advanceAmount > 0) {
+        // Payment not yet received - calculate what's received vs pending
         acc[key].received += advanceAmount;
+        acc[key].pending += calc.myEarnings - advanceAmount;
       }
       // Only count as owed if manager handles distribution
       if (gig.managerHandlesDistribution && !gig.bandPaid) {

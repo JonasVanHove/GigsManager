@@ -101,6 +101,11 @@ export interface DashboardSummary {
   totalEarningsPending: number; // earnings from gigs where paymentReceived = false
   pendingClientPayments: number;
   outstandingToBand: number;
+  pendingByBand: Array<{
+    band: string;
+    amount: number;
+    count: number;
+  }>;
 }
 
 // --- User settings ----------------------------------------------------------

@@ -219,9 +219,35 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 {summary.pendingClientPayments}
               </p>
               {expandedCard === "pending" && (
-                <p className="mt-1.5 text-xs text-orange-600 dark:text-orange-400">
-                  Gigs awaiting payment
-                </p>
+                <div className="mt-2">
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mb-2">
+                    Gigs awaiting payment
+                  </p>
+                  {summary.pendingByBand.length > 0 && (
+                    <div className="space-y-1.5">
+                      {summary.pendingByBand
+                        .sort((a, b) => b.amount - a.amount)
+                        .map((item) => (
+                          <div
+                            key={item.band}
+                            className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-orange-500/10 dark:bg-orange-500/20"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-orange-800 dark:text-orange-200 truncate">
+                                {item.band}
+                              </p>
+                              <p className="text-xs text-orange-600 dark:text-orange-400">
+                                {item.count} {item.count === 1 ? 'gig' : 'gigs'}
+                              </p>
+                            </div>
+                            <p className="text-xs font-semibold text-orange-800 dark:text-orange-200 ml-2">
+                              {fmtCurrency(item.amount)}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <XAITooltip

@@ -282,6 +282,21 @@ export default function Dashboard() {
         // Only advance received so far, rest is still pending
         acc.totalEarningsReceived += c.myEarningsAlreadyReceived;
         acc.totalEarningsPending += c.myEarningsStillOwed;
+        
+        // Track pending amount by band/performer
+        const bandName = g.performers || "Unknown";
+        const pendingAmount = c.totalGigValue - g.advanceReceivedByManager;
+        const existing = acc.pendingByBand.find(b => b.band === bandName);
+        if (existing) {
+          existing.amount += pendingAmount;
+          existing.count += 1;
+        } else {
+          acc.pendingByBand.push({
+            band: bandName,
+            amount: pendingAmount,
+            count: 1,
+          });
+        }
       }
       if (!g.paymentReceived) acc.pendingClientPayments += 1;
       if (!g.bandPaid && g.managerHandlesDistribution) acc.outstandingToBand += c.amountOwedToOthers;
@@ -294,6 +309,7 @@ export default function Dashboard() {
       totalEarningsPending: 0,
       pendingClientPayments: 0,
       outstandingToBand: 0,
+      pendingByBand: [],
     } as DashboardSummary
   );
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey } from "@/lib/cache";
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -32,6 +33,12 @@ export async function GET(req: NextRequest) {
     const authResult = await requireAuth(req);
     if (authResult instanceof NextResponse) return authResult;
     const { user } = authResult as { user: { id: string } };
+
+    const cacheKey = getCacheKey(user.id, "band-members");
+    const cached = getCacheEntry<unknown[]>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Get all band members for this user with their gig participation
     const bandMembers = await prisma.bandMember.findMany({
@@ -132,6 +139,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    setCacheEntry(cacheKey, bandMembersWithTotals, 30);
     return NextResponse.json(bandMembersWithTotals);
   } catch (error) {
     console.error("GET /api/band-members error:", error);
@@ -173,7 +181,8 @@ export async function POST(req: NextRequest) {
         userId: user.id,
       },
     });
-
+    
+    invalidateCache(`${user.id}:band-members`);
     return NextResponse.json(bandMember, { status: 201 });
   } catch (error: any) {
     console.error("POST /api/band-members error:", error);

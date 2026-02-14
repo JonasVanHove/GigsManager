@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { calculateGigFinancials } from "@/lib/calculations";
+import { invalidateCache } from "@/lib/cache";
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -110,6 +111,8 @@ export async function PUT(
       });
     }
 
+    invalidateCache(`${user.id}:band-members`);
+    invalidateCache(`${user.id}:gigs`);
     return NextResponse.json({
       success: true,
       added: toAdd.length,

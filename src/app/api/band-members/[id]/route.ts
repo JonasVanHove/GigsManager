@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { invalidateCache } from "@/lib/cache";
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -116,6 +117,7 @@ export async function PATCH(
       },
     });
 
+    invalidateCache(`${user.id}:band-members`);
     return NextResponse.json(bandMember);
   } catch (error: any) {
     console.error("PATCH /api/band-members/[id] error:", error);
@@ -163,6 +165,7 @@ export async function DELETE(
       where: { id: params.id },
     });
 
+    invalidateCache(`${user.id}:band-members`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/band-members/[id] error:", error);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/auth-helpers";
+import { invalidateCache } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 type SetlistItemInput = {
@@ -164,6 +165,7 @@ export async function PATCH(
       },
     });
 
+    invalidateCache(`${user.id}:setlists`);
     return NextResponse.json(refreshed ?? updated);
   } catch (error) {
     console.error("PATCH /api/setlists/[id] error:", error);
@@ -193,6 +195,7 @@ export async function DELETE(
 
     await prisma.setlist.delete({ where: { id: existing.id } });
 
+    invalidateCache(`${user.id}:setlists`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("DELETE /api/setlists/[id] error:", error);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey } from "@/lib/cache";
 
 type SetlistItemInput = {
   type?: string;
@@ -54,6 +55,12 @@ export async function GET(request: NextRequest) {
   const { user } = authResult as { user: { id: string } };
 
   try {
+    const cacheKey = getCacheKey(user.id, "setlists");
+    const cached = getCacheEntry<unknown[]>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     const setlists = await prisma.setlist.findMany({
       where: { userId: user.id },
       include: {
@@ -63,6 +70,7 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: "desc" },
     });
 
+    setCacheEntry(cacheKey, setlists, 30);
     return NextResponse.json(setlists);
   } catch (error) {
     console.error("GET /api/setlists error:", error);
@@ -123,6 +131,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    invalidateCache(`${user.id}:setlists`);
     return NextResponse.json(setlist, { status: 201 });
   } catch (error) {
     console.error("POST /api/setlists error:", error);

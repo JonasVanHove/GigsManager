@@ -14,6 +14,8 @@ interface GigCardProps {
   claimPerformanceFee?: boolean;
   claimTechnicalFee?: boolean;
   isExpandedGlobal?: boolean;
+  isSelected?: boolean;
+  onSelect?: (gigId: string) => void;
 }
 
 export default function GigCard({
@@ -23,6 +25,8 @@ export default function GigCard({
   claimPerformanceFee = true,
   claimTechnicalFee = true,
   isExpandedGlobal,
+  isSelected = false,
+  onSelect,
 }: GigCardProps) {
   // Charity gigs start collapsed, others start expanded, but can be overridden by global state
   const [isExpanded, setIsExpanded] = useState(!gig.isCharity);
@@ -45,14 +49,29 @@ export default function GigCard({
   );
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+    <div className={`group overflow-hidden rounded-xl border shadow-sm transition hover:shadow-md dark:border-slate-700 ${isSelected ? 'border-blue-400 bg-blue-50 shadow-md dark:bg-blue-950/20 dark:border-blue-400' : 'border-slate-200 bg-white shadow-sm dark:bg-slate-900'}`}>
       {/* -- Header ------------------------------------------------------ */}
-      <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-700/50 dark:bg-slate-800/50">
-        {/* Left side: Event info (clickable to expand/collapse) */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="min-w-0 flex-1 text-left transition-opacity hover:opacity-80"
-        >
+      <div className={`flex items-start justify-between border-b ${isSelected ? 'border-blue-200 bg-blue-100/30 dark:border-blue-800/50 dark:bg-blue-900/20' : 'border-slate-100 bg-slate-50/50 dark:border-slate-700/50 dark:bg-slate-800/50'} px-5 py-4`}>
+        {/* Left side: Checkbox + Event info (clickable to expand/collapse) */}
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {onSelect && (
+            <button
+              onClick={() => onSelect(gig.id)}
+              className="mt-1 shrink-0 rounded transition hover:bg-slate-200 dark:hover:bg-slate-600 p-0.5"
+              title="Select this gig for bulk actions"
+            >
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => {}}
+                className="h-5 w-5 rounded border-slate-300 text-blue-600 transition focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700"
+              />
+            </button>
+          )}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="min-w-0 flex-1 text-left transition-opacity hover:opacity-80"
+          >
           <div className="flex items-center gap-2">
             <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
               {gig.eventName}
@@ -98,7 +117,8 @@ export default function GigCard({
               {gig.numberOfMusicians} musician{gig.numberOfMusicians !== 1 ? "s" : ""}
             </span>
           </p>
-        </button>
+          </button>
+        </div>
 
         {/* Actions */}
         <div className="ml-4 flex shrink-0 gap-1">

@@ -28,6 +28,10 @@ model Gig {
   managerBonusType  String @default("fixed") // "fixed" | "percentage"
   managerBonusAmount Float @default(0) // bonus value ($ or %)
 
+  // ── Performance fee distribution ───────────────────────
+  performanceDistribution String @default("equal") // "equal" | "managerFixed" | "custom"
+  managerPerformanceAmount Float? // if managerFixed: amount manager claims from performance fee
+
   // ── Fee claims — whether manager claims these fees for this gig ──
   claimPerformanceFee Boolean @default(true)
   claimTechnicalFee   Boolean @default(true)
@@ -60,6 +64,8 @@ model Gig {
   @@index([date])
   @@index([paymentReceived])
   @@index([bandPaid])
+  @@index([userId, date]) // composite index for common query: user's gigs sorted by date
+  @@index([userId, paymentReceived]) // for pending payments queries
 }
 
 model User {
@@ -160,6 +166,9 @@ model GigBandMember {
   // How much did this member earn for this gig?
   earnedAmount Float @default(0)
   paidAmount   Float @default(0)  // how much has been paid to them already
+  
+  // Custom performance fee for this specific member (null = use equal split)
+  customPerformanceAmount Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,4 +176,5 @@ model GigBandMember {
   @@unique([gigId, bandMemberId])
   @@index([gigId])
   @@index([bandMemberId])
+  @@index([gigId, bandMemberId]) // composite for quick lookups
 }

@@ -4,7 +4,10 @@
  * Core financial calculations for a gig.
  *
  * Rules:
- *  - Performance fee is split **evenly** among all performers.
+ *  - Performance fee distribution depends on `performanceDistribution`:
+ *    - "equal": split evenly among all performers (default behavior)
+ *    - "managerFixed": manager claims a fixed amount, rest is split among others
+ *    - "custom": each band member has individual amounts (handled separately)
  *  - Manager bonus is added on top and goes entirely to the manager.
  *  - Technical fee is **not** split — it belongs to the manager.
  *  - "Amount owed to others" = the shares that must be paid to the other musicians.
@@ -31,7 +34,9 @@ export function calculateGigFinancials(
   technicalFeeClaimAmount: number | null = null,
   advanceReceivedByManager: number = 0,
   advanceToMusicians: number = 0,
-  isCharity: boolean = false
+  isCharity: boolean = false,
+  performanceDistribution: "equal" | "managerFixed" | "custom" = "equal",
+  managerPerformanceAmount: number | null = null
 ): GigCalculations {
   // If it's a charity performance, all fees are $0
   if (isCharity) {
@@ -53,15 +58,34 @@ export function calculateGigFinancials(
 
   const totalReceived = performanceFee + technicalFee + actualManagerBonus;
   
-  // If not claiming performance fee, manager is not part of the split
-  const musiciansInSplit = claimPerformanceFee 
-    ? numberOfMusicians 
-    : Math.max(1, numberOfMusicians - 1);
+  // Calculate performance fee split based on distribution mode
+  let perfShare = 0; // Manager's share of performance fee
+  let amountPerMusician = 0; // What each other musician gets
   
-  const amountPerMusician =
-    musiciansInSplit > 0 ? performanceFee / musiciansInSplit : 0;
-
-  const perfShare = claimPerformanceFee ? amountPerMusician : 0;
+  if (performanceDistribution === "managerFixed" && managerPerformanceAmount !== null) {
+    // Manager claims a fixed amount, rest is split among others
+    perfShare = claimPerformanceFee ? managerPerformanceAmount : 0;
+    const remainingFee = Math.max(0, performanceFee - managerPerformanceAmount);
+    const otherMusicians = Math.max(1, numberOfMusicians - 1);
+    amountPerMusician = otherMusicians > 0 ? remainingFee / otherMusicians : 0;
+  } else if (performanceDistribution === "custom") {
+    // Custom amounts per band member - handled separately via GigBandMember records
+    // For summary calculations, we assume manager takes what's left after custom allocations
+    // This will be refined when we actually have the band member data
+    perfShare = claimPerformanceFee ? 0 : 0; // Will be calculated from actual data
+    amountPerMusician = 0; // Individual amounts stored separately
+  } else {
+    // Default: equal split
+    // If not claiming performance fee, manager is not part of the split
+    const musiciansInSplit = claimPerformanceFee 
+      ? numberOfMusicians 
+      : Math.max(1, numberOfMusicians - 1);
+    
+    amountPerMusician =
+      musiciansInSplit > 0 ? performanceFee / musiciansInSplit : 0;
+    
+    perfShare = claimPerformanceFee ? amountPerMusician : 0;
+  }
   
   // Technical share: 
   // - If not claiming: 0

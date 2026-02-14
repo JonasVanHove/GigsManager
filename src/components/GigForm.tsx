@@ -28,6 +28,8 @@ const emptyForm: GigFormData = {
   technicalFee: 0,
   managerBonusType: "fixed",
   managerBonusAmount: 0,
+  performanceDistribution: "equal",
+  managerPerformanceAmount: null,
   claimPerformanceFee: true,
   claimTechnicalFee: true,
   technicalFeeClaimAmount: null,
@@ -53,6 +55,8 @@ function gigToFormData(gig: Gig): GigFormData {
     technicalFee: gig.technicalFee,
     managerBonusType: gig.managerBonusType,
     managerBonusAmount: gig.managerBonusAmount,
+    performanceDistribution: gig.performanceDistribution ?? "equal",
+    managerPerformanceAmount: gig.managerPerformanceAmount ?? null,
     claimPerformanceFee: gig.claimPerformanceFee ?? true,
     claimTechnicalFee: gig.claimTechnicalFee ?? true,
     technicalFeeClaimAmount: gig.technicalFeeClaimAmount ?? null,
@@ -103,7 +107,9 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
         form.technicalFeeClaimAmount,
         form.advanceReceivedByManager,
         form.advanceToMusicians,
-        form.isCharity
+        form.isCharity,
+        form.performanceDistribution,
+        form.managerPerformanceAmount
       ),
     [
       form.performanceFee,
@@ -117,6 +123,8 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
       form.advanceReceivedByManager,
       form.advanceToMusicians,
       form.isCharity,
+      form.performanceDistribution,
+      form.managerPerformanceAmount,
     ]
   );
 

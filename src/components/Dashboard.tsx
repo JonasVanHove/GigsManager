@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from "react";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
@@ -10,15 +10,25 @@ import GigCard from "./GigCard";
 import GigForm from "./GigForm";
 import DeleteConfirm from "./DeleteConfirm";
 import SettingsModal from "./SettingsModal";
-import AnalyticsPage from "./AnalyticsPage";
-import InvestmentsTab from "./InvestmentsTab";
-import AllGigsTab from "./AllGigsTab";
-import BandMembers from "./BandMembers";
-import FinancialReports from "./FinancialReports";
-import CalendarView from "./CalendarView";
 import Footer from "./Footer";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
+import BulkEditor from "./BulkEditor";
+
+// Lazy load heavy components for better initial load time
+const AnalyticsPage = lazy(() => import("./AnalyticsPage"));
+const InvestmentsTab = lazy(() => import("./InvestmentsTab"));
+const AllGigsTab = lazy(() => import("./AllGigsTab"));
+const BandMembers = lazy(() => import("./BandMembers"));
+const FinancialReports = lazy(() => import("./FinancialReports"));
+const CalendarView = lazy(() => import("./CalendarView"));
+
+const TabLoader = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600 dark:border-brand-800 dark:border-t-brand-300" />
+  </div>
+);
+
 
 export default function Dashboard() {
   const { session, isLoading: authLoading, signOut, getAccessToken } = useAuth();
@@ -36,6 +46,8 @@ export default function Dashboard() {
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar">("gigs");
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
+  const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
+  const [showBulkEditor, setShowBulkEditor] = useState(false);
 
   // -- Data fetching ----------------------------------------------------------
 
@@ -247,6 +259,71 @@ export default function Dashboard() {
     flash("Collapsed all performances");
   };
 
+  const handleExport = async (type: "gigs" | "summary" | "report") => {
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        flash("Could not get session. Please sign out and sign in again.", "err");
+        return;
+      }
+
+      const format = type === "report" ? "json" : "csv";
+      const responsePromise = fetch(`/api/exports/summary?type=${type}&format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      flash("Generating export...", "ok");
+      const response = await responsePromise;
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const file = new File([blob], `export-${Date.now()}.${format}`, {
+        type: format === "json" ? "application/json" : "text/csv",
+      });
+
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      flash("Export downloaded successfully!", "ok");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Export failed";
+      console.error("[handleExport]", msg);
+      flash(msg, "err");
+    }
+  };
+
+  const handleToggleGigSelection = (gigId: string) => {
+    const newSelected = new Set(selectedGigIds);
+    if (newSelected.has(gigId)) {
+      newSelected.delete(gigId);
+    } else {
+      newSelected.add(gigId);
+    }
+    setSelectedGigIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (gigs.length > 0) {
+      const allIds = new Set(gigs.map((g) => g.id));
+      setSelectedGigIds(allIds);
+      flash(`Selected all ${gigs.length} performances`, "ok");
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedGigIds(new Set());
+    flash("Selection cleared", "ok");
+  };
+
   // Keyboard shortcuts
   const shortcuts = [
     {
@@ -285,8 +362,8 @@ export default function Dashboard() {
         
         // Track pending amount by band/performer
         const bandName = g.performers || "Unknown";
-        const totalGigValue = g.performanceFee + g.technicalFee;
-        const pendingAmount = totalGigValue - g.advanceReceivedByManager;
+        const totalGigValue = c.totalReceived;
+        const pendingAmount = Math.max(0, totalGigValue - g.advanceReceivedByManager);
         const existing = acc.pendingByBand.find(b => b.band === bandName);
         if (existing) {
           existing.amount += pendingAmount;
@@ -352,12 +429,32 @@ export default function Dashboard() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Profile menu (merged with settings) */}
+            {/* Add Performance - icon only on mobile, button on desktop */}
+            <button
+              onClick={() => {
+                setEditGig(null);
+                setShowForm(true);
+              }}
+              className="p-1.5 sm:p-0 sm:px-3 sm:py-2 rounded-lg bg-brand-600 text-white shadow-sm transition hover:bg-brand-700 active:bg-brand-800 flex-shrink-0"
+              title="Add Performance"
+            >
+              <svg className="h-4 w-4 sm:hidden" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span className="hidden sm:inline-flex items-center gap-1 text-sm font-medium">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Add
+              </span>
+            </button>
+
+            {/* Profile menu (merged with settings & sign out) */}
             <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setShowProfileMenu((open) => !open)}
                 title="Profile & Settings"
-                className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
+                className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 flex-shrink-0"
               >
                 {session.user?.user_metadata?.avatar_url ? (
                   <img
@@ -400,46 +497,21 @@ export default function Dashboard() {
                     >
                       Keyboard shortcuts
                     </button>
+                    <div className="border-t border-slate-200 dark:border-slate-700 mt-2 pt-2">
+                      <button
+                        onClick={async () => {
+                          setShowProfileMenu(false);
+                          await signOut();
+                        }}
+                        className="w-full px-3 py-2 text-left text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Add Performance - icon only on mobile, button on desktop */}
-            <button
-              onClick={() => {
-                setEditGig(null);
-                setShowForm(true);
-              }}
-              className="p-1.5 sm:p-0 sm:px-3 sm:py-2 rounded-lg bg-brand-600 text-white shadow-sm transition hover:bg-brand-700 active:bg-brand-800 flex-shrink-0"
-              title="Add Performance"
-            >
-              <svg className="h-4 w-4 sm:hidden" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              <span className="hidden sm:inline-flex items-center gap-1 text-sm font-medium">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Add
-              </span>
-            </button>
-
-            {/* Sign Out - icon only on mobile, button on desktop */}
-            <button
-              onClick={async () => {
-                await signOut();
-              }}
-              className="p-1.5 sm:p-0 sm:px-3 sm:py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm transition hover:bg-slate-300 dark:hover:bg-slate-700 flex-shrink-0"
-              title="Sign Out"
-            >
-              <svg className="h-4 w-4 sm:hidden" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
-              </svg>
-              <span className="hidden sm:inline text-sm font-medium">
-                Sign Out
-              </span>
-            </button>
           </div>
         </div>
       </header>
@@ -566,6 +638,42 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* -- Export Toolbar ------------------------------------------ */}
+        {activeTab === "gigs" && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => handleExport("gigs")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+              title="Export all gigs as CSV"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0 1 20.25 10.5H16.5" />
+              </svg>
+              <span>Export Gigs</span>
+            </button>
+            <button
+              onClick={() => handleExport("summary")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+              title="Export financial summary as CSV"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.66V18a2.25 2.25 0 002.25 2.25H18M9 9h3.75" />
+              </svg>
+              <span>Summary</span>
+            </button>
+            <button
+              onClick={() => handleExport("report")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+              title="Export financial report as JSON (for PDF generation)"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.875 14.25l1.06-1.061a2.25 2.25 0 113.182 0l1.060 1.061M3 7.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 10.125v-2.25zm9-3c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25zm-9 9c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-2.25zm9 0c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25z" />
+              </svg>
+              <span>Report</span>
+            </button>
+          </div>
+        )}
+
         {/* -- Content -------------------------------------------------- */}
         {activeTab === "gigs" ? (
           <>
@@ -655,6 +763,38 @@ export default function Dashboard() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
                                   </svg>
                                 </button>
+                                <div className="mx-1 w-px bg-slate-200 dark:bg-slate-700" />
+                                <button
+                                  onClick={handleSelectAll}
+                                  title="Select all performances"
+                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                >
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </button>
+                                {selectedGigIds.size > 0 && (
+                                  <>
+                                    <button
+                                      onClick={() => setShowBulkEditor(true)}
+                                      title={`Bulk edit (${selectedGigIds.size} selected)`}
+                                      className="rounded p-1 text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-900/20 text-xs"
+                                    >
+                                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 9.75a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={handleClearSelection}
+                                      title="Clear selection"
+                                      className="rounded px-1.5 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                    >
+                                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -668,6 +808,8 @@ export default function Dashboard() {
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
                                 isExpandedGlobal={globalExpandState}
+                                isSelected={selectedGigIds.has(gig.id)}
+                                onSelect={handleToggleGigSelection}
                               />
                             ))}
                           </div>
@@ -719,6 +861,8 @@ export default function Dashboard() {
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
                                 isExpandedGlobal={globalExpandState}
+                                isSelected={selectedGigIds.has(gig.id)}
+                                onSelect={handleToggleGigSelection}
                               />
                             ))}
                           </div>
@@ -731,28 +875,40 @@ export default function Dashboard() {
             )}
           </>
         ) : activeTab === "all-gigs" ? (
-          <AllGigsTab 
-            gigs={gigs}
-            onEdit={(g) => setEditGig(g)}
-            fmtCurrency={fmtCurrency}
-            loading={loading}
-          />
+          <Suspense fallback={<TabLoader />}>
+            <AllGigsTab 
+              gigs={gigs}
+              onEdit={(g) => setEditGig(g)}
+              fmtCurrency={fmtCurrency}
+              loading={loading}
+            />
+          </Suspense>
         ) : activeTab === "analytics" ? (
-          <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
+          <Suspense fallback={<TabLoader />}>
+            <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
+          </Suspense>
         ) : activeTab === "investments" ? (
-          <InvestmentsTab fmtCurrency={fmtCurrency} />
+          <Suspense fallback={<TabLoader />}>
+            <InvestmentsTab fmtCurrency={fmtCurrency} />
+          </Suspense>
         ) : activeTab === "band-members" ? (
-          <BandMembers fmtCurrency={fmtCurrency} flash={flash} />
+          <Suspense fallback={<TabLoader />}>
+            <BandMembers fmtCurrency={fmtCurrency} flash={flash} />
+          </Suspense>
         ) : activeTab === "reports" ? (
-          <FinancialReports fmtCurrency={fmtCurrency} flash={flash} />
+          <Suspense fallback={<TabLoader />}>
+            <FinancialReports fmtCurrency={fmtCurrency} flash={flash} />
+          </Suspense>
         ) : activeTab === "calendar" ? (
-          <CalendarView 
-            fmtCurrency={fmtCurrency} 
-            onEditGig={(gigId) => {
-              const gig = gigs.find(g => g.id === gigId);
-              if (gig) setEditGig(gig);
-            }} 
-          />
+          <Suspense fallback={<TabLoader />}>
+            <CalendarView 
+              fmtCurrency={fmtCurrency} 
+              onEditGig={(gigId) => {
+                const gig = gigs.find(g => g.id === gigId);
+                if (gig) setEditGig(gig);
+              }} 
+            />
+          </Suspense>
         ) : null}
       </main>
 
@@ -780,6 +936,18 @@ export default function Dashboard() {
       )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
+      {showBulkEditor && (
+        <BulkEditor
+          gigs={gigs}
+          selectedIds={selectedGigIds}
+          onClose={() => setShowBulkEditor(false)}
+          onSuccess={() => {
+            setSelectedGigIds(new Set());
+            flash("Gigs updated successfully!", "ok");
+            fetchGigs();
+          }}
+        />
       )}
       {/* -- Keyboard Shortcuts ----------------------------------------- */}
       {showKeyboardShortcuts && (

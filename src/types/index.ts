@@ -11,6 +11,8 @@ export interface Gig {
   technicalFee: number;
   managerBonusType: "fixed" | "percentage";
   managerBonusAmount: number;
+  performanceDistribution: "equal" | "managerFixed" | "custom"; // how to split performance fee
+  managerPerformanceAmount: number | null; // if managerFixed: amount manager claims
   claimPerformanceFee: boolean; // claim this fee for this gig
   claimTechnicalFee: boolean; // claim this fee for this gig
   technicalFeeClaimAmount: number | null; // amount of technical fee to claim (null = all)
@@ -65,6 +67,8 @@ export interface GigFormData {
   technicalFee: number;
   managerBonusType: "fixed" | "percentage";
   managerBonusAmount: number;
+  performanceDistribution: "equal" | "managerFixed" | "custom"; // how to split performance fee
+  managerPerformanceAmount: number | null; // if managerFixed: amount manager claims
   claimPerformanceFee: boolean; // claim this fee for this gig
   claimTechnicalFee: boolean; // claim this fee for this gig
   technicalFeeClaimAmount: number | null; // amount of technical fee to claim (null = all)

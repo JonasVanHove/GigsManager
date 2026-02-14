@@ -102,8 +102,8 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
 
   return (
     <div className="space-y-2 sm:space-y-3">
-      {/* -- Row 1: Total Gigs + My Earnings ------------------------------------ */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
+      {/* -- Main Grid: 1 column on mobile, 2x2 on desktop ----------------------- */}
+      <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
         {/* Total Gigs Card - Expandable */}
         <div>
           <button
@@ -183,7 +183,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </div>
 
         {/* Total Earnings Card - Expandable */}
-        <div className="col-span-2 sm:col-span-3">
+        <div>
           <div
             role="button"
             tabIndex={0}
@@ -281,18 +281,14 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </div>
       </div>
 
-      {/* -- Row 2: Pending Payments + Outstanding to Band ---------------------- */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {/* Pending Payments Card */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
           onClick={() => toggleCard("pending")}
-          onKeyDown={(event) => handleCardKeyDown(event, "pending")}
-          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-2 sm:p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/40 dark:border-orange-400 dark:bg-orange-500/15"
+          type="button"
+          className="rounded-xl border-2 border-orange-500 bg-orange-500/10 p-2 sm:p-3 shadow-sm transition hover:shadow-md hover:border-orange-400 active:bg-orange-500/20 text-left dark:border-orange-400 dark:bg-orange-500/15"
         >
-          <div className="flex items-start justify-between">
-            <div className="flex-1 text-left">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 text-left min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-orange-700 dark:text-orange-300">
                 Client Awaiting
               </p>
@@ -434,51 +430,42 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 </div>
               )}
             </div>
-            <XAITooltip
-              title="Pending Client Payments"
-              description="Number of performances where you haven't received payment from the client yet."
-              tips={[
-                "Track follow-ups for unpaid gigs",
-                "Mark as paid when money arrives",
-              ]}
-            />
+            <svg
+              className={`h-5 w-5 sm:h-6 sm:w-6 text-orange-700 dark:text-orange-300 transition-transform flex-shrink-0 ${expandedCard === "pending" ? "rotate-90" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </div>
-        </div>
+        </button>
 
         {/* Outstanding to Band Card */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
           onClick={() => toggleCard("outstanding")}
-          onKeyDown={(event) => handleCardKeyDown(event, "outstanding")}
-          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-2 sm:p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-400/40 dark:border-pink-400 dark:bg-pink-500/15"
+          type="button"
+          className="rounded-xl border-2 border-pink-500 bg-pink-500/10 p-2 sm:p-3 shadow-sm transition hover:shadow-md hover:border-pink-400 active:bg-pink-500/20 text-left dark:border-pink-400 dark:bg-pink-500/15"
         >
-          <div className="flex items-start justify-between">
-            <div className="flex-1 text-left">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 text-left min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-pink-700 dark:text-pink-300">
                 Owe to Band
               </p>
               <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-pink-800 dark:text-pink-200">
                 {fmtCurrency(summary.outstandingToBand)}
               </p>
-              {expandedCard === "outstanding" && (
-                <p className="mt-1.5 text-xs text-pink-600 dark:text-pink-400">
-                  From performance splits
-                </p>
-              )}
             </div>
-            <XAITooltip
-              title="Outstanding to Band"
-              description="Total amount you owe to other musicians based on fee splits and unclaimed fees."
-              tips={[
-                "Musicians earn their split + fees",
-                "Pay out when you receive payment",
-                "Track in Band Payments tab",
-              ]}
-            />
+            <svg
+              className={`h-5 w-5 sm:h-6 sm:w-6 text-pink-700 dark:text-pink-300 transition-transform flex-shrink-0 ${expandedCard === "outstanding" ? "rotate-90" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </div>
-        </div>
-      </div>
+        </button>
 
       {/* -- Row 3: Expanded Payment Breakdowns --------------------------------- */}
       {expandedCard === "outstanding" && (

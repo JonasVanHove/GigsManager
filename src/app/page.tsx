@@ -1,5 +1,10 @@
 ﻿import Dashboard from "@/components/Dashboard";
+import { ToastProvider } from "@/components/ToastContainer";
 
 export default function Home() {
-  return <Dashboard />;
+  return (
+    <ToastProvider>
+      <Dashboard />
+    </ToastProvider>
+  );
 }

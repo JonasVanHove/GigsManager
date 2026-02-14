@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import type { Gig } from "@/types";
 import { calculateGigFinancials, formatDate } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastContainer";
 
 interface BandMemberGig {
   gigId: string;
@@ -30,11 +31,11 @@ interface BandMember {
 
 interface BandMembersProps {
   fmtCurrency: (amount: number) => string;
-  flash: (message: string, type?: "ok" | "err") => void;
 }
 
-export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
+export default function BandMembers({ fmtCurrency }: BandMembersProps) {
   const { getAccessToken } = useAuth();
+  const toast = useToast();
   const [members, setMembers] = useState<BandMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -73,7 +74,7 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
       const data = await response.json();
       setMembers(data);
     } catch (error) {
-      flash("Failed to load band members", "err");
+      toast.error("Failed to load band members");
     } finally {
       setLoading(false);
     }
@@ -106,7 +107,7 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
       );
       setAllGigs(sorted);
     } catch (error) {
-      flash("Failed to load gigs", "err");
+      toast.error("Failed to load gigs");
     } finally {
       setGigsLoading(false);
     }
@@ -157,11 +158,11 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
         throw new Error(error.error || "Failed to update gigs");
       }
 
-      flash("Gigs updated", "ok");
+      toast.success("Gigs updated");
       closeGigPicker();
       fetchMembers();
     } catch (error: any) {
-      flash(error.message || "Failed to update gigs", "err");
+      toast.error(error.message || "Failed to update gigs");
     } finally {
       setSavingGigs(false);
     }
@@ -280,7 +281,7 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      flash("Name is required", "err");
+      toast.error("Name is required");
       return;
     }
 
@@ -309,9 +310,8 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
         throw new Error(error.error || "Failed to save");
       }
 
-      flash(
-        editingId ? "Band member updated" : "Band member added",
-        "ok"
+      toast.success(
+        editingId ? "Band member updated" : "Band member added"
       );
       
       setShowForm(false);
@@ -321,7 +321,7 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
       setNewBandName("");
       fetchMembers();
     } catch (error: any) {
-      flash(error.message || "Failed to save band member", "err");
+      toast.error(error.message || "Failed to save band member");
     }
   };
 
@@ -350,10 +350,10 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
 
       if (!response.ok) throw new Error("Failed to delete");
 
-      flash("Band member deleted", "ok");
+      toast.success("Band member deleted");
       fetchMembers();
     } catch (error) {
-      flash("Failed to delete band member", "err");
+      toast.error("Failed to delete band member");
     }
   };
 
@@ -1041,3 +1041,4 @@ export default function BandMembers({ fmtCurrency, flash }: BandMembersProps) {
     </div>
   );
 }
+

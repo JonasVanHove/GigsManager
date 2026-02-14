@@ -5,6 +5,7 @@ import type { Gig, GigFormData, DashboardSummary } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
+import { useToast } from "./ToastContainer";
 import LandingPage from "./LandingPage";
 import GigCard from "./GigCard";
 import GigForm from "./GigForm";
@@ -14,6 +15,7 @@ import Footer from "./Footer";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 import BulkEditor from "./BulkEditor";
+import LoadingSpinner, { CardSkeleton } from "./LoadingSpinner";
 
 // Lazy load heavy components for better initial load time
 const AnalyticsPage = lazy(() => import("./AnalyticsPage"));
@@ -34,6 +36,7 @@ const TabLoader = () => (
 export default function Dashboard() {
   const { session, isLoading: authLoading, signOut, getAccessToken } = useAuth();
   const { settings, fmtCurrency } = useSettings();
+  const toast = useToast();
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [totalGigCount, setTotalGigCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,7 +47,6 @@ export default function Dashboard() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
   const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists">("gigs");
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
@@ -111,11 +113,11 @@ export default function Dashboard() {
               return;
             }
           }
-          flash("Session expired. Please sign out and sign in again.", "err");
+          toast.error("Session expired. Please sign out and sign in again.");
         } else {
           const errorText = await res.text();
           console.error("[fetchGigs] Error response:", errorText);
-          flash("Failed to load gigs.", "err");
+          toast.error("Failed to load gigs.");
         }
         setGigs([]);
         setTotalGigCount(0);
@@ -127,7 +129,7 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Fetch gigs error:", err);
-      flash("Failed to load gigs.", "err");
+      toast.error("Failed to load gigs.");
     } finally {
       setLoading(false);
     }
@@ -149,13 +151,6 @@ export default function Dashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // -- Toast helper -----------------------------------------------------------
-
-  const flash = (msg: string, type: "ok" | "err" = "ok") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
   // -- CRUD handlers ----------------------------------------------------------
 
   const handleCreate = async (data: GigFormData) => {
@@ -163,7 +158,7 @@ export default function Dashboard() {
       const token = await getAccessToken();
 
       if (!token) {
-        flash("Could not get session. Please sign out and sign in again.", "err");
+        toast.error("Could not get session. Please sign out and sign in again.");
         return;
       }
 
@@ -187,10 +182,10 @@ export default function Dashboard() {
       }
 
       setShowForm(false);
-      flash("Performance added!");
+      toast.success("Performance added successfully!");
       fetchGigs();
     } catch (err: any) {
-      flash(err.message || "Failed to create gig.", "err");
+      toast.error(err.message || "Failed to create performance. Please try again.");
     }
   };
 
@@ -200,7 +195,7 @@ export default function Dashboard() {
       const token = await getAccessToken();
 
       if (!token) {
-        flash("Could not get session. Please sign out and sign in again.", "err");
+        toast.error("Could not get session. Please sign out and sign in again.");
         return;
       }
 
@@ -224,15 +219,16 @@ export default function Dashboard() {
       }
 
       setEditGig(null);
-      flash("Performance updated!");
+      toast.success("Performance updated successfully!");
       fetchGigs();
     } catch (err: any) {
-      flash(err.message || "Failed to update gig.", "err");
+      toast.error(err.message || "Failed to update performance. Please try again.");
     }
   };
 
   const handleDelete = async () => {
     if (!deleteGig) return;
+    const deletedName = deleteGig.eventName;
     // Optimistic: remove from UI immediately
     const prev = gigs;
     setGigs((g) => g.filter((x) => x.id !== deleteGig.id));
@@ -242,7 +238,7 @@ export default function Dashboard() {
 
       if (!token) {
         setGigs(prev);
-        flash("Could not get session. Please sign out and sign in again.", "err");
+        toast.error("Could not get session. Please sign out and sign in again.");
         return;
       }
 
@@ -254,29 +250,35 @@ export default function Dashboard() {
       });
 
       if (!res.ok) throw new Error();
-      flash("Performance deleted.");
+      toast.success(`Performance "${deletedName}" deleted successfully.`, {
+        label: "Undo",
+        onClick: () => {
+          setGigs(prev);
+          toast.info("Deletion cancelled - performance restored.");
+        }
+      });
       fetchGigs(); // re-sync
     } catch {
       setGigs(prev); // rollback on failure
-      flash("Delete failed — restored.", "err");
+      toast.error("Delete failed — performance restored.");
     }
   };
 
   const handleExpandAll = () => {
     setGlobalExpandState(true);
-    flash("Expanded all performances");
+    toast.info("Expanded all performances");
   };
 
   const handleCollapseAll = () => {
     setGlobalExpandState(false);
-    flash("Collapsed all performances");
+    toast.info("Collapsed all performances");
   };
 
   const handleExport = async (type: "gigs" | "summary" | "report") => {
     try {
       const token = await getAccessToken();
       if (!token) {
-        flash("Could not get session. Please sign out and sign in again.", "err");
+        toast.error("Could not get session. Please sign out and sign in again.");
         return;
       }
 
@@ -285,7 +287,7 @@ export default function Dashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      flash("Generating export...", "ok");
+      toast.info("Generating export...");
       const response = await responsePromise;
 
       if (!response.ok) {
@@ -306,11 +308,11 @@ export default function Dashboard() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      flash("Export downloaded successfully!", "ok");
+      toast.success("Export downloaded successfully!");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Export failed";
       console.error("[handleExport]", msg);
-      flash(msg, "err");
+      toast.error(msg);
     }
   };
 
@@ -328,13 +330,13 @@ export default function Dashboard() {
     if (gigs.length > 0) {
       const allIds = new Set(gigs.map((g) => g.id));
       setSelectedGigIds(allIds);
-      flash(`Selected all ${gigs.length} performances`, "ok");
+      toast.success(`Selected all ${gigs.length} performances`);
     }
   };
 
   const handleClearSelection = () => {
     setSelectedGigIds(new Set());
-    flash("Selection cleared", "ok");
+    toast.info("Selection cleared");
   };
 
   // Keyboard shortcuts
@@ -927,7 +929,7 @@ export default function Dashboard() {
           </Suspense>
         ) : activeTab === "band-members" ? (
           <Suspense fallback={<TabLoader />}>
-            <BandMembers fmtCurrency={fmtCurrency} flash={flash} />
+            <BandMembers fmtCurrency={fmtCurrency} />
           </Suspense>
         ) : activeTab === "setlists" ? (
           <Suspense fallback={<TabLoader />}>
@@ -935,7 +937,7 @@ export default function Dashboard() {
           </Suspense>
         ) : activeTab === "reports" ? (
           <Suspense fallback={<TabLoader />}>
-            <FinancialReports fmtCurrency={fmtCurrency} flash={flash} />
+            <FinancialReports fmtCurrency={fmtCurrency} />
           </Suspense>
         ) : activeTab === "calendar" ? (
           <Suspense fallback={<TabLoader />}>
@@ -979,7 +981,7 @@ export default function Dashboard() {
           onClose={() => setShowBulkEditor(false)}
           onSuccess={() => {
             setSelectedGigIds(new Set());
-            flash("Gigs updated successfully!", "ok");
+            toast.success("Gigs updated successfully!");
             fetchGigs();
           }}
         />
@@ -993,19 +995,6 @@ export default function Dashboard() {
           isOpen={showKeyboardShortcuts}
           onClose={() => setShowKeyboardShortcuts(false)}
         />
-      )}
-
-      {/* -- Toast ------------------------------------------------------ */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg px-5 py-2.5 text-sm font-medium shadow-lg transition ${
-            toast.type === "ok"
-              ? "bg-emerald-600 text-white"
-              : "bg-red-600 text-white"
-          }`}
-        >
-          {toast.msg}
-        </div>
       )}
 
       {/* -- Footer ------------------------------------------------------ */}

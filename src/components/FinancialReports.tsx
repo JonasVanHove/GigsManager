@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastContainer";
 
 interface FinancialReport {
   summary: {
@@ -39,11 +40,11 @@ interface FinancialReport {
 
 interface FinancialReportsProps {
   fmtCurrency: (amount: number) => string;
-  flash: (message: string, type?: "ok" | "err") => void;
 }
 
-export default function FinancialReports({ fmtCurrency, flash }: FinancialReportsProps) {
+export default function FinancialReports({ fmtCurrency }: FinancialReportsProps) {
   const { getAccessToken } = useAuth();
+  const toast = useToast();
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<string>("all");
@@ -74,7 +75,7 @@ export default function FinancialReports({ fmtCurrency, flash }: FinancialReport
       const data = await response.json();
       setReport(data);
     } catch (error) {
-      flash("Failed to load financial report", "err");
+      toast.error("Failed to load financial report");
     } finally {
       setLoading(false);
     }
@@ -86,7 +87,7 @@ export default function FinancialReports({ fmtCurrency, flash }: FinancialReport
 
   const handleCustomDateApply = () => {
     if (!customDates.startDate || !customDates.endDate) {
-      flash("Please select both start and end dates", "err");
+      toast.error("Please select both start and end dates");
       return;
     }
     fetchReport();
@@ -117,7 +118,7 @@ export default function FinancialReports({ fmtCurrency, flash }: FinancialReport
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    flash("CSV exported successfully", "ok");
+    toast.success("CSV exported successfully");
   };
 
   if (loading) {

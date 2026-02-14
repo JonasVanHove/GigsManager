@@ -28,6 +28,7 @@ export interface Gig {
   notes: string | null;
   bookingDate: string; // ISO string - when booking was made
   userId: string; // belongs to this user
+  setlistId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +87,33 @@ export interface GigFormData {
   notes: string;
   bookingDate: string; // "" or "YYYY-MM-DD" - when booking was made
   bandMemberIds?: string[];
+  setlistId?: string | null;
+}
+
+// --- Setlists --------------------------------------------------------------
+
+export interface SetlistItem {
+  id: string;
+  setlistId: string;
+  order: number;
+  type: "song" | "note";
+  title: string | null;
+  notes: string | null;
+  chords: string | null;
+  tuning: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Setlist {
+  id: string;
+  title: string;
+  description: string | null;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  items?: SetlistItem[];
+  gigs?: Gig[];
 }
 
 // --- Computed financial breakdown --------------------------------------------

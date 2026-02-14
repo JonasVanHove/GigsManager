@@ -127,6 +127,7 @@ export async function PUT(
           ? new Date(String(body.bandPaidDate))
           : null,
         notes: body.notes ? String(body.notes).trim() : null,
+        setlistId: body.setlistId ? String(body.setlistId) : null,
       },
     });
 

@@ -22,6 +22,7 @@ const AllGigsTab = lazy(() => import("./AllGigsTab"));
 const BandMembers = lazy(() => import("./BandMembers"));
 const FinancialReports = lazy(() => import("./FinancialReports"));
 const CalendarView = lazy(() => import("./CalendarView"));
+const SetlistsTab = lazy(() => import("./SetlistsTab"));
 
 const TabLoader = () => (
   <div className="flex items-center justify-center py-12">
@@ -44,7 +45,7 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar">("gigs");
+  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists">("gigs");
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
@@ -588,6 +589,22 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Band</span>
             </span>
           </button>
+          {/* Setlists */}
+          <button
+            onClick={() => setActiveTab("setlists")}
+            className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
+              activeTab === "setlists"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+              </svg>
+              <span className="hidden sm:inline">Setlists</span>
+            </span>
+          </button>
           {/* Analytics */}
           <button
             onClick={() => setActiveTab("analytics")}
@@ -894,6 +911,10 @@ export default function Dashboard() {
         ) : activeTab === "band-members" ? (
           <Suspense fallback={<TabLoader />}>
             <BandMembers fmtCurrency={fmtCurrency} flash={flash} />
+          </Suspense>
+        ) : activeTab === "setlists" ? (
+          <Suspense fallback={<TabLoader />}>
+            <SetlistsTab />
           </Suspense>
         ) : activeTab === "reports" ? (
           <Suspense fallback={<TabLoader />}>

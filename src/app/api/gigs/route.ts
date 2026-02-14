@@ -87,6 +87,7 @@ function toGigData(body: Record<string, unknown>, userId: string) {
     bandPaid: Boolean(body.bandPaid),
     bandPaidDate: body.bandPaidDate ? new Date(String(body.bandPaidDate)) : null,
     notes: body.notes ? String(body.notes).trim() : null,
+    setlistId: body.setlistId ? String(body.setlistId) : null,
     userId,
   };
 }

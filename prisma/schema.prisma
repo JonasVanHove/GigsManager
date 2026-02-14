@@ -23,6 +23,10 @@ model Gig {
   // ── Band members for this gig ──────────────────────────
   bandMembers     GigBandMember[]
 
+  // ── Optional setlist ───────────────────────────────────
+  setlistId String?
+  setlist   Setlist? @relation(fields: [setlistId], references: [id], onDelete: SetNull)
+
   // ── Financials ─────────────────────────────────────────
   isCharity         Boolean @default(false) // whether this is a charity/pro bono performance
   performanceFee    Float           // music fee — split among musicians
@@ -68,6 +72,51 @@ model Gig {
   @@index([bandPaid])
   @@index([userId, date]) // composite index for common query: user's gigs sorted by date
   @@index([userId, paymentReceived]) // for pending payments queries
+  @@index([setlistId])
+}
+
+// ── Setlists ─────────────────────────────────────────────
+model Setlist {
+  id String @id @default(cuid())
+
+  title       String
+  description String?
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Linked gigs (optional)
+  gigs Gig[]
+
+  // Items
+  items SetlistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model SetlistItem {
+  id String @id @default(cuid())
+
+  setlistId String
+  setlist   Setlist @relation(fields: [setlistId], references: [id], onDelete: Cascade)
+
+  order Int
+  type  String // "song" | "note"
+
+  title  String?
+  notes  String?
+  chords String?
+  tuning String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([setlistId, order])
 }
 
 model User {
@@ -84,6 +133,7 @@ model User {
   settings    UserSettings?
   investments Investment[]
   bandMembers BandMember[]
+  setlists    Setlist[]
 
   // Notifications and webhooks
   notifications       Notification[] @relation("UserNotifications")

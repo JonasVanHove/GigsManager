@@ -801,24 +801,58 @@ export default function Dashboard() {
         )}
         {/* -- Premium Summary Cards ----------------------------------- */}
         <div className="mb-4 sm:mb-8">
-          {/* Overview collapse header */}
-          <div className="mb-3 flex items-center justify-between">
+          {/* Overview collapse header with export actions */}
+          <div className="mb-3 flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Overview</h2>
-            <button
-              onClick={handleToggleOverview}
-              className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-              title={isOverviewExpanded ? "Collapse overview" : "Expand overview"}
-            >
-              <svg
-                className={`h-5 w-5 transition-transform duration-200 ${isOverviewExpanded ? "rotate-0" : "-rotate-90"}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
+            <div className="flex items-center gap-1.5">
+              {/* Export buttons */}
+              <button
+                onClick={() => handleExport("gigs")}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                title="Export all gigs as CSV"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </button>
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0 1 20.25 10.5H16.5" />
+                </svg>
+                <span className="hidden sm:inline">Export</span>
+              </button>
+              <button
+                onClick={() => handleExport("summary")}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                title="Export financial summary as CSV"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.66V18a2.25 2.25 0 002.25 2.25H18M9 9h3.75" />
+                </svg>
+                <span className="hidden sm:inline">Summary</span>
+              </button>
+              <button
+                onClick={() => handleExport("report")}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                title="Export financial report as JSON"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.875 14.25l1.06-1.061a2.25 2.25 0 113.182 0l1.060 1.061M3 7.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 10.125v-2.25zm9-3c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25zm-9 9c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-2.25zm9 0c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25z" />
+                </svg>
+                <span className="hidden sm:inline">Report</span>
+              </button>
+              {/* Collapse/expand toggle */}
+              <button
+                onClick={handleToggleOverview}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 ml-1"
+                title={isOverviewExpanded ? "Collapse overview" : "Expand overview"}
+              >
+                <svg
+                  className={`h-4 w-4 transition-transform duration-200 ${isOverviewExpanded ? "rotate-0" : "-rotate-90"}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </button>
+            </div>
           </div>
           {/* Collapsible content */}
           <div
@@ -962,41 +996,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* -- Export Toolbar ------------------------------------------ */}
-        {activeTab === "gigs" && (
-          <div className="mb-4 flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => handleExport("gigs")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
-              title="Export all gigs as CSV"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0 1 20.25 10.5H16.5" />
-              </svg>
-              <span>Export Gigs</span>
-            </button>
-            <button
-              onClick={() => handleExport("summary")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
-              title="Export financial summary as CSV"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.66V18a2.25 2.25 0 002.25 2.25H18M9 9h3.75" />
-              </svg>
-              <span>Summary</span>
-            </button>
-            <button
-              onClick={() => handleExport("report")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
-              title="Export financial report as JSON (for PDF generation)"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.875 14.25l1.06-1.061a2.25 2.25 0 113.182 0l1.060 1.061M3 7.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 10.125v-2.25zm9-3c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25zm-9 9c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-2.25zm9 0c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25z" />
-              </svg>
-              <span>Report</span>
-            </button>
-          </div>
-        )}
+
 
         {/* -- Content -------------------------------------------------- */}
         {activeTab === "gigs" ? (

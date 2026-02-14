@@ -492,31 +492,6 @@ export default function SetlistsTab() {
           ) : (
             draftItems.map((item, index) => (
               <div key={item.id}>
-                {/* Insert buttons above each item */}
-                <div className="group relative flex items-center justify-center py-1">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
-                  </div>
-                  <div className="relative flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={() => handleAddItem("song", index - 1)}
-                      className="rounded bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-600 hover:border-brand-300 dark:hover:border-brand-600 shadow-sm"
-                      title="Insert song here"
-                    >
-                      + Song
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddItem("note", index - 1)}
-                      className="rounded bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-600 hover:border-brand-300 dark:hover:border-brand-600 shadow-sm"
-                      title="Insert note here"
-                    >
-                      + Note
-                    </button>
-                  </div>
-                </div>
-
               {/* The actual item card */}
               <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -601,35 +576,33 @@ export default function SetlistsTab() {
                   </div>
                 )}
               </div>
+              
+              {/* Insert buttons below each item */}
+              <div className="group relative flex items-center justify-center py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                </div>
+                <div className="relative flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => handleAddItem("song", index)}
+                    className="rounded bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-600 hover:border-brand-300 dark:hover:border-brand-600 shadow-sm"
+                    title="Insert song here"
+                  >
+                    + Song
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddItem("note", index)}
+                    className="rounded bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-600 hover:border-brand-300 dark:hover:border-brand-600 shadow-sm"
+                    title="Insert note here"
+                  >
+                    + Note
+                  </button>
+                </div>
+              </div>
               </div>
             ))
-          )}
-          
-          {/* Insert buttons at the bottom */}
-          {draftItems.length > 0 && (
-            <div className="group relative flex items-center justify-center py-1">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
-              </div>
-              <div className="relative flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={() => handleAddItem("song", draftItems.length - 1)}
-                  className="rounded bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-600 hover:border-brand-300 dark:hover:border-brand-600 shadow-sm"
-                  title="Add song at end"
-                >
-                  + Song
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAddItem("note", draftItems.length - 1)}
-                  className="rounded bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-600 hover:border-brand-300 dark:hover:border-brand-600 shadow-sm"
-                  title="Add note at end"
-                >
-                  + Note
-                </button>
-              </div>
-            </div>
           )}
         </div>
 

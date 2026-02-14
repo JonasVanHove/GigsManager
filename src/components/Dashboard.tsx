@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists">("gigs");
+  const [searchQuery, setSearchQuery] = useState("");
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
@@ -568,8 +569,8 @@ export default function Dashboard() {
           <DashboardSummaryComponent summary={summary} gigs={gigs} fmtCurrency={fmtCurrency} />
         </div>
 
-        {/* -- Tabs ----------------------------------------------------- */}
-        <div className="mb-6 flex gap-1 sm:gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+        {/* -- Tabs (desktop only) ----------------------------------------------------- */}
+        <div className="mb-6 hidden lg:flex gap-1 sm:gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
           {/* Overview */}
           <button
             onClick={() => setActiveTab("gigs")}

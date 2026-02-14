@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, useRef, Suspense, lazy } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from "react";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
@@ -49,6 +49,18 @@ export default function Dashboard() {
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
+
+  const handleEditGig = useCallback((gig: Gig) => {
+    setEditGig(gig);
+  }, []);
+
+  const handleEditGigById = useCallback(
+    (gigId: string) => {
+      const gig = gigs.find((item) => item.id === gigId);
+      if (gig) handleEditGig(gig);
+    },
+    [gigs, handleEditGig]
+  );
 
   // -- Data fetching ----------------------------------------------------------
 
@@ -336,61 +348,92 @@ export default function Dashboard() {
 
   // -- Summary calculation ----------------------------------------------------
 
-  const summary: DashboardSummary = gigs.reduce(
-    (acc, g) => {
-      const c = calculateGigFinancials(
-        g.performanceFee,
-        g.technicalFee,
-        g.managerBonusType,
-        g.managerBonusAmount,
-        g.numberOfMusicians,
-        g.claimPerformanceFee,
-        g.claimTechnicalFee,
-        g.technicalFeeClaimAmount,
-        g.advanceReceivedByManager,
-        g.advanceToMusicians,
-        g.isCharity
-      );
-      acc.totalGigs += 1;
-      acc.totalEarnings += c.myEarnings;
-      if (g.paymentReceived) {
-        // Full payment received
-        acc.totalEarningsReceived += c.myEarnings;
-      } else {
-        // Only advance received so far, rest is still pending
-        acc.totalEarningsReceived += c.myEarningsAlreadyReceived;
-        acc.totalEarningsPending += c.myEarningsStillOwed;
-        
-        // Track pending amount by band/performer
-        const bandName = g.performers || "Unknown";
-        const totalGigValue = c.totalReceived;
-        const pendingAmount = Math.max(0, totalGigValue - g.advanceReceivedByManager);
-        const existing = acc.pendingByBand.find(b => b.band === bandName);
-        if (existing) {
-          existing.amount += pendingAmount;
-          existing.count += 1;
-        } else {
-          acc.pendingByBand.push({
-            band: bandName,
-            amount: pendingAmount,
-            count: 1,
-          });
-        }
-      }
-      if (!g.paymentReceived) acc.pendingClientPayments += 1;
-      if (!g.bandPaid && g.managerHandlesDistribution) acc.outstandingToBand += c.amountOwedToOthers;
-      return acc;
-    },
-    {
-      totalGigs: 0,
-      totalEarnings: 0,
-      totalEarningsReceived: 0,
-      totalEarningsPending: 0,
-      pendingClientPayments: 0,
-      outstandingToBand: 0,
-      pendingByBand: [],
-    } as DashboardSummary
+  const summary: DashboardSummary = useMemo(
+    () =>
+      gigs.reduce(
+        (acc, g) => {
+          const c = calculateGigFinancials(
+            g.performanceFee,
+            g.technicalFee,
+            g.managerBonusType,
+            g.managerBonusAmount,
+            g.numberOfMusicians,
+            g.claimPerformanceFee,
+            g.claimTechnicalFee,
+            g.technicalFeeClaimAmount,
+            g.advanceReceivedByManager,
+            g.advanceToMusicians,
+            g.isCharity
+          );
+          acc.totalGigs += 1;
+          acc.totalEarnings += c.myEarnings;
+          if (g.paymentReceived) {
+            // Full payment received
+            acc.totalEarningsReceived += c.myEarnings;
+          } else {
+            // Only advance received so far, rest is still pending
+            acc.totalEarningsReceived += c.myEarningsAlreadyReceived;
+            acc.totalEarningsPending += c.myEarningsStillOwed;
+
+            // Track pending amount by band/performer
+            const bandName = g.performers || "Unknown";
+            const totalGigValue = c.totalReceived;
+            const pendingAmount = Math.max(0, totalGigValue - g.advanceReceivedByManager);
+            const existing = acc.pendingByBand.find((b) => b.band === bandName);
+            if (existing) {
+              existing.amount += pendingAmount;
+              existing.count += 1;
+            } else {
+              acc.pendingByBand.push({
+                band: bandName,
+                amount: pendingAmount,
+                count: 1,
+              });
+            }
+          }
+          if (!g.paymentReceived) acc.pendingClientPayments += 1;
+          if (!g.bandPaid && g.managerHandlesDistribution) acc.outstandingToBand += c.amountOwedToOthers;
+          return acc;
+        },
+        {
+          totalGigs: 0,
+          totalEarnings: 0,
+          totalEarningsReceived: 0,
+          totalEarningsPending: 0,
+          pendingClientPayments: 0,
+          outstandingToBand: 0,
+          pendingByBand: [],
+        } as DashboardSummary
+      ),
+    [gigs]
   );
+
+  const { activeGigs, handledGigs } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const active = gigs
+      .filter((gig) => {
+        const gigDate = new Date(gig.date);
+        gigDate.setHours(0, 0, 0, 0);
+        const isUpcoming = gigDate >= today;
+        const isUnpaid = !gig.paymentReceived || !gig.bandPaid;
+        return isUpcoming || isUnpaid;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const handled = gigs
+      .filter((gig) => {
+        const gigDate = new Date(gig.date);
+        gigDate.setHours(0, 0, 0, 0);
+        const isPast = gigDate < today;
+        const isFullyPaid = gig.paymentReceived && gig.bandPaid;
+        return isPast && isFullyPaid;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return { activeGigs: active, handledGigs: handled };
+  }, [gigs]);
 
   // -- Render -----------------------------------------------------------------
 
@@ -725,32 +768,9 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-6">
-                {(() => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  
-                  // Smart sorting: active gigs (upcoming or unpaid) vs handled gigs (past & fully paid)
-                  const activeGigs = gigs.filter((gig) => {
-                    const gigDate = new Date(gig.date);
-                    gigDate.setHours(0, 0, 0, 0);
-                    const isUpcoming = gigDate >= today;
-                    const isUnpaid = !gig.paymentReceived || !gig.bandPaid;
-                    return isUpcoming || isUnpaid;
-                  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-                  const handledGigs = gigs.filter((gig) => {
-                    const gigDate = new Date(gig.date);
-                    gigDate.setHours(0, 0, 0, 0);
-                    const isPast = gigDate < today;
-                    const isFullyPaid = gig.paymentReceived && gig.bandPaid;
-                    return isPast && isFullyPaid;
-                  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                  return (
-                    <>
-                      {/* Active Gigs Section */}
-                      {activeGigs.length > 0 && (
-                        <div>
+                {/* Active Gigs Section */}
+                {activeGigs.length > 0 && (
+                  <div>
                           <div className="mb-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
@@ -820,7 +840,7 @@ export default function Dashboard() {
                               <GigCard
                                 key={gig.id}
                                 gig={gig}
-                                onEdit={(g) => setEditGig(g)}
+                                onEdit={handleEditGig}
                                 fmtCurrency={fmtCurrency}
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
@@ -830,12 +850,12 @@ export default function Dashboard() {
                               />
                             ))}
                           </div>
-                        </div>
-                      )}
+                  </div>
+                )}
 
-                      {/* Handled Gigs Section */}
-                      {handledGigs.length > 0 && (
-                        <div>
+                {/* Handled Gigs Section */}
+                {handledGigs.length > 0 && (
+                  <div>
                           <div className="mb-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
@@ -873,7 +893,7 @@ export default function Dashboard() {
                               <GigCard
                                 key={gig.id}
                                 gig={gig}
-                                onEdit={(g) => setEditGig(g)}
+                                onEdit={handleEditGig}
                                 fmtCurrency={fmtCurrency}
                                 claimPerformanceFee={gig.claimPerformanceFee}
                                 claimTechnicalFee={gig.claimTechnicalFee}
@@ -883,11 +903,8 @@ export default function Dashboard() {
                               />
                             ))}
                           </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -895,7 +912,7 @@ export default function Dashboard() {
           <Suspense fallback={<TabLoader />}>
             <AllGigsTab 
               gigs={gigs}
-              onEdit={(g) => setEditGig(g)}
+              onEdit={handleEditGig}
               fmtCurrency={fmtCurrency}
               loading={loading}
             />
@@ -924,10 +941,7 @@ export default function Dashboard() {
           <Suspense fallback={<TabLoader />}>
             <CalendarView 
               fmtCurrency={fmtCurrency} 
-              onEditGig={(gigId) => {
-                const gig = gigs.find(g => g.id === gigId);
-                if (gig) setEditGig(gig);
-              }} 
+              onEditGig={handleEditGigById} 
             />
           </Suspense>
         ) : null}

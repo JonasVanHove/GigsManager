@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey } from "@/lib/cache";
 
 // -- Validation helper --------------------------------------------------------
 
@@ -97,9 +98,13 @@ function toGigData(body: Record<string, unknown>, userId: string) {
 // Requires: Authorization: Bearer <token>
 
 async function requireAuth(request: NextRequest) {
+  const isDev = process.env.NODE_ENV !== "production";
+  const logDebug = (...args: unknown[]) => {
+    if (isDev) console.log(...args);
+  };
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    console.warn("[API Auth] Missing Authorization header");
+    logDebug("[API Auth] Missing Authorization header");
     return NextResponse.json(
       { error: "Unauthorized: missing token" },
       { status: 401 }
@@ -107,15 +112,15 @@ async function requireAuth(request: NextRequest) {
   }
 
   const token = authHeader.slice(7);
-  console.log("[API Auth] Token received, length:", token.length);
-  console.log("[API Auth] Token starts with:", token.substring(0, 20));
+  logDebug("[API Auth] Token received, length:", token.length);
+  logDebug("[API Auth] Token starts with:", token.substring(0, 20));
   
   // Check environment
   const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-  console.log("[API Auth] SUPABASE_SERVICE_ROLE_KEY set:", hasServiceKey);
+  logDebug("[API Auth] SUPABASE_SERVICE_ROLE_KEY set:", hasServiceKey);
   
   try {
-    console.log("[API Auth] Calling supabaseAdmin.auth.getUser...");
+    logDebug("[API Auth] Calling supabaseAdmin.auth.getUser...");
     const { data, error } = await supabaseAdmin.auth.getUser(token);
     
     if (error) {
@@ -144,7 +149,7 @@ async function requireAuth(request: NextRequest) {
       );
     }
     
-    console.log("[API Auth] Token valid for user:", data.user.id);
+    logDebug("[API Auth] Token valid for user:", data.user.id);
     
     // Get or create user record
     const user = await getOrCreateUser(
@@ -153,7 +158,7 @@ async function requireAuth(request: NextRequest) {
       data.user.user_metadata?.name
     );
     
-    console.log("[API Auth] DB user ready:", user.id);
+    logDebug("[API Auth] DB user ready:", user.id);
     return { user };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -175,13 +180,15 @@ export async function GET(request: NextRequest) {
   const { user } = authResult as { user: any };
 
   try {
-    console.log("[GET /api/gigs] Authenticated user:", user.id);
-    
     const { searchParams } = new URL(request.url);
     const take = Math.min(Number(searchParams.get("take")) || 100, 200);
     const skip = Math.max(Number(searchParams.get("skip")) || 0, 0);
 
-    console.log("[GET /api/gigs] Querying gigs for user:", user.id);
+    const cacheKey = getCacheKey(user.id, "gigs", { take, skip });
+    const cached = getCacheEntry<{ data: unknown; total: number; take: number; skip: number }>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
     
     const [gigs, total] = await Promise.all([
       prisma.gig.findMany({
@@ -193,8 +200,9 @@ export async function GET(request: NextRequest) {
       prisma.gig.count({ where: { userId: user.id } }),
     ]);
 
-    console.log("[GET /api/gigs] Success: found", gigs.length, "of", total, "gigs");
-    return NextResponse.json({ data: gigs, total, take, skip });
+    const payload = { data: gigs, total, take, skip };
+    setCacheEntry(cacheKey, payload, 15);
+    return NextResponse.json(payload);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("[GET /api/gigs] Exception:", errorMsg, error);
@@ -221,6 +229,7 @@ export async function POST(request: NextRequest) {
     }
 
     const gig = await prisma.gig.create({ data: toGigData(body, user.id) });
+    invalidateCache(`${user.id}:gigs`);
 
     const bandMemberIds = Array.isArray(body.bandMemberIds)
       ? body.bandMemberIds.filter((id: unknown) => typeof id === "string")

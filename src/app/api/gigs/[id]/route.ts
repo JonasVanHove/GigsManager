@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { invalidateCache } from "@/lib/cache";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { Prisma } from "@prisma/client";
 import { getOrCreateUser } from "@/lib/auth-helpers";
@@ -130,6 +131,7 @@ export async function PUT(
         setlistId: body.setlistId ? String(body.setlistId) : null,
       },
     });
+    invalidateCache(`${user.id}:gigs`);
 
     // Trigger notifications and webhooks if payment status changed
     if (!existing.paymentReceived && body.paymentReceived) {
@@ -223,6 +225,7 @@ export async function DELETE(
     }
 
     await prisma.gig.delete({ where: { id: params.id } });
+    invalidateCache(`${user.id}:gigs`);
     return NextResponse.json({ message: "Gig deleted successfully" });
   } catch (error) {
     if (

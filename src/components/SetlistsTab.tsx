@@ -33,6 +33,7 @@ export default function SetlistsTab() {
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
@@ -127,6 +128,19 @@ export default function SetlistsTab() {
 
   const handleSelect = (setlist: Setlist) => {
     hydrateDraft(setlist);
+  };
+
+  const toggleExpanded = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleAddItem = (type: "song" | "note") => {
@@ -289,23 +303,102 @@ export default function SetlistsTab() {
           ) : setlists.length === 0 ? (
             <p className="text-xs text-slate-500 dark:text-slate-400">No setlists yet.</p>
           ) : (
-            setlists.map((setlist) => (
-              <button
-                key={setlist.id}
-                type="button"
-                onClick={() => handleSelect(setlist)}
-                className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                  selectedId === setlist.id
-                    ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/50 dark:bg-brand-950/30 dark:text-brand-200"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                }`}
-              >
-                <p className="font-medium">{setlist.title}</p>
-                <p className="mt-0.5 text-xs text-slate-400">
-                  {new Date(setlist.updatedAt).toLocaleDateString()}
-                </p>
-              </button>
-            ))
+            setlists.map((setlist) => {
+              const isExpanded = expandedIds.has(setlist.id);
+              const itemCount = setlist.items?.length || 0;
+              return (
+                <div key={setlist.id} className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div
+                    className={`flex items-start gap-2 px-3 py-2 text-left text-sm transition ${
+                      selectedId === setlist.id
+                        ? "border-brand-400 bg-brand-50 text-brand-700 dark:border-brand-500/50 dark:bg-brand-950/30 dark:text-brand-200"
+                        : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => toggleExpanded(setlist.id, e)}
+                      className="mt-0.5 flex-shrink-0 rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      <svg
+                        className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(setlist)}
+                      className="flex-1 text-left"
+                    >
+                      <p className="font-medium">{setlist.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        {itemCount} {itemCount === 1 ? "item" : "items"} · {new Date(setlist.updatedAt).toLocaleDateString()}
+                      </p>
+                    </button>
+                  </div>
+                  {isExpanded && setlist.items && setlist.items.length > 0 && (
+                    <div className="border-t border-slate-200 bg-slate-50/50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/30">
+                      <div className="space-y-1.5">
+                        {setlist.items
+                          .sort((a, b) => a.order - b.order)
+                          .map((item, idx) => (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-2 rounded px-2 py-1.5 text-xs"
+                            >
+                              <span className="mt-0.5 flex-shrink-0 font-mono text-[10px] text-slate-400">
+                                {idx + 1}.
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                {item.type === "song" ? (
+                                  <>
+                                    <div className="flex items-center gap-1.5">
+                                      <svg className="h-3 w-3 flex-shrink-0 text-brand-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+                                      </svg>
+                                      <p className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                                        {item.title || "Untitled"}
+                                      </p>
+                                    </div>
+                                    {(item.chords || item.tuning) && (
+                                      <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                        {item.tuning && <span className="font-medium">{item.tuning}</span>}
+                                        {item.tuning && item.chords && <span className="mx-1">·</span>}
+                                        {item.chords && <span>{item.chords}</span>}
+                                      </p>
+                                    )}
+                                    {item.notes && (
+                                      <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                                        {item.notes}
+                                      </p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-1.5">
+                                      <svg className="h-3 w-3 flex-shrink-0 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                      </svg>
+                                      <p className="italic text-slate-600 dark:text-slate-300 line-clamp-2">
+                                        {item.notes || "Note"}
+                                      </p>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>

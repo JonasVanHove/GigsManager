@@ -23,6 +23,8 @@ const emptyForm: GigFormData = {
   date: "",
   performers: "",
   numberOfMusicians: 1,
+  performanceLineup: "",
+  managerPerforms: true,
   isCharity: false,
   performanceFee: 0,
   technicalFee: 0,
@@ -50,6 +52,8 @@ function gigToFormData(gig: Gig): GigFormData {
     date: gig.date ? gig.date.split("T")[0] : "",
     performers: gig.performers,
     numberOfMusicians: gig.numberOfMusicians,
+    performanceLineup: gig.performanceLineup ?? "",
+    managerPerforms: gig.managerPerforms ?? true,
     isCharity: gig.isCharity ?? false,
     performanceFee: gig.performanceFee,
     technicalFee: gig.technicalFee,
@@ -75,7 +79,7 @@ function gigToFormData(gig: Gig): GigFormData {
 }
 
 export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormProps) {
-  const { getAccessToken } = useAuth();
+  const { getAccessToken, user } = useAuth();
   const [form, setForm] = useState<GigFormData>(
     gig ? gigToFormData(gig) : emptyForm
   );
@@ -92,6 +96,12 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   const [customBands, setCustomBands] = useState<string[]>([]);
   const [selectedBandName, setSelectedBandName] = useState("");
   const [newBandName, setNewBandName] = useState("");
+
+  const parseNames = (value: string) =>
+    value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
 
   // Live financial preview
   const calc = useMemo(
@@ -206,11 +216,8 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
 
   useEffect(() => {
     if (!bandMembers.length || selectedMemberIds.length > 0) return;
-    if (!form.performers) return;
-    const names = form.performers
-      .split(",")
-      .map((name) => name.trim())
-      .filter(Boolean);
+    if (!form.performanceLineup) return;
+    const names = parseNames(form.performanceLineup);
     if (!names.length) return;
     const matched = bandMembers
       .filter((member) => names.some((n) => n.toLowerCase() === member.name.toLowerCase()))
@@ -218,16 +225,30 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     if (matched.length) {
       setSelectedMemberIds(matched);
     }
-  }, [bandMembers, form.performers, selectedMemberIds.length]);
+  }, [bandMembers, form.performanceLineup, selectedMemberIds.length]);
 
   useEffect(() => {
     if (!syncFromMembers) return;
-    if (!selectedMemberIds.length) return;
     const selected = bandMembers.filter((member) => selectedMemberIds.includes(member.id));
-    if (!selected.length) return;
-    set("performers", selected.map((member) => member.name).join(", "));
-    set("numberOfMusicians", selected.length);
-  }, [syncFromMembers, selectedMemberIds, bandMembers]);
+    const selectedNames = selected.map((member) => member.name);
+    const existingNames = parseNames(form.performanceLineup);
+    const selectedSet = new Set(selectedNames.map((name) => name.toLowerCase()));
+    const extraNames = existingNames.filter(
+      (name) => !selectedSet.has(name.toLowerCase())
+    );
+    const mergedNames = [...selectedNames, ...extraNames];
+    const mergedLineup = mergedNames.join(", ");
+    if (mergedLineup !== form.performanceLineup) {
+      set("performanceLineup", mergedLineup);
+    }
+    const totalMusicians = Math.max(
+      1,
+      selectedNames.length + extraNames.length + (form.managerPerforms ? 1 : 0)
+    );
+    if (totalMusicians !== form.numberOfMusicians) {
+      set("numberOfMusicians", totalMusicians);
+    }
+  }, [syncFromMembers, selectedMemberIds, bandMembers, form.performanceLineup, form.managerPerforms]);
 
   const filteredMembers = useMemo(() => {
     const search = memberSearch.trim().toLowerCase();
@@ -436,16 +457,32 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
               <div>
                 <label className={labelCls}>
-                  Performers <span className="text-red-500">*</span>
+                  Band / Artist <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   className={inputCls}
-                  placeholder="Band name or members"
+                  placeholder="e.g. The Blue Notes"
                   value={form.performers}
                   onChange={(e) => set("performers", e.target.value)}
                   required
                 />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  This is the band or artist name, not the member list.
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Performance line-up</label>
+                <input
+                  type="text"
+                  className={inputCls}
+                  placeholder="e.g. Alice, Bob, Chris"
+                  value={form.performanceLineup}
+                  onChange={(e) => set("performanceLineup", e.target.value)}
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Names who played in this performance. Use commas to separate.
+                </p>
               </div>
               <div>
                 <label className={labelCls}>Band / Artist</label>
@@ -507,6 +544,20 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                   }}
                   required
                 />
+                <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={form.managerPerforms}
+                    onChange={(e) => set("managerPerforms", e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span>I play in this performance</span>
+                </div>
+                {syncFromMembers && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Count auto-syncs from selected members + line-up names + me.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -517,7 +568,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                     Band members
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Select members to auto-fill performers and count.
+                    Select members to sync the line-up and musician count.
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">

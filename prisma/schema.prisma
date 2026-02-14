@@ -17,6 +17,8 @@ model Gig {
   date            DateTime
   performers      String // band name or comma-separated member names
   numberOfMusicians Int
+  performanceLineup String? // optional names for this performance
+  managerPerforms Boolean @default(true) // whether the user performs in this gig
   
   // ── Band members for this gig ──────────────────────────
   bandMembers     GigBandMember[]

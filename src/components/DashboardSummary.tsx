@@ -110,73 +110,75 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </div>
 
         {/* Total Earnings Card - Expandable */}
-        <div className="sm:col-span-3">
+        <div className="col-span-2 sm:col-span-3">
           <div
             role="button"
             tabIndex={0}
             onClick={() => toggleCard("earnings")}
             onKeyDown={(event) => handleCardKeyDown(event, "earnings")}
-            className="w-full rounded-xl border-2 border-brand-600 bg-gradient-to-br from-brand-600/10 to-brand-500/5 p-3 shadow-sm transition hover:shadow-lg hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-500 dark:from-brand-500/20 dark:to-brand-600/10 dark:hover:border-brand-400"
+            className="w-full rounded-xl border-2 border-brand-600 bg-gradient-to-br from-brand-600/10 to-brand-500/5 p-2 sm:p-3 shadow-sm transition hover:shadow-lg hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-brand-500 dark:from-brand-500/20 dark:to-brand-600/10 dark:hover:border-brand-400"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 text-left">
+            <div className="flex items-start justify-between gap-2 sm:gap-3">
+              <div className="flex-1 text-left min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
                   My Earnings
                 </p>
-                <p className="mt-1 text-xl font-bold text-brand-800 dark:text-brand-300">
+                <p className="mt-1 text-base sm:text-xl font-bold text-brand-800 dark:text-brand-300">
                   {fmtCurrency(summary.totalEarnings)}
                 </p>
-                <p className="mt-1 text-xs text-brand-600 dark:text-brand-400">
+                <p className="mt-1 text-xs text-brand-600 dark:text-brand-400 hidden sm:block">
                   Click to see breakdown →
                 </p>
               </div>
-              <XAITooltip
-                title="My Earnings"
-                description="Total money you've earned from all performances based on claims and bonus settings."
-                tips={[
-                  "Only includes fees & bonuses you claim",
-                  "Updates when payment status changes",
-                  "Click card to see received vs pending",
-                ]}
-              />
+              <div className="flex-shrink-0">
+                <XAITooltip
+                  title="My Earnings"
+                  description="Total money you've earned from all performances based on claims and bonus settings."
+                  tips={[
+                    "Only includes fees & bonuses you claim",
+                    "Updates when payment status changes",
+                    "Click card to see received vs pending",
+                  ]}
+                />
+              </div>
             </div>
           </div>
 
           {/* Expanded earnings breakdown with band details */}
           {expandedCard === "earnings" && (
-            <div className="mt-3 space-y-3">
+            <div className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
               {/* Summary row */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border-2 border-lime-500 bg-lime-500/10 p-2.5 dark:border-lime-400 dark:bg-lime-500/20">
+                <div className="rounded-lg border-2 border-lime-500 bg-lime-500/10 p-2 sm:p-2.5 dark:border-lime-400 dark:bg-lime-500/20">
                   <p className="text-xs font-medium text-lime-700 dark:text-lime-300">
                     ✓ Received
                   </p>
-                  <p className="mt-0.5 font-bold text-lime-800 dark:text-lime-200">
+                  <p className="mt-0.5 font-bold text-lime-800 dark:text-lime-200 text-sm sm:text-base">
                     {fmtCurrency(summary.totalEarningsReceived)}
                   </p>
                 </div>
-                <div className="rounded-lg border-2 border-orange-500 bg-orange-500/10 p-2.5 dark:border-orange-400 dark:bg-orange-500/20">
+                <div className="rounded-lg border-2 border-orange-500 bg-orange-500/10 p-2 sm:p-2.5 dark:border-orange-400 dark:bg-orange-500/20">
                   <p className="text-xs font-medium text-orange-700 dark:text-orange-300">
                     ⏳ Pending
                   </p>
-                  <p className="mt-0.5 font-bold text-orange-800 dark:text-orange-200">
+                  <p className="mt-0.5 font-bold text-orange-800 dark:text-orange-200 text-sm sm:text-base">
                     {fmtCurrency(summary.totalEarningsPending)}
                   </p>
                 </div>
               </div>
 
               {/* Band breakdown */}
-              <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700 dark:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600">
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400">
+              <div className="max-h-48 sm:max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-2.5 dark:border-slate-700 dark:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800/50 py-1">
                   By Band
                 </p>
                 {sortedBands.length === 0 ? (
                   <p className="text-xs text-slate-500 dark:text-slate-400">No bands yet</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {sortedBands.map(([band, data]) => (
-                      <div key={band} className="rounded border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
-                        <div className="flex items-center justify-between gap-2">
+                      <div key={band} className="rounded border border-slate-200 bg-white p-1.5 sm:p-2 dark:border-slate-700 dark:bg-slate-800">
+                        <div className="flex items-center justify-between gap-1.5">
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-medium text-slate-900 dark:text-slate-100">
                               {band}
@@ -185,11 +187,11 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                               {data.gigs} gig{data.gigs !== 1 ? "s" : ""}
                             </p>
                           </div>
-                          <div className="flex flex-col items-end gap-0.5">
-                            <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                            <p className="font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
                               {fmtCurrency(data.earnings)}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
                               <span className="text-lime-600 dark:text-lime-400">{fmtCurrency(data.received)}</span>
                               {" / "}
                               <span className="text-orange-600 dark:text-orange-400">{fmtCurrency(data.pending)}</span>
@@ -225,12 +227,12 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 {summary.pendingClientPayments}
               </p>
               {expandedCard === "pending" && (
-                <div className="mt-2">
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mb-2">
+                <div className="mt-2 sm:mt-3">
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mb-2 font-medium">
                     Gigs awaiting payment
                   </p>
                   {summary.pendingByBand.length > 0 && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 max-h-96 overflow-y-auto">
                       {summary.pendingByBand
                         .sort((a, b) => b.amount - a.amount)
                         .map((item) => {
@@ -252,11 +254,11 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                     toggleBand(item.band);
                                   }
                                 }}
-                                className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-orange-500/10 dark:bg-orange-500/20 cursor-pointer hover:bg-orange-500/20 dark:hover:bg-orange-500/30 transition-colors"
+                                className="flex items-center justify-between px-2 py-1.5 sm:py-2 rounded-lg bg-orange-500/10 dark:bg-orange-500/20 cursor-pointer hover:bg-orange-500/20 dark:hover:bg-orange-500/30 transition-colors gap-2"
                               >
                                 <div className="flex-1 min-w-0 flex items-center gap-1.5">
                                   <svg
-                                    className={`h-3 w-3 text-orange-700 dark:text-orange-300 transition-transform ${
+                                    className={`h-3 w-3 sm:h-4 sm:w-4 text-orange-700 dark:text-orange-300 transition-transform flex-shrink-0 ${
                                       isExpanded ? "rotate-90" : ""
                                     }`}
                                     fill="none"
@@ -274,13 +276,13 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                     </p>
                                   </div>
                                 </div>
-                                <p className="text-xs font-semibold text-orange-800 dark:text-orange-200 ml-2">
+                                <p className="text-xs sm:text-sm font-semibold text-orange-800 dark:text-orange-200 whitespace-nowrap flex-shrink-0">
                                   {fmtCurrency(item.amount)}
                                 </p>
                               </div>
 
                               {isExpanded && bandGigs.length > 0 && (
-                                <div className="mt-1 ml-4 space-y-1 border-l-2 border-orange-300 dark:border-orange-600 pl-2">
+                                <div className="mt-1.5 ml-4 sm:ml-5 space-y-1 border-l-2 border-orange-300 dark:border-orange-600 pl-2.5 sm:pl-3">
                                   {bandGigs
                                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                                     .map((gig) => {
@@ -303,13 +305,13 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                       return (
                                         <div
                                           key={gig.id}
-                                          className={`rounded px-2 py-1.5 text-xs ${
+                                          className={`rounded px-2 py-1.5 sm:py-2 text-xs ${
                                             isOverdue
                                               ? "bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700"
-                                              : "bg-orange-50 dark:bg-orange-900/20"
+                                              : "bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800"
                                           }`}
                                         >
-                                          <div className="flex items-start justify-between gap-2">
+                                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2">
                                             <div className="flex-1 min-w-0">
                                               <p
                                                 className={`font-medium truncate ${
@@ -338,7 +340,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                               </p>
                                             </div>
                                             <p
-                                              className={`font-semibold whitespace-nowrap ${
+                                              className={`font-semibold whitespace-nowrap flex-shrink-0 ${
                                                 isOverdue
                                                   ? "text-red-800 dark:text-red-200"
                                                   : "text-orange-800 dark:text-orange-200"

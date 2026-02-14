@@ -498,7 +498,7 @@ export default function Dashboard() {
               className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 rounded-lg"
             />
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
-              Gigs<span className="text-brand-600 dark:text-brand-400">Manager</span>
+              Gigs<span className="text-gold-600 dark:text-gold-400">Manager</span>
             </h1>
           </div>
 

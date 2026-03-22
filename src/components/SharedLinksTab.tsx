@@ -81,9 +81,12 @@ export default function SharedLinksTab() {
   const [gigs, setGigs] = useState<Gig[]>([]);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [password, setPassword] = useState("");
+  const [clearPassword, setClearPassword] = useState(false);
   const [selectionMode, setSelectionMode] = useState<GigSelectionMode>("individual");
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
@@ -173,10 +176,21 @@ export default function SharedLinksTab() {
     setTitle("");
     setExpiresAt("");
     setPassword("");
+    setClearPassword(false);
     setSelectionMode("individual");
     setSelectedArtists(new Set());
     setSelectedGigIds(new Set());
     setVisibility(DEFAULT_SHARE_LINK_VISIBILITY);
+  };
+
+  const openEditModal = (link: ShareLinkItem) => {
+    setEditingLinkId(link.id);
+    setTitle(link.title || "");
+    setExpiresAt(link.expiresAt ? new Date(link.expiresAt).toISOString().split("T")[0] : "");
+    setPassword("");
+    setClearPassword(false);
+    setVisibility(link.visibility || DEFAULT_SHARE_LINK_VISIBILITY);
+    setShowEditModal(true);
   };
 
   const toggleGig = (gigId: string) => {
@@ -315,6 +329,50 @@ export default function SharedLinksTab() {
     }
   };
 
+  const handleUpdatePermissions = async () => {
+    if (!editingLinkId) return;
+
+    try {
+      setSaving(true);
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error("Unable to update share link. Please refresh your session.");
+        return;
+      }
+
+      const res = await fetch(`/api/share-links/${editingLinkId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim() || null,
+          expiresAt: expiresAt || null,
+          password: password.trim() || null,
+          clearPassword,
+          visibility,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update share link");
+      }
+
+      toast.success("Share link permissions updated.");
+      setShowEditModal(false);
+      setEditingLinkId(null);
+      resetForm();
+      await loadData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update share link";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const copyLink = async (token: string) => {
     try {
       const url = `${window.location.origin}/share/${token}`;
@@ -378,6 +436,12 @@ export default function SharedLinksTab() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => openEditModal(link)}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Edit permissions
+                  </button>
                   <button
                     onClick={() => copyLink(link.token)}
                     className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -610,6 +674,127 @@ export default function SharedLinksTab() {
                 className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
               >
                 {saving ? "Creating..." : "Create Link"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-slate-950/60 px-3 py-6 sm:px-6 sm:py-10">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h4 className="text-lg font-semibold text-slate-900 dark:text-white">Edit Share Link</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Update permissions and access settings.</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingLinkId(null);
+                  resetForm();
+                }}
+                className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <section className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Basic Settings</h5>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Title (optional)</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Musicians Overview"
+                  className={baseInputClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Expiration date (optional)</label>
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className={baseInputClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Set new password (optional)</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Leave empty to keep current password"
+                  className={baseInputClass}
+                />
+                <label className="mt-2 inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={clearPassword}
+                    onChange={(e) => setClearPassword(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                  />
+                  Remove password protection
+                </label>
+              </div>
+            </section>
+
+            <section className="mt-4 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <div className="mb-2 flex items-center justify-between">
+                <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Visibility Settings</h5>
+                <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-600 dark:text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={visibility.hideAllFinancialInformation}
+                    onChange={() => toggleVisibility("hideAllFinancialInformation")}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                  />
+                  Hide all financial information
+                </label>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {visibilityGroups.map((group) => (
+                  <div key={group.title} className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{group.title}</p>
+                    <div className="space-y-1.5">
+                      {group.items.map((item) => (
+                        <label key={item.key} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                          <input
+                            type="checkbox"
+                            checked={visibility[item.key]}
+                            onChange={() => toggleVisibility(item.key)}
+                            disabled={Boolean(item.financial && visibility.hideAllFinancialInformation)}
+                            className="h-4 w-4 rounded border-slate-300 text-brand-600 disabled:opacity-50"
+                          />
+                          {item.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingLinkId(null);
+                  resetForm();
+                }}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdatePermissions}
+                disabled={saving}
+                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>

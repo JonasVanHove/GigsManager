@@ -55,6 +55,8 @@ export default function Dashboard() {
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(true);
+  const [isActiveSectionExpanded, setIsActiveSectionExpanded] = useState(true);
+  const [isHandledSectionExpanded, setIsHandledSectionExpanded] = useState(false);
   const fetchGigsInFlightRef = useRef(false);
 
   // Load overview expanded preference from localStorage
@@ -1081,6 +1083,21 @@ export default function Dashboard() {
                   <div>
                           <div className="mb-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setIsActiveSectionExpanded((prev) => !prev)}
+                                className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200"
+                                title={isActiveSectionExpanded ? "Collapse section" : "Expand section"}
+                              >
+                                <svg
+                                  className={`h-4 w-4 transition-transform ${isActiveSectionExpanded ? "rotate-0" : "-rotate-90"}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={2}
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
                               <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
                                 Active Performances
                               </h3>
@@ -1088,7 +1105,7 @@ export default function Dashboard() {
                                 {activeGigs.length}
                               </span>
                             </div>
-                            {activeGigs.length > 0 && (
+                            {activeGigs.length > 0 && isActiveSectionExpanded && (
                               <div className="flex gap-1">
                                 <button
                                   onClick={handleExpandAll}
@@ -1143,21 +1160,23 @@ export default function Dashboard() {
                               </div>
                             )}
                           </div>
-                          <div className="grid gap-5">
-                            {activeGigs.map((gig) => (
-                              <GigCard
-                                key={gig.id}
-                                gig={gig}
-                                onEdit={handleEditGig}
-                                fmtCurrency={fmtCurrency}
-                                claimPerformanceFee={gig.claimPerformanceFee}
-                                claimTechnicalFee={gig.claimTechnicalFee}
-                                isExpandedGlobal={globalExpandState}
-                                isSelected={selectedGigIds.has(gig.id)}
-                                onSelect={handleToggleGigSelection}
-                              />
-                            ))}
-                          </div>
+                          {isActiveSectionExpanded && (
+                            <div className="grid gap-5">
+                              {activeGigs.map((gig) => (
+                                <GigCard
+                                  key={gig.id}
+                                  gig={gig}
+                                  onEdit={handleEditGig}
+                                  fmtCurrency={fmtCurrency}
+                                  claimPerformanceFee={gig.claimPerformanceFee}
+                                  claimTechnicalFee={gig.claimTechnicalFee}
+                                  isExpandedGlobal={globalExpandState}
+                                  isSelected={selectedGigIds.has(gig.id)}
+                                  onSelect={handleToggleGigSelection}
+                                />
+                              ))}
+                            </div>
+                          )}
                   </div>
                 )}
 
@@ -1166,6 +1185,21 @@ export default function Dashboard() {
                   <div>
                           <div className="mb-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setIsHandledSectionExpanded((prev) => !prev)}
+                                className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200"
+                                title={isHandledSectionExpanded ? "Collapse section" : "Expand section"}
+                              >
+                                <svg
+                                  className={`h-4 w-4 transition-transform ${isHandledSectionExpanded ? "rotate-0" : "-rotate-90"}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={2}
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
                               <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
                                 Handled Performances
                               </h3>
@@ -1173,7 +1207,7 @@ export default function Dashboard() {
                                 {handledGigs.length}
                               </span>
                             </div>
-                            {handledGigs.length > 0 && (
+                            {handledGigs.length > 0 && isHandledSectionExpanded && (
                               <div className="flex gap-1">
                                 <button
                                   onClick={handleExpandAll}
@@ -1196,21 +1230,23 @@ export default function Dashboard() {
                               </div>
                             )}
                           </div>
-                          <div className="grid gap-5">
-                            {handledGigs.map((gig) => (
-                              <GigCard
-                                key={gig.id}
-                                gig={gig}
-                                onEdit={handleEditGig}
-                                fmtCurrency={fmtCurrency}
-                                claimPerformanceFee={gig.claimPerformanceFee}
-                                claimTechnicalFee={gig.claimTechnicalFee}
-                                isExpandedGlobal={globalExpandState}
-                                isSelected={selectedGigIds.has(gig.id)}
-                                onSelect={handleToggleGigSelection}
-                              />
-                            ))}
-                          </div>
+                          {isHandledSectionExpanded && (
+                            <div className="grid gap-5">
+                              {handledGigs.map((gig) => (
+                                <GigCard
+                                  key={gig.id}
+                                  gig={gig}
+                                  onEdit={handleEditGig}
+                                  fmtCurrency={fmtCurrency}
+                                  claimPerformanceFee={gig.claimPerformanceFee}
+                                  claimTechnicalFee={gig.claimTechnicalFee}
+                                  isExpandedGlobal={globalExpandState}
+                                  isSelected={selectedGigIds.has(gig.id)}
+                                  onSelect={handleToggleGigSelection}
+                                />
+                              ))}
+                            </div>
+                          )}
                   </div>
                 )}
               </div>

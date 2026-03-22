@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { APP_VERSION } from "@/lib/version";
+import { APP_VERSION_DISPLAY } from "@/lib/version";
 
 export default function Footer() {
   return (
@@ -13,7 +13,7 @@ export default function Footer() {
             {" "}by Jonas Van Hove
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-500">
-            v{APP_VERSION}
+            {APP_VERSION_DISPLAY}
           </p>
         </div>
       </div>

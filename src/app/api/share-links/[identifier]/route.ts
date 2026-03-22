@@ -5,6 +5,9 @@ import {
   getSharedGigFinancialSummary,
   normalizeShareLinkVisibility,
 } from "@/lib/share-links";
+import { ensureShareLinksSchema } from "@/lib/share-links-db";
+import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 function buildPublicGig(
   gig: {
@@ -69,6 +72,8 @@ export async function GET(
   const token = params.identifier;
 
   try {
+    await ensureShareLinksSchema();
+
     const link = await prisma.shareLink.findUnique({
       where: { token },
       select: {
@@ -199,6 +204,8 @@ export async function DELETE(
   const identifier = params.identifier;
 
   try {
+    await ensureShareLinksSchema();
+
     const link = await prisma.shareLink.findFirst({
       where: {
         userId: user.id,
@@ -220,6 +227,116 @@ export async function DELETE(
     console.error("[DELETE /api/share-links/[identifier]]", error);
     return NextResponse.json(
       { error: "Failed to delete share link" },
+      { status: 500 }
+    );
+  }
+}
+
+interface UpdateShareLinkBody {
+  title?: string | null;
+  expiresAt?: string | null;
+  password?: string | null;
+  clearPassword?: boolean;
+  visibility?: unknown;
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { identifier: string } }
+) {
+  const authResult = await requireAuthUser(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult;
+
+  const identifier = params.identifier;
+
+  try {
+    await ensureShareLinksSchema();
+
+    const existing = await prisma.shareLink.findFirst({
+      where: {
+        userId: user.id,
+        OR: [{ id: identifier }, { token: identifier }],
+      },
+      select: {
+        id: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Share link not found" }, { status: 404 });
+    }
+
+    const body = (await request.json()) as UpdateShareLinkBody;
+
+    const updateData: Prisma.ShareLinkUpdateInput = {};
+
+    if (typeof body.title !== "undefined") {
+      updateData.title = body.title?.trim() || null;
+    }
+
+    if (typeof body.expiresAt !== "undefined") {
+      if (!body.expiresAt) {
+        updateData.expiresAt = null;
+      } else {
+        const parsed = new Date(body.expiresAt);
+        if (Number.isNaN(parsed.getTime())) {
+          return NextResponse.json({ error: "Invalid expiration date" }, { status: 400 });
+        }
+        updateData.expiresAt = parsed;
+      }
+    }
+
+    if (typeof body.visibility !== "undefined") {
+      const visibility = normalizeShareLinkVisibility(body.visibility);
+      updateData.visibility = visibility as unknown as Prisma.InputJsonObject;
+    }
+
+    if (body.clearPassword) {
+      updateData.passwordHash = null;
+    } else if (typeof body.password === "string") {
+      const trimmed = body.password.trim();
+      if (trimmed.length > 0) {
+        updateData.passwordHash = await bcrypt.hash(trimmed, 10);
+      }
+    }
+
+    const updated = await prisma.shareLink.update({
+      where: { id: existing.id },
+      data: updateData,
+      select: {
+        id: true,
+        token: true,
+        title: true,
+        createdAt: true,
+        expiresAt: true,
+        passwordHash: true,
+        selectionMode: true,
+        includeArtists: true,
+        autoIncludeNewGigs: true,
+        visibility: true,
+        _count: { select: { gigs: true } },
+      },
+    });
+
+    return NextResponse.json({
+      id: updated.id,
+      token: updated.token,
+      title: updated.title,
+      createdAt: updated.createdAt,
+      expiresAt: updated.expiresAt,
+      passwordProtected: Boolean(updated.passwordHash),
+      gigCount: updated._count.gigs,
+      selectionMode: updated.selectionMode,
+      includeArtists: updated.includeArtists,
+      autoIncludeNewGigs: updated.autoIncludeNewGigs,
+      visibility: normalizeShareLinkVisibility(updated.visibility),
+    });
+  } catch (error) {
+    console.error("[PATCH /api/share-links/[identifier]]", error);
+    return NextResponse.json(
+      { error: "Failed to update share link" },
       { status: 500 }
     );
   }

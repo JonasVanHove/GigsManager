@@ -7,6 +7,7 @@ import {
   generateShareToken,
   normalizeShareLinkVisibility,
 } from "@/lib/share-links";
+import { ensureShareLinksSchema } from "@/lib/share-links-db";
 
 interface CreateShareLinkBody {
   title?: string;
@@ -34,6 +35,8 @@ export async function GET(request: NextRequest) {
   const { user } = authResult;
 
   try {
+    await ensureShareLinksSchema();
+
     const links = await prisma.shareLink.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
@@ -87,7 +90,9 @@ export async function GET(request: NextRequest) {
         passwordProtected: Boolean(link.passwordHash),
         gigCount: countByLinkId.get(link.id) ?? link._count.gigs,
         selectionMode: link.selectionMode,
+        includeArtists: link.includeArtists,
         autoIncludeNewGigs: link.autoIncludeNewGigs,
+        visibility: normalizeShareLinkVisibility(link.visibility),
         isExpired: Boolean(link.expiresAt && link.expiresAt < now),
       }))
     );
@@ -106,6 +111,8 @@ export async function POST(request: NextRequest) {
   const { user } = authResult;
 
   try {
+    await ensureShareLinksSchema();
+
     const body = (await request.json()) as CreateShareLinkBody;
     const gigIds = Array.isArray(body.gigIds)
       ? body.gigIds.filter((gigId): gigId is string => typeof gigId === "string")

@@ -208,7 +208,9 @@ export interface ShareLinkItem {
   passwordProtected: boolean;
   gigCount: number;
   selectionMode?: "all" | "artist" | "individual";
+  includeArtists?: string[];
   autoIncludeNewGigs?: boolean;
+  visibility?: ShareLinkVisibility;
   isExpired?: boolean;
 }
 

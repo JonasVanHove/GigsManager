@@ -8,41 +8,56 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+function safeExec(command) {
+  try {
+    return execSync(command, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
 try {
-  // Primary source: package.json version (most reliable)
   let version = 'unknown';
-  
+
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
     version = pkg.version;
-  } catch (err) {
-    // Fallback 1: Try git tags
-    try {
-      const tag = execSync('git describe --tags --always', {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr
-      }).trim();
-      
-      // Clean up the tag (remove 'v' prefix if present, and any trailing commits)
-      version = tag.replace(/^v/, '').split('-')[0];
-    } catch {
-      // Fallback 2: Use 'dev' for development
-      version = 'dev';
-    }
+  } catch {
+    const tag = safeExec('git describe --tags --always');
+    version = tag ? tag.replace(/^v/, '').split('-')[0] : 'dev';
   }
 
-  // Write to a version file that the app can import
+  const commitSha =
+    process.env.GITHUB_SHA ||
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.NETLIFY_COMMIT_REF ||
+    safeExec('git rev-parse HEAD') ||
+    'unknown';
+
+  const shortCommit = commitSha === 'unknown' ? 'unknown' : commitSha.slice(0, 7);
+
+  const refName =
+    process.env.GITHUB_REF_NAME ||
+    process.env.VERCEL_GIT_COMMIT_REF ||
+    process.env.BRANCH ||
+    safeExec('git rev-parse --abbrev-ref HEAD') ||
+    'local';
+
+  const display = shortCommit === 'unknown'
+    ? `v${version}`
+    : `v${version} (${shortCommit})`;
+
   const versionFile = path.join(__dirname, '../src', 'lib', 'version.ts');
-  const content = `// Auto-generated during build
-export const APP_VERSION = '${version}';\n`;
-  
+  const content = `// Auto-generated during build\nexport const APP_VERSION = '${version}';\nexport const APP_BUILD_COMMIT = '${shortCommit}';\nexport const APP_BUILD_REF = '${refName}';\nexport const APP_VERSION_DISPLAY = '${display}';\n`;
+
   fs.writeFileSync(versionFile, content);
-  console.log(`✓ Version file generated: v${version}`);
+  console.log(`✓ Version file generated: ${display}`);
 } catch (error) {
   console.error('Failed to generate version:', error.message);
-  // Don't fail the build, just use a fallback
   const versionFile = path.join(__dirname, '../src', 'lib', 'version.ts');
-  const content = `// Auto-generated during build (fallback)
-export const APP_VERSION = 'unknown';\n`;
+  const content = `// Auto-generated during build (fallback)\nexport const APP_VERSION = 'unknown';\nexport const APP_BUILD_COMMIT = 'unknown';\nexport const APP_BUILD_REF = 'unknown';\nexport const APP_VERSION_DISPLAY = 'vunknown';\n`;
   fs.writeFileSync(versionFile, content);
 }

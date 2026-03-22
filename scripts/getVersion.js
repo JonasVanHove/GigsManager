@@ -46,9 +46,7 @@ try {
     safeExec('git rev-parse --abbrev-ref HEAD') ||
     'local';
 
-  const display = shortCommit === 'unknown'
-    ? `v${version}`
-    : `v${version} (${shortCommit})`;
+  const display = `v${version}`;
 
   const versionFile = path.join(__dirname, '../src', 'lib', 'version.ts');
   const content = `// Auto-generated during build\nexport const APP_VERSION = '${version}';\nexport const APP_BUILD_COMMIT = '${shortCommit}';\nexport const APP_BUILD_REF = '${refName}';\nexport const APP_VERSION_DISPLAY = '${display}';\n`;

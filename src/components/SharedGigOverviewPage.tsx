@@ -65,6 +65,9 @@ export default function SharedGigOverviewPage({ token }: SharedGigOverviewPagePr
   const [expired, setExpired] = useState(false);
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [shareData, setShareData] = useState<SharePayload | null>(null);
+  const [isUpcomingSectionOpen, setIsUpcomingSectionOpen] = useState(true);
+  const [isPastSectionOpen, setIsPastSectionOpen] = useState(false);
+  const [expandedGigKeys, setExpandedGigKeys] = useState<Set<string>>(new Set());
 
   const loadShareData = useCallback(async () => {
     try {
@@ -161,15 +164,74 @@ export default function SharedGigOverviewPage({ token }: SharedGigOverviewPagePr
     );
   }, [shareData]);
 
-  const sortedGigs = useMemo(() => {
+  const preparedGigs = useMemo(() => {
     if (!shareData) return [];
-    return [...shareData.gigs].sort((a, b) => {
+    const sorted = [...shareData.gigs].sort((a, b) => {
       if (!a.gigDate && !b.gigDate) return 0;
       if (!a.gigDate) return 1;
       if (!b.gigDate) return -1;
       return new Date(a.gigDate).getTime() - new Date(b.gigDate).getTime();
     });
+
+    return sorted.map((gig, index) => {
+      const key = `${gig.gigDate || "undated"}-${gig.eventName || "event"}-${gig.performers || "performers"}-${index}`;
+      const isPast = isPastGigDate(gig.gigDate);
+      return { gig, key, isPast };
+    });
   }, [shareData]);
+
+  const upcomingGigs = useMemo(
+    () => preparedGigs.filter((item) => !item.isPast),
+    [preparedGigs]
+  );
+
+  const pastGigs = useMemo(
+    () => preparedGigs.filter((item) => item.isPast),
+    [preparedGigs]
+  );
+
+  useEffect(() => {
+    const defaultExpanded = new Set(upcomingGigs.map((item) => item.key));
+    setExpandedGigKeys(defaultExpanded);
+  }, [shareData, upcomingGigs]);
+
+  const expandAll = () => {
+    setExpandedGigKeys(new Set(preparedGigs.map((item) => item.key)));
+  };
+
+  const collapseAll = () => {
+    setExpandedGigKeys(new Set());
+  };
+
+  const expandSection = (section: "upcoming" | "past") => {
+    const source = section === "upcoming" ? upcomingGigs : pastGigs;
+    setExpandedGigKeys((prev) => {
+      const next = new Set(prev);
+      source.forEach((item) => next.add(item.key));
+      return next;
+    });
+  };
+
+  const collapseSection = (section: "upcoming" | "past") => {
+    const source = section === "upcoming" ? upcomingGigs : pastGigs;
+    setExpandedGigKeys((prev) => {
+      const next = new Set(prev);
+      source.forEach((item) => next.delete(item.key));
+      return next;
+    });
+  };
+
+  const toggleGig = (key: string) => {
+    setExpandedGigKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   if (loading) {
     return (
@@ -249,93 +311,271 @@ export default function SharedGigOverviewPage({ token }: SharedGigOverviewPagePr
         )}
       </header>
 
-      {sortedGigs.length === 0 ? (
+      {preparedGigs.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white/90 p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/75">
           <p className="text-sm text-slate-600 dark:text-slate-400">No gigs are currently shared.</p>
         </div>
       ) : (
-        <div className="space-y-3 sm:space-y-4">
-          {sortedGigs.map((gig, index) => {
-            const isPast = isPastGigDate(gig.gigDate);
+        <div className="space-y-4 sm:space-y-5">
+          <div className="rounded-xl border border-slate-200 bg-white/90 p-3 dark:border-slate-700 dark:bg-slate-900/70 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                Viewing {preparedGigs.length} shared performance{preparedGigs.length === 1 ? "" : "s"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={expandAll}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Expand all
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Collapse all
+                </button>
+              </div>
+            </div>
+          </div>
 
-            return (
-            <article
-              key={`${gig.gigDate || "gig"}-${index}`}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 sm:p-5"
-            >
-              <details open={!isPast}>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    {gig.gigDate && (
-                      <p className="text-base font-semibold text-slate-900 dark:text-white">
-                        {formatDate(gig.gigDate)}
-                      </p>
-                    )}
-                    {gig.eventName && (
-                      <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{gig.eventName}</p>
-                    )}
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-                      isPast
-                        ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-                        : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                    }`}
-                  >
-                    {isPast ? "Past" : "Upcoming"}
+          {upcomingGigs.length > 0 && (
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-700/50 dark:bg-emerald-950/20 sm:p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUpcomingSectionOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-2 text-left"
+                >
+                  <span className={`text-sm font-semibold text-emerald-800 dark:text-emerald-300 ${isUpcomingSectionOpen ? "" : "opacity-90"}`}>
+                    Upcoming Performances
                   </span>
-                </summary>
-
-                <div className="mt-3 space-y-2">
-                  {gig.performers && (
-                    <p className="text-sm text-slate-600 dark:text-slate-300">Band: {gig.performers}</p>
-                  )}
-                  {gig.bookingDate && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Booked: {formatDate(gig.bookingDate)}</p>
-                  )}
-                  {gig.notes && (
-                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      {gig.notes}
-                    </p>
-                  )}
-
-                  {(gig.clientPaymentStatus || gig.bandPaymentStatus) && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {gig.clientPaymentStatus && (
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${gig.clientPaymentStatus === "received" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
-                          Client: {gig.clientPaymentStatus === "received" ? "Received" : "Pending"}
-                        </span>
-                      )}
-                      {gig.bandPaymentStatus && (
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${gig.bandPaymentStatus === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
-                          Band: {gig.bandPaymentStatus === "paid" ? "Paid" : "Pending"}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {hasFinancialData && (
-                    <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
-                      {financialFieldLabels.map(({ key, label }) => {
-                        const value = gig[key] as number | null;
-                        if (value === null) return null;
-                        return (
-                          <div
-                            key={key}
-                            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
-                          >
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-                            <p className="font-medium text-slate-800 dark:text-slate-100">{formatMoney(value)}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    {upcomingGigs.length}
+                  </span>
+                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => expandSection("upcoming")}
+                    className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                  >
+                    Expand section
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => collapseSection("upcoming")}
+                    className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+                  >
+                    Collapse section
+                  </button>
                 </div>
-              </details>
-            </article>
-            );
-          })}
+              </div>
+
+              {isUpcomingSectionOpen && (
+                <div className="space-y-3 sm:space-y-4">
+                  {upcomingGigs.map(({ gig, key }) => {
+                    const isExpanded = expandedGigKeys.has(key);
+                    return (
+                      <article
+                        key={key}
+                        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 sm:p-5"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleGig(key)}
+                          className="flex w-full items-center justify-between gap-3 text-left"
+                        >
+                          <div className="min-w-0">
+                            {gig.gigDate && (
+                              <p className="text-base font-semibold text-slate-900 dark:text-white">
+                                {formatDate(gig.gigDate)}
+                              </p>
+                            )}
+                            {gig.eventName && (
+                              <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{gig.eventName}</p>
+                            )}
+                          </div>
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Upcoming
+                          </span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-3 space-y-2">
+                            {gig.performers && (
+                              <p className="text-sm text-slate-600 dark:text-slate-300">Band: {gig.performers}</p>
+                            )}
+                            {gig.bookingDate && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Booked: {formatDate(gig.bookingDate)}</p>
+                            )}
+                            {gig.notes && (
+                              <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {gig.notes}
+                              </p>
+                            )}
+
+                            {(gig.clientPaymentStatus || gig.bandPaymentStatus) && (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {gig.clientPaymentStatus && (
+                                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${gig.clientPaymentStatus === "received" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                                    Client: {gig.clientPaymentStatus === "received" ? "Received" : "Pending"}
+                                  </span>
+                                )}
+                                {gig.bandPaymentStatus && (
+                                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${gig.bandPaymentStatus === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                                    Band: {gig.bandPaymentStatus === "paid" ? "Paid" : "Pending"}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {hasFinancialData && (
+                              <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
+                                {financialFieldLabels.map(({ key: fieldKey, label }) => {
+                                  const value = gig[fieldKey] as number | null;
+                                  if (value === null) return null;
+                                  return (
+                                    <div
+                                      key={fieldKey}
+                                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                                    >
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+                                      <p className="font-medium text-slate-800 dark:text-slate-100">{formatMoney(value)}</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {pastGigs.length > 0 && (
+            <section className="rounded-2xl border border-slate-300 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/40 sm:p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPastSectionOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-2 text-left"
+                >
+                  <span className={`text-sm font-semibold text-slate-800 dark:text-slate-200 ${isPastSectionOpen ? "" : "opacity-90"}`}>
+                    Past Performances
+                  </span>
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                    {pastGigs.length}
+                  </span>
+                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => expandSection("past")}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Expand section
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => collapseSection("past")}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Collapse section
+                  </button>
+                </div>
+              </div>
+
+              {isPastSectionOpen && (
+                <div className="space-y-3 sm:space-y-4">
+                  {pastGigs.map(({ gig, key }) => {
+                    const isExpanded = expandedGigKeys.has(key);
+                    return (
+                      <article
+                        key={key}
+                        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 sm:p-5"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleGig(key)}
+                          className="flex w-full items-center justify-between gap-3 text-left"
+                        >
+                          <div className="min-w-0">
+                            {gig.gigDate && (
+                              <p className="text-base font-semibold text-slate-900 dark:text-white">
+                                {formatDate(gig.gigDate)}
+                              </p>
+                            )}
+                            {gig.eventName && (
+                              <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{gig.eventName}</p>
+                            )}
+                          </div>
+                          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            Past
+                          </span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-3 space-y-2">
+                            {gig.performers && (
+                              <p className="text-sm text-slate-600 dark:text-slate-300">Band: {gig.performers}</p>
+                            )}
+                            {gig.bookingDate && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Booked: {formatDate(gig.bookingDate)}</p>
+                            )}
+                            {gig.notes && (
+                              <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {gig.notes}
+                              </p>
+                            )}
+
+                            {(gig.clientPaymentStatus || gig.bandPaymentStatus) && (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {gig.clientPaymentStatus && (
+                                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${gig.clientPaymentStatus === "received" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                                    Client: {gig.clientPaymentStatus === "received" ? "Received" : "Pending"}
+                                  </span>
+                                )}
+                                {gig.bandPaymentStatus && (
+                                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${gig.bandPaymentStatus === "paid" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
+                                    Band: {gig.bandPaymentStatus === "paid" ? "Paid" : "Pending"}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {hasFinancialData && (
+                              <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
+                                {financialFieldLabels.map(({ key: fieldKey, label }) => {
+                                  const value = gig[fieldKey] as number | null;
+                                  if (value === null) return null;
+                                  return (
+                                    <div
+                                      key={fieldKey}
+                                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+                                    >
+                                      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+                                      <p className="font-medium text-slate-800 dark:text-slate-100">{formatMoney(value)}</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       )}
     </div>

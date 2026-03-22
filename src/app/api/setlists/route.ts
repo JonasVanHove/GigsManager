@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey } from "@/lib/cache";
+import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
 
 type SetlistItemInput = {
   type?: string;
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = getCacheKey(user.id, "setlists");
     const cached = getCacheEntry<unknown[]>(cacheKey);
     if (cached) {
-      return NextResponse.json(cached);
+      return NextResponse.json(cached, { headers: getApiCacheHeaders(30, "HIT") });
     }
 
     const setlists = await prisma.setlist.findMany({
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     });
 
     setCacheEntry(cacheKey, setlists, 30);
-    return NextResponse.json(setlists);
+    return NextResponse.json(setlists, { headers: getApiCacheHeaders(30, "MISS") });
   } catch (error) {
     console.error("GET /api/setlists error:", error);
     return NextResponse.json(

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey } from "@/lib/cache";
+import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
 
 // -- Validation helper --------------------------------------------------------
 
@@ -61,6 +61,9 @@ function validateGigInput(body: Record<string, unknown>): ValidationError[] {
 // -- Sanitize body → Prisma data ----------------------------------------------
 
 function toGigData(body: Record<string, unknown>, userId: string) {
+  const isTentative = Boolean(body.isTentative);
+  const hasBookingDate = Boolean(body.bookingDate && String(body.bookingDate).trim());
+
   return {
     eventName: String(body.eventName).trim(),
     date: new Date(new Date(String(body.date)).toISOString()), // UTC-safe
@@ -71,7 +74,9 @@ function toGigData(body: Record<string, unknown>, userId: string) {
       : null,
     managerPerforms: body.managerPerforms !== false,
     isCharity: Boolean(body.isCharity),
+    isTentative,
     performanceFee: Math.max(0, Number(body.performanceFee) || 0),
+    performanceFeeUnknown: Boolean(body.performanceFeeUnknown),
     technicalFee: Math.max(0, Number(body.technicalFee) || 0),
     managerBonusType: (body.managerBonusType as string) || "fixed",
     managerBonusAmount: Math.max(0, Number(body.managerBonusAmount) || 0),
@@ -87,6 +92,10 @@ function toGigData(body: Record<string, unknown>, userId: string) {
       : null,
     bandPaid: Boolean(body.bandPaid),
     bandPaidDate: body.bandPaidDate ? new Date(String(body.bandPaidDate)) : null,
+    bookingDate:
+      hasBookingDate && !isTentative
+        ? new Date(String(body.bookingDate))
+        : new Date(),
     notes: body.notes ? String(body.notes).trim() : null,
     setlistId: body.setlistId ? String(body.setlistId) : null,
     userId,
@@ -187,7 +196,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = getCacheKey(user.id, "gigs", { take, skip });
     const cached = getCacheEntry<{ data: unknown; total: number; take: number; skip: number }>(cacheKey);
     if (cached) {
-      return NextResponse.json(cached);
+      return NextResponse.json(cached, { headers: getApiCacheHeaders(15, "HIT") });
     }
     
     const [gigs, total] = await Promise.all([
@@ -202,7 +211,7 @@ export async function GET(request: NextRequest) {
 
     const payload = { data: gigs, total, take, skip };
     setCacheEntry(cacheKey, payload, 15);
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, { headers: getApiCacheHeaders(15, "MISS") });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("[GET /api/gigs] Exception:", errorMsg, error);

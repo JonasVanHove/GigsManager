@@ -102,6 +102,11 @@ const GigCard = memo(function GigCard({
                 Charity
               </span>
             )}
+            {gig.isTentative && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-600/20 dark:ring-amber-500/30">
+                Tentative
+              </span>
+            )}
             {/* Expand/collapse chevron */}
             <svg
               className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${
@@ -162,7 +167,7 @@ const GigCard = memo(function GigCard({
             Performance
           </p>
           <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-            {fmtCurrency(gig.performanceFee)}
+            {gig.performanceFeeUnknown ? "Unknown" : fmtCurrency(gig.performanceFee)}
           </p>
         </div>
 

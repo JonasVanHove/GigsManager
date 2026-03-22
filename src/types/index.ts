@@ -9,7 +9,9 @@ export interface Gig {
   performanceLineup: string | null;
   managerPerforms: boolean;
   isCharity: boolean; // whether this is a charity/pro bono performance
+  isTentative: boolean; // provisional booking, not yet definitive
   performanceFee: number;
+  performanceFeeUnknown: boolean; // true when fee is still unknown
   technicalFee: number;
   managerBonusType: "fixed" | "percentage";
   managerBonusAmount: number;
@@ -68,7 +70,9 @@ export interface GigFormData {
   performanceLineup: string;
   managerPerforms: boolean;
   isCharity: boolean; // whether this is a charity/pro bono performance
+  isTentative: boolean; // provisional booking, not yet definitive
   performanceFee: number;
+  performanceFeeUnknown: boolean; // true when fee is still unknown
   technicalFee: number;
   managerBonusType: "fixed" | "percentage";
   managerBonusAmount: number;
@@ -176,4 +180,50 @@ export interface InvestmentFormData {
   amount: number;
   description: string;
   date: string; // "YYYY-MM-DD"
+}
+
+export interface ShareLinkVisibility {
+  showEventName: boolean;
+  showGigDate: boolean;
+  showBookingDate: boolean;
+  showVenuePerformers: boolean;
+  showNotes: boolean;
+  showPerformanceFee: boolean;
+  showPerMusicianShare: boolean;
+  showManagerEarnings: boolean;
+  showManagerBonus: boolean;
+  showTechnicalFee: boolean;
+  showTotalCost: boolean;
+  showClientPaymentStatus: boolean;
+  showBandPaymentStatus: boolean;
+  hideAllFinancialInformation: boolean;
+}
+
+export interface ShareLinkItem {
+  id: string;
+  token: string;
+  title: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+  passwordProtected: boolean;
+  gigCount: number;
+  selectionMode?: "all" | "artist" | "individual";
+  autoIncludeNewGigs?: boolean;
+  isExpired?: boolean;
+}
+
+export interface PublicSharedGig {
+  eventName: string | null;
+  gigDate: string | null;
+  bookingDate: string | null;
+  performers: string | null;
+  notes: string | null;
+  performanceFee: number | null;
+  perMusicianShare: number | null;
+  managerEarnings: number | null;
+  managerBonus: number | null;
+  technicalFee: number | null;
+  totalCost: number | null;
+  clientPaymentStatus: "received" | "pending" | null;
+  bandPaymentStatus: "paid" | "pending" | null;
 }

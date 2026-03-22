@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey } from "@/lib/cache";
+import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     const cacheKey = getCacheKey(user.id, "band-members");
     const cached = getCacheEntry<unknown[]>(cacheKey);
     if (cached) {
-      return NextResponse.json(cached);
+      return NextResponse.json(cached, { headers: getApiCacheHeaders(30, "HIT") });
     }
 
     // Get all band members for this user with their gig participation
@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
     });
 
     setCacheEntry(cacheKey, bandMembersWithTotals, 30);
-    return NextResponse.json(bandMembersWithTotals);
+    return NextResponse.json(bandMembersWithTotals, { headers: getApiCacheHeaders(30, "MISS") });
   } catch (error) {
     console.error("GET /api/band-members error:", error);
     return NextResponse.json(

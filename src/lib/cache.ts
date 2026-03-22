@@ -49,3 +49,11 @@ export function getCacheKey(userId: string, resource: string, params?: Record<st
   const paramStr = params ? Object.entries(params).sort().map(([k, v]) => `${k}=${v}`).join('&') : '';
   return `${userId}:${resource}${paramStr ? `:${paramStr}` : ''}`;
 }
+
+export function getApiCacheHeaders(ttlSeconds: number, cacheStatus: "HIT" | "MISS") {
+  return {
+    "Cache-Control": `private, max-age=${ttlSeconds}, stale-while-revalidate=${ttlSeconds * 4}`,
+    Vary: "Authorization",
+    "X-Cache": cacheStatus,
+  };
+}

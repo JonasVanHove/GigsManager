@@ -96,6 +96,8 @@ export async function PUT(
     }
 
     const body = await request.json();
+    const isTentative = Boolean(body.isTentative);
+    const hasBookingDate = Boolean(body.bookingDate && String(body.bookingDate).trim());
 
     const gig = await prisma.gig.update({
       where: { id: params.id },
@@ -109,7 +111,9 @@ export async function PUT(
           : null,
         managerPerforms: body.managerPerforms !== false,
         isCharity: Boolean(body.isCharity),
+        isTentative,
         performanceFee: Math.max(0, Number(body.performanceFee) || 0),
+        performanceFeeUnknown: Boolean(body.performanceFeeUnknown),
         technicalFee: Math.max(0, Number(body.technicalFee) || 0),
         managerBonusType: (body.managerBonusType as string) || "fixed",
         managerBonusAmount: Math.max(0, Number(body.managerBonusAmount) || 0),
@@ -127,6 +131,10 @@ export async function PUT(
         bandPaidDate: body.bandPaidDate
           ? new Date(String(body.bandPaidDate))
           : null,
+        bookingDate:
+          hasBookingDate && !isTentative
+            ? new Date(String(body.bookingDate))
+            : existing.bookingDate,
         notes: body.notes ? String(body.notes).trim() : null,
         setlistId: body.setlistId ? String(body.setlistId) : null,
       },

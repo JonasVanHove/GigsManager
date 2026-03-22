@@ -26,7 +26,9 @@ const emptyForm: GigFormData = {
   performanceLineup: "",
   managerPerforms: true,
   isCharity: false,
+  isTentative: false,
   performanceFee: 0,
+  performanceFeeUnknown: false,
   technicalFee: 0,
   managerBonusType: "fixed",
   managerBonusAmount: 0,
@@ -55,7 +57,9 @@ function gigToFormData(gig: Gig): GigFormData {
     performanceLineup: gig.performanceLineup ?? "",
     managerPerforms: gig.managerPerforms ?? true,
     isCharity: gig.isCharity ?? false,
+    isTentative: gig.isTentative ?? false,
     performanceFee: gig.performanceFee,
+    performanceFeeUnknown: gig.performanceFeeUnknown ?? false,
     technicalFee: gig.technicalFee,
     managerBonusType: gig.managerBonusType,
     managerBonusAmount: gig.managerBonusAmount,
@@ -186,9 +190,15 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   // Auto-set performance fee to 0 when charity is checked
   useEffect(() => {
     if (form.isCharity && form.performanceFee > 0) {
-      setForm((prev) => ({ ...prev, performanceFee: 0 }));
+      setForm((prev) => ({ ...prev, performanceFee: 0, performanceFeeUnknown: false }));
     }
   }, [form.isCharity]);
+
+  useEffect(() => {
+    if (form.performanceFeeUnknown && form.performanceFee !== 0) {
+      setForm((prev) => ({ ...prev, performanceFee: 0 }));
+    }
+  }, [form.performanceFeeUnknown, form.performanceFee]);
 
   // Auto-set payment dates to performance date when charity is checked
   useEffect(() => {
@@ -517,14 +527,34 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
               <div>
                 <label className={labelCls}>Booking Date</label>
+                <label className="mb-2 flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 focus:ring-amber-500 dark:focus:ring-amber-400"
+                    checked={form.isTentative}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      set("isTentative", checked);
+                      if (checked) {
+                        set("bookingDate", "");
+                      } else if (!form.bookingDate) {
+                        set("bookingDate", new Date().toISOString().split("T")[0]);
+                      }
+                    }}
+                  />
+                  Tentative performance (not confirmed yet)
+                </label>
                 <input
                   type="date"
                   className={inputCls}
                   value={form.bookingDate}
                   onChange={(e) => set("bookingDate", e.target.value)}
+                  disabled={form.isTentative}
                 />
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  When the booking was made (default: today)
+                  {form.isTentative
+                    ? "Booking date is not finalized yet for this performance."
+                    : "When the booking was made (default: today)"}
                 </p>
               </div>
               <div>
@@ -774,6 +804,22 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                 <label className={labelCls}>
                   Performance Fee ($) <span className="text-red-500">*</span>
                 </label>
+                <label className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500"
+                    checked={form.performanceFeeUnknown}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      set("performanceFeeUnknown", checked);
+                      if (checked) {
+                        set("performanceFee", 0);
+                      }
+                    }}
+                    disabled={form.isCharity}
+                  />
+                  I don't know yet (temporarily unknown)
+                </label>
                 <input
                   type="number"
                   min={0}
@@ -783,7 +829,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                       ? "border-red-500 dark:border-red-400 focus:border-red-500 dark:focus:border-red-400 focus:ring-red-500/20 dark:focus:ring-red-400/20"
                       : ""
                   }`}
-                  value={form.performanceFee === 0 ? "" : form.performanceFee}
+                  value={form.performanceFee}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === "" || val === "-") {
@@ -800,8 +846,14 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                     set("performanceFee", Math.max(0, val));
                     handleBlur("performanceFee", val);
                   }}
+                  disabled={form.performanceFeeUnknown || form.isCharity}
                   required
                 />
+                {form.performanceFeeUnknown && (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    Fee is temporarily set to $0 until you know the exact amount.
+                  </p>
+                )}
                 {fieldErrors.performanceFee && (
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                     {fieldErrors.performanceFee}

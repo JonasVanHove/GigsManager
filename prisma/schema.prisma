@@ -27,9 +27,13 @@ model Gig {
   setlistId String?
   setlist   Setlist? @relation(fields: [setlistId], references: [id], onDelete: SetNull)
 
+  // ── Share links containing this gig ─────────────────────
+  shareLinks ShareLinkGig[]
+
   // ── Financials ─────────────────────────────────────────
   isCharity         Boolean @default(false) // whether this is a charity/pro bono performance
   performanceFee    Float           // music fee — split among musicians
+  performanceFeeUnknown Boolean @default(false) // true when the fee is not known yet
   technicalFee      Float  @default(0) // optional — belongs to manager, not split
   managerBonusType  String @default("fixed") // "fixed" | "percentage"
   managerBonusAmount Float @default(0) // bonus value ($ or %)
@@ -57,6 +61,7 @@ model Gig {
   advanceToMusicians Float @default(0)        // Advance amount you paid to musicians
 
   // ── Meta ───────────────────────────────────────────────
+  isTentative Boolean @default(false) // true when booking is provisional / under reservation
   bookingDate DateTime @default(now()) // when the booking was made (default: now, but editable)
   notes     String?
   createdAt DateTime @default(now())
@@ -139,9 +144,52 @@ model User {
   notifications       Notification[] @relation("UserNotifications")
   notificationPref    NotificationPreference? @relation("UserNotificationPreference")
   webhooks            Webhook[] @relation("UserWebhooks")
+  shareLinks          ShareLink[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ShareLink {
+  id String @id @default(cuid())
+
+  token        String   @unique
+  title        String?
+  passwordHash String?
+  expiresAt    DateTime?
+  visibility   Json
+  selectionMode String @default("individual") // "all" | "artist" | "individual"
+  includeArtists String[] @default([]) // used when selectionMode is "artist"
+  autoIncludeNewGigs Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  gigs ShareLinkGig[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model ShareLinkGig {
+  id String @id @default(cuid())
+
+  shareLinkId String
+  shareLink   ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+
+  gigId String
+  gig   Gig    @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([shareLinkId, gigId])
+  @@index([shareLinkId])
+  @@index([gigId])
 }
 
 model UserSettings {

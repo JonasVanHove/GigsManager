@@ -16,6 +16,7 @@ import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 import BulkEditor from "./BulkEditor";
 import LoadingSpinner, { CardSkeleton } from "./LoadingSpinner";
+import SharedLinksTab from "./SharedLinksTab";
 
 // Lazy load heavy components for better initial load time
 const AnalyticsPage = lazy(() => import("./AnalyticsPage"));
@@ -47,13 +48,14 @@ export default function Dashboard() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
-  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists">("gigs");
+  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists" | "shared-links">("gigs");
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(true);
+  const fetchGigsInFlightRef = useRef(false);
 
   // Load overview expanded preference from localStorage
   useEffect(() => {
@@ -95,6 +97,10 @@ export default function Dashboard() {
   // -- Data fetching ----------------------------------------------------------
 
   const fetchGigs = useCallback(async () => {
+    if (fetchGigsInFlightRef.current) {
+      return;
+    }
+
     if (!session?.user) {
       console.log("[fetchGigs] No user session");
       setGigs([]);
@@ -104,6 +110,7 @@ export default function Dashboard() {
     }
 
     try {
+      fetchGigsInFlightRef.current = true;
       setLoading(true);
       console.log("[fetchGigs] Getting access token for user:", session.user.email);
       const token = await getAccessToken();
@@ -159,6 +166,7 @@ export default function Dashboard() {
       console.error("Fetch gigs error:", err);
       toast.error("Failed to load gigs.");
     } finally {
+      fetchGigsInFlightRef.current = false;
       setLoading(false);
     }
   }, [session?.user, getAccessToken]);
@@ -746,6 +754,17 @@ export default function Dashboard() {
                   Setlists
                 </button>
                 <button
+                  onClick={() => { setActiveTab("shared-links"); setShowMobileMenu(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                    activeTab === "shared-links" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3h5.25m4.173 6.951 1.202-.601a2.25 2.25 0 0 0 1.244-2.012V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v8.838a2.25 2.25 0 0 0 1.244 2.012l1.202.601a2.25 2.25 0 0 0 2.012 0l1.202-.601a2.25 2.25 0 0 1 2.012 0l1.202.601a2.25 2.25 0 0 0 2.012 0Z" />
+                  </svg>
+                  Shared Links
+                </button>
+                <button
                   onClick={() => { setActiveTab("analytics"); setShowMobileMenu(false); }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "analytics" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -960,6 +979,22 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 6.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75ZM16.5 6.75c0-.621.504-1.125 1.125-1.125h2.25C20.496 5.625 21 6.129 21 6.75v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75Z" />
               </svg>
               <span className="hidden sm:inline">Analytics</span>
+            </span>
+          </button>
+          {/* Shared Links */}
+          <button
+            onClick={() => setActiveTab("shared-links")}
+            className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
+              activeTab === "shared-links"
+                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3h5.25m4.173 6.951 1.202-.601a2.25 2.25 0 0 0 1.244-2.012V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v8.838a2.25 2.25 0 0 0 1.244 2.012l1.202.601a2.25 2.25 0 0 0 2.012 0l1.202-.601a2.25 2.25 0 0 1 2.012 0l1.202.601a2.25 2.25 0 0 0 2.012 0Z" />
+              </svg>
+              <span className="hidden sm:inline">Shared Links</span>
             </span>
           </button>
           {/* Reports */}
@@ -1205,6 +1240,10 @@ export default function Dashboard() {
         ) : activeTab === "setlists" ? (
           <Suspense fallback={<TabLoader />}>
             <SetlistsTab />
+          </Suspense>
+        ) : activeTab === "shared-links" ? (
+          <Suspense fallback={<TabLoader />}>
+            <SharedLinksTab />
           </Suspense>
         ) : activeTab === "reports" ? (
           <Suspense fallback={<TabLoader />}>

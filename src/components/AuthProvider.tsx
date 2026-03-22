@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 import type { AuthSession } from "@/types/index";
 
@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const accessTokenFreshUntilRef = useRef<number>(0);
+  const ACCESS_TOKEN_SOFT_TTL_MS = 20_000;
 
   // -- Session management --------------------------------------------------
 
@@ -35,10 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       if (token) {
         setAccessToken(token);
+        accessTokenFreshUntilRef.current = Date.now() + ACCESS_TOKEN_SOFT_TTL_MS;
       }
     } else {
       setSession(null);
       setAccessToken(null);
+      accessTokenFreshUntilRef.current = 0;
     }
   }, []);
 
@@ -164,6 +168,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     try {
+      if (accessToken && Date.now() < accessTokenFreshUntilRef.current) {
+        return accessToken;
+      }
+
       // Always try to get fresh session from Supabase first
       // Don't rely on cached token, as it may be expired
       logDebug("[getAccessToken] Fetching fresh session from Supabase...");
@@ -174,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.access_token) {
         logDebug("[getAccessToken] Got valid token from session");
         setAccessToken(session.access_token);
+        accessTokenFreshUntilRef.current = Date.now() + ACCESS_TOKEN_SOFT_TTL_MS;
         return session.access_token;
       }
 
@@ -185,17 +194,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (refreshError) {
         console.error("[getAccessToken] Refresh failed:", refreshError.message);
         setAccessToken(null); // Clear cache on refresh failure
+        accessTokenFreshUntilRef.current = 0;
         return null;
       }
 
       if (refreshedData.session?.access_token) {
         logDebug("[getAccessToken] Got new token from refresh");
         setAccessToken(refreshedData.session.access_token);
+        accessTokenFreshUntilRef.current = Date.now() + ACCESS_TOKEN_SOFT_TTL_MS;
         return refreshedData.session.access_token;
       }
 
       logDebug("[getAccessToken] No token after refresh attempt");
       setAccessToken(null); // Clear cache
+      accessTokenFreshUntilRef.current = 0;
       return null;
     } catch (err) {
       console.error(
@@ -203,9 +215,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         err instanceof Error ? err.message : String(err)
       );
       setAccessToken(null); // Clear cache on error
+      accessTokenFreshUntilRef.current = 0;
       return null;
     }
-  }, []);
+  }, [accessToken]);
 
   // -- Provider ------------------------------------------------------------
 

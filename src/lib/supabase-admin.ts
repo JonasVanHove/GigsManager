@@ -11,6 +11,55 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 // Lazy validation: only throw at runtime if actually used, not at build time
 let client: ReturnType<typeof createClient> | null = null;
 
+type CachedAuthUserResult = Awaited<ReturnType<ReturnType<typeof createClient>["auth"]["getUser"]>>;
+
+const authUserCache = new Map<
+  string,
+  {
+    value: CachedAuthUserResult;
+    expiresAt: number;
+  }
+>();
+
+const AUTH_CACHE_TTL_MS = 15_000;
+
+function getCachedAuthUser(token: string): CachedAuthUserResult | null {
+  const cached = authUserCache.get(token);
+  if (!cached) return null;
+
+  if (Date.now() > cached.expiresAt) {
+    authUserCache.delete(token);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function setCachedAuthUser(token: string, value: CachedAuthUserResult) {
+  authUserCache.set(token, {
+    value,
+    expiresAt: Date.now() + AUTH_CACHE_TTL_MS,
+  });
+
+  if (authUserCache.size > 500) {
+    const oldestKey = authUserCache.keys().next().value;
+    if (oldestKey) authUserCache.delete(oldestKey);
+  }
+}
+
+async function getUserWithCache(token: string): Promise<CachedAuthUserResult> {
+  const cached = getCachedAuthUser(token);
+  if (cached) return cached;
+
+  const result = await getSupabaseAdmin().auth.getUser(token);
+
+  if (!result.error && result.data?.user) {
+    setCachedAuthUser(token, result);
+  }
+
+  return result;
+}
+
 export function getSupabaseAdmin() {
   if (!client) {
     if (!supabaseUrl) {
@@ -29,6 +78,6 @@ export function getSupabaseAdmin() {
 // For backward compatibility
 export const supabaseAdmin = {
   auth: {
-    getUser: async (token: string) => getSupabaseAdmin().auth.getUser(token),
+    getUser: async (token: string) => getUserWithCache(token),
   },
 } as any;

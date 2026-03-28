@@ -18,6 +18,9 @@
     "postinstall": "prisma generate",
     "version": "node scripts/getVersion.js && git add -A",
     "postversion": "git push && git push --tags",
+    "release:auto": "node scripts/auto-version.js",
+    "release:auto:dry": "node scripts/auto-version.js --dry-run",
+    "docs:openapi": "curl http://localhost:3000/api/openapi",
     "release:patch": "node scripts/bump-version.js patch",
     "release:minor": "node scripts/bump-version.js minor",
     "release:major": "node scripts/bump-version.js major"

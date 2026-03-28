@@ -410,10 +410,21 @@ npm run db:studio        # Open Prisma Studio (DB browser)
 npm run db:reset         # Reset DB + re-seed
 
 # Versioning (auto-updates footer version)
+npm run release:auto     # Auto-detect bump via git commits (feat/fix/breaking)
+npm run release:auto:dry # Preview next bump without committing/tagging
 npm run release:patch    # Bug fixes (1.8.0 → 1.8.1)
 npm run release:minor    # New features (1.8.0 → 1.9.0)
 npm run release:major    # Breaking changes (1.8.0 → 2.0.0)
+
+# API docs
+# Swagger UI: http://localhost:3000/docs
+# OpenAPI JSON: http://localhost:3000/api/openapi
 ```
+
+`release:auto` uses Conventional Commit subjects since the latest tag:
+- `major` when a commit contains `BREAKING CHANGE` or `!:`
+- `minor` when at least one commit starts with `feat:`
+- `patch` for all other commits
 
 ---
 

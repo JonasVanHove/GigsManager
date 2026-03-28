@@ -31,9 +31,10 @@ interface BandMember {
 
 interface BandMembersProps {
   fmtCurrency: (amount: number) => string;
+  gigs?: Gig[];
 }
 
-export default function BandMembers({ fmtCurrency }: BandMembersProps) {
+export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMembersProps) {
   const { getAccessToken } = useAuth();
   const toast = useToast();
   const [members, setMembers] = useState<BandMember[]>([]);
@@ -85,10 +86,18 @@ export default function BandMembers({ fmtCurrency }: BandMembersProps) {
   }, []);
 
   useEffect(() => {
+    if (preloadedGigs && preloadedGigs.length > 0 && allGigs.length === 0) {
+      const sorted = [...preloadedGigs].sort(
+        (a: Gig, b: Gig) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setAllGigs(sorted);
+      return;
+    }
+
     if (showForm && allGigs.length === 0 && !gigsLoading) {
       fetchAllGigs();
     }
-  }, [showForm, allGigs.length, gigsLoading]);
+  }, [showForm, allGigs.length, gigsLoading, preloadedGigs]);
 
 
   const fetchAllGigs = async () => {

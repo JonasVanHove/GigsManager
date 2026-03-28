@@ -5,6 +5,7 @@ import { Calendar as BigCalendar, momentLocalizer, View } from "react-big-calend
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useAuth } from "./AuthProvider";
+import type { Gig as AppGig } from "@/types";
 
 moment.updateLocale("en", {
   week: {
@@ -35,15 +36,28 @@ interface CalendarEvent {
 interface CalendarViewProps {
   fmtCurrency: (amount: number) => string;
   onEditGig?: (gigId: string) => void;
+  gigs?: AppGig[];
 }
 
-export default function CalendarView({ fmtCurrency, onEditGig }: CalendarViewProps) {
+export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGigs }: CalendarViewProps) {
   const { getAccessToken } = useAuth();
   const [gigs, setGigs] = useState<Gig[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(preloadedGigs === undefined);
   const [view, setView] = useState<View>("month");
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+
+  const mapToCalendarGigs = (source: AppGig[]): Gig[] => {
+    return source.map((gig) => ({
+      id: gig.id,
+      eventName: gig.eventName,
+      date: String(gig.date),
+      isCharity: gig.isCharity,
+      clientPaymentReceived: gig.paymentReceived,
+      bandPaymentComplete: gig.bandPaid,
+      myPayAmount: 0,
+    }));
+  };
 
   const fetchGigs = async () => {
     try {
@@ -65,8 +79,13 @@ export default function CalendarView({ fmtCurrency, onEditGig }: CalendarViewPro
   };
 
   useEffect(() => {
+    if (preloadedGigs !== undefined) {
+      setGigs(mapToCalendarGigs(preloadedGigs));
+      setLoading(false);
+      return;
+    }
     fetchGigs();
-  }, []);
+  }, [preloadedGigs]);
 
   const events: CalendarEvent[] = useMemo(() => {
     return gigs.map((gig) => {

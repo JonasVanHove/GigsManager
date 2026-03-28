@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue } from "react";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
@@ -50,6 +50,7 @@ export default function Dashboard() {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists" | "shared-links">("gigs");
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
@@ -58,6 +59,15 @@ export default function Dashboard() {
   const [isActiveSectionExpanded, setIsActiveSectionExpanded] = useState(true);
   const [isHandledSectionExpanded, setIsHandledSectionExpanded] = useState(false);
   const fetchGigsInFlightRef = useRef(false);
+  const gigsRef = useRef<Gig[]>([]);
+  const gigsCacheKey = useMemo(
+    () => (session?.user?.id ? `gigs-cache:${session.user.id}` : null),
+    [session?.user?.id]
+  );
+
+  useEffect(() => {
+    gigsRef.current = gigs;
+  }, [gigs]);
 
   // Load overview expanded preference from localStorage
   useEffect(() => {
@@ -83,6 +93,23 @@ export default function Dashboard() {
       return newVal;
     });
   }, []);
+
+  // Show the last known gigs immediately while we fetch fresh data.
+  useEffect(() => {
+    if (!gigsCacheKey) return;
+    try {
+      const raw = localStorage.getItem(gigsCacheKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { data: Gig[]; total: number };
+      if (Array.isArray(parsed?.data)) {
+        setGigs(parsed.data);
+        setTotalGigCount(typeof parsed.total === "number" ? parsed.total : parsed.data.length);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.warn("Failed to read gigs cache", error);
+    }
+  }, [gigsCacheKey]);
 
   const handleEditGig = useCallback((gig: Gig) => {
     setEditGig(gig);
@@ -113,7 +140,7 @@ export default function Dashboard() {
 
     try {
       fetchGigsInFlightRef.current = true;
-      setLoading(true);
+      setLoading(gigsRef.current.length === 0);
       console.log("[fetchGigs] Getting access token for user:", session.user.email);
       const token = await getAccessToken();
 
@@ -144,8 +171,19 @@ export default function Dashboard() {
             });
             if (retryRes.ok) {
               const json = await retryRes.json();
-              setGigs(json.data ?? json);
-              setTotalGigCount(json.total ?? (json.data ?? json).length);
+              const nextData = json.data ?? json;
+              setGigs(nextData);
+              setTotalGigCount(json.total ?? nextData.length);
+              if (gigsCacheKey) {
+                try {
+                  localStorage.setItem(gigsCacheKey, JSON.stringify({
+                    data: nextData,
+                    total: json.total ?? nextData.length,
+                  }));
+                } catch (error) {
+                  console.warn("Failed to write gigs cache", error);
+                }
+              }
               console.log("[fetchGigs] Success after retry:", (json.data ?? json).length, "gigs");
               return;
             }
@@ -161,8 +199,19 @@ export default function Dashboard() {
       } else {
         const json = await res.json();
         console.log("[fetchGigs] Success:", json.total || (json.data ?? json).length, "gigs");
-        setGigs(json.data ?? json);
-        setTotalGigCount(json.total ?? (json.data ?? json).length);
+        const nextData = json.data ?? json;
+        setGigs(nextData);
+        setTotalGigCount(json.total ?? nextData.length);
+        if (gigsCacheKey) {
+          try {
+            localStorage.setItem(gigsCacheKey, JSON.stringify({
+              data: nextData,
+              total: json.total ?? nextData.length,
+            }));
+          } catch (error) {
+            console.warn("Failed to write gigs cache", error);
+          }
+        }
       }
     } catch (err) {
       console.error("Fetch gigs error:", err);
@@ -171,7 +220,7 @@ export default function Dashboard() {
       fetchGigsInFlightRef.current = false;
       setLoading(false);
     }
-  }, [session?.user, getAccessToken]);
+  }, [session?.user, getAccessToken, gigsCacheKey, toast]);
 
   useEffect(() => {
     fetchGigs();
@@ -179,15 +228,15 @@ export default function Dashboard() {
 
   // Filter gigs based on search query
   const filteredGigs = useMemo(() => {
-    if (!searchQuery.trim()) return gigs;
-    const query = searchQuery.toLowerCase();
+    if (!deferredSearchQuery.trim()) return gigs;
+    const query = deferredSearchQuery.toLowerCase();
     return gigs.filter((gig) =>
       gig.eventName.toLowerCase().includes(query) ||
       gig.performers.toLowerCase().includes(query) ||
       (gig.notes && gig.notes.toLowerCase().includes(query)) ||
       (gig.performanceLineup && gig.performanceLineup.toLowerCase().includes(query))
     );
-  }, [gigs, searchQuery]);
+  }, [gigs, deferredSearchQuery]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1271,7 +1320,7 @@ export default function Dashboard() {
           </Suspense>
         ) : activeTab === "band-members" ? (
           <Suspense fallback={<TabLoader />}>
-            <BandMembers fmtCurrency={fmtCurrency} />
+            <BandMembers fmtCurrency={fmtCurrency} gigs={gigs} />
           </Suspense>
         ) : activeTab === "setlists" ? (
           <Suspense fallback={<TabLoader />}>
@@ -1289,6 +1338,7 @@ export default function Dashboard() {
           <Suspense fallback={<TabLoader />}>
             <CalendarView 
               fmtCurrency={fmtCurrency} 
+              gigs={gigs}
               onEditGig={handleEditGigById} 
             />
           </Suspense>

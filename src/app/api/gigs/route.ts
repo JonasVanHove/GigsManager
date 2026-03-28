@@ -5,6 +5,31 @@ import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
 
+type AuthCacheEntry = {
+  user: Awaited<ReturnType<typeof getOrCreateUser>>;
+  expiresAt: number;
+};
+
+const authCache = new Map<string, AuthCacheEntry>();
+const AUTH_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function getAuthCache(token: string) {
+  const entry = authCache.get(token);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    authCache.delete(token);
+    return null;
+  }
+  return entry.user;
+}
+
+function setAuthCache(token: string, user: Awaited<ReturnType<typeof getOrCreateUser>>) {
+  authCache.set(token, {
+    user,
+    expiresAt: Date.now() + AUTH_CACHE_TTL_MS,
+  });
+}
+
 // -- Validation helper --------------------------------------------------------
 
 interface ValidationError {
@@ -121,6 +146,11 @@ async function requireAuth(request: NextRequest) {
   }
 
   const token = authHeader.slice(7);
+  const cachedUser = getAuthCache(token);
+  if (cachedUser) {
+    return { user: cachedUser };
+  }
+
   logDebug("[API Auth] Token received, length:", token.length);
   logDebug("[API Auth] Token starts with:", token.substring(0, 20));
   
@@ -166,6 +196,8 @@ async function requireAuth(request: NextRequest) {
       data.user.email || "",
       data.user.user_metadata?.name
     );
+
+    setAuthCache(token, user);
     
     logDebug("[API Auth] DB user ready:", user.id);
     return { user };

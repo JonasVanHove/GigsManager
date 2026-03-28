@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useDeferredValue, useEffect } from "react";
 import type { Gig } from "@/types";
 import GigCard from "./GigCard";
 
@@ -19,23 +19,26 @@ export default function AllGigsTab({
   fmtCurrency,
   loading,
 }: AllGigsTabProps) {
+  const PAGE_SIZE = 24;
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const deferredGigs = useDeferredValue(gigs);
 
   // Get all unique artists
   const artists = useMemo(() => {
     const unique = new Set<string>();
-    gigs.forEach((gig) => {
+    deferredGigs.forEach((gig) => {
       if (gig.performers) unique.add(gig.performers);
     });
     return Array.from(unique).sort();
-  }, [gigs]);
+  }, [deferredGigs]);
 
   // Filter by selected artists
   const filteredGigs = useMemo(() => {
-    if (selectedArtists.size === 0) return gigs;
-    return gigs.filter((gig) => selectedArtists.has(gig.performers));
-  }, [gigs, selectedArtists]);
+    if (selectedArtists.size === 0) return deferredGigs;
+    return deferredGigs.filter((gig) => selectedArtists.has(gig.performers));
+  }, [deferredGigs, selectedArtists]);
 
   // Sort
   const sortedGigs = useMemo(() => {
@@ -66,6 +69,17 @@ export default function AllGigsTab({
 
     return sorted;
   }, [filteredGigs, sortBy]);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [sortBy, selectedArtists, deferredGigs.length]);
+
+  const visibleGigs = useMemo(
+    () => sortedGigs.slice(0, visibleCount),
+    [sortedGigs, visibleCount]
+  );
+
+  const remainingCount = Math.max(0, sortedGigs.length - visibleCount);
 
   const toggleArtist = (artist: string) => {
     const updated = new Set(selectedArtists);
@@ -165,7 +179,7 @@ export default function AllGigsTab({
       {/* -- Results -------------------------------------------------------- */}
       <div className="space-y-1">
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-          {sortedGigs.length} of {gigs.length} performances
+          {sortedGigs.length} of {deferredGigs.length} performances
         </p>
       </div>
 
@@ -179,8 +193,9 @@ export default function AllGigsTab({
           </p>
         </div>
       ) : (
-        <div className="grid gap-5">
-          {sortedGigs.map((gig) => (
+        <>
+          <div className="grid gap-5">
+          {visibleGigs.map((gig) => (
             <GigCard
               key={gig.id}
               gig={gig}
@@ -190,7 +205,19 @@ export default function AllGigsTab({
               claimTechnicalFee={gig.claimTechnicalFee}
             />
           ))}
-        </div>
+          </div>
+
+          {remainingCount > 0 && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700"
+              >
+                Load more ({remainingCount} left)
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

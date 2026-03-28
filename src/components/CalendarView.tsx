@@ -6,6 +6,7 @@ import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useAuth } from "./AuthProvider";
 import type { Gig as AppGig } from "@/types";
+import { calculateGigFinancials } from "@/lib/calculations";
 
 moment.updateLocale("en", {
   week: {
@@ -48,15 +49,33 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const mapToCalendarGigs = (source: AppGig[]): Gig[] => {
-    return source.map((gig) => ({
-      id: gig.id,
-      eventName: gig.eventName,
-      date: String(gig.date),
-      isCharity: gig.isCharity,
-      clientPaymentReceived: gig.paymentReceived,
-      bandPaymentComplete: gig.bandPaid,
-      myPayAmount: 0,
-    }));
+    return source.map((gig) => {
+      const calc = calculateGigFinancials(
+        gig.performanceFee,
+        gig.technicalFee,
+        gig.managerBonusType,
+        gig.managerBonusAmount,
+        gig.numberOfMusicians,
+        gig.claimPerformanceFee,
+        gig.claimTechnicalFee,
+        gig.technicalFeeClaimAmount,
+        gig.advanceReceivedByManager,
+        gig.advanceToMusicians,
+        gig.isCharity,
+        gig.performanceDistribution,
+        gig.managerPerformanceAmount
+      );
+
+      return {
+        id: gig.id,
+        eventName: gig.eventName,
+        date: String(gig.date),
+        isCharity: gig.isCharity,
+        clientPaymentReceived: gig.paymentReceived,
+        bandPaymentComplete: gig.bandPaid,
+        myPayAmount: calc.myEarnings,
+      };
+    });
   };
 
   const fetchGigs = async () => {

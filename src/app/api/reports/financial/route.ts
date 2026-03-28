@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromHeader } from "@/lib/auth-helpers";
 import { calculateGigFinancials } from "@/lib/calculations";
+import { getCacheEntry, getCacheKey, setCacheEntry, getApiCacheHeaders } from "@/lib/cache";
 
 // GET /api/reports/financial - Generate comprehensive financial report
 export async function GET(req: NextRequest) {
@@ -16,6 +17,17 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const period = searchParams.get("period"); // 'month' | 'quarter' | 'year' | 'all'
+
+    const cacheParams = {
+      startDate: startDate || "",
+      endDate: endDate || "",
+      period: period || "all",
+    };
+    const cacheKey = getCacheKey(userId, "financial-report", cacheParams);
+    const cached = getCacheEntry<unknown>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, { headers: getApiCacheHeaders(60, "HIT") });
+    }
 
     // Calculate date range
     let dateFilter: any = {};
@@ -55,6 +67,24 @@ export async function GET(req: NextRequest) {
       where: {
         userId,
         ...dateFilter,
+      },
+      select: {
+        id: true,
+        eventName: true,
+        date: true,
+        isCharity: true,
+        paymentReceived: true,
+        bandPaid: true,
+        performanceFee: true,
+        technicalFee: true,
+        managerBonusType: true,
+        managerBonusAmount: true,
+        numberOfMusicians: true,
+        claimPerformanceFee: true,
+        claimTechnicalFee: true,
+        technicalFeeClaimAmount: true,
+        advanceReceivedByManager: true,
+        advanceToMusicians: true,
       },
       orderBy: {
         date: "desc",
@@ -133,7 +163,7 @@ export async function GET(req: NextRequest) {
       return acc;
     }, []);
 
-    return NextResponse.json({
+    const payload = {
       summary: {
         totalRevenue,
         totalMyEarnings,
@@ -148,7 +178,10 @@ export async function GET(req: NextRequest) {
       },
       monthlyBreakdown,
       gigs: gigsWithFinancials,
-    });
+    };
+
+    setCacheEntry(cacheKey, payload, 60);
+    return NextResponse.json(payload, { headers: getApiCacheHeaders(60, "MISS") });
   } catch (error) {
     console.error("GET /api/reports/financial error:", error);
     return NextResponse.json(

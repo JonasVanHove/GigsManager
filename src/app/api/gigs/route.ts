@@ -4,6 +4,7 @@ import { calculateGigFinancials } from "@/lib/calculations";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
+import { measureAsync, recordMetric } from "@/lib/performance-metrics";
 
 type AuthCacheEntry = {
   user: Awaited<ReturnType<typeof getOrCreateUser>>;
@@ -228,18 +229,32 @@ export async function GET(request: NextRequest) {
     const cacheKey = getCacheKey(user.id, "gigs", { take, skip });
     const cached = getCacheEntry<{ data: unknown; total: number; take: number; skip: number }>(cacheKey);
     if (cached) {
+      recordMetric("GET /api/gigs [CACHE HIT]", 0, {
+        endpoint: "/api/gigs",
+        userId: user.id,
+        status: 200,
+        metadata: { take, skip, cached: true },
+      });
       return NextResponse.json(cached, { headers: getApiCacheHeaders(15, "HIT") });
     }
     
-    const [gigs, total] = await Promise.all([
-      prisma.gig.findMany({
-        where: { userId: user.id },
-        orderBy: { date: "desc" },
-        take,
-        skip,
-      }),
-      prisma.gig.count({ where: { userId: user.id } }),
-    ]);
+    const [gigs, total] = await measureAsync(
+      "GET /api/gigs [DB QUERY]",
+      () => Promise.all([
+        prisma.gig.findMany({
+          where: { userId: user.id },
+          orderBy: { date: "desc" },
+          take,
+          skip,
+        }),
+        prisma.gig.count({ where: { userId: user.id } }),
+      ]),
+      {
+        endpoint: "/api/gigs",
+        userId: user.id,
+        metadata: { take, skip },
+      }
+    );
 
     const payload = { data: gigs, total, take, skip };
     setCacheEntry(cacheKey, payload, 15);
@@ -247,6 +262,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error("[GET /api/gigs] Exception:", errorMsg, error);
+    recordMetric("GET /api/gigs [ERROR]", 0, {
+      endpoint: "/api/gigs",
+      userId: user.id,
+      status: 500,
+    });
     return NextResponse.json(
       { error: "Failed to fetch gigs", details: errorMsg },
       { status: 500 }

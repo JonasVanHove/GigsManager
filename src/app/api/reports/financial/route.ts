@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserIdFromHeader } from "@/lib/auth-helpers";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getCacheEntry, getCacheKey, setCacheEntry, getApiCacheHeaders } from "@/lib/cache";
+import { measureAsync, recordMetric } from "@/lib/performance-metrics";
 
 // GET /api/reports/financial - Generate comprehensive financial report
 export async function GET(req: NextRequest) {
@@ -63,33 +64,41 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch gigs
-    const gigs = await prisma.gig.findMany({
-      where: {
+    const gigs = await measureAsync(
+      "GET /api/reports/financial [DB FETCH]",
+      () => prisma.gig.findMany({
+        where: {
+          userId,
+          ...dateFilter,
+        },
+        select: {
+          id: true,
+          eventName: true,
+          date: true,
+          isCharity: true,
+          paymentReceived: true,
+          bandPaid: true,
+          performanceFee: true,
+          technicalFee: true,
+          managerBonusType: true,
+          managerBonusAmount: true,
+          numberOfMusicians: true,
+          claimPerformanceFee: true,
+          claimTechnicalFee: true,
+          technicalFeeClaimAmount: true,
+          advanceReceivedByManager: true,
+          advanceToMusicians: true,
+        },
+        orderBy: {
+          date: "desc",
+        },
+      }),
+      {
+        endpoint: "/api/reports/financial",
         userId,
-        ...dateFilter,
-      },
-      select: {
-        id: true,
-        eventName: true,
-        date: true,
-        isCharity: true,
-        paymentReceived: true,
-        bandPaid: true,
-        performanceFee: true,
-        technicalFee: true,
-        managerBonusType: true,
-        managerBonusAmount: true,
-        numberOfMusicians: true,
-        claimPerformanceFee: true,
-        claimTechnicalFee: true,
-        technicalFeeClaimAmount: true,
-        advanceReceivedByManager: true,
-        advanceToMusicians: true,
-      },
-      orderBy: {
-        date: "desc",
-      },
-    });
+        metadata: { period, dateRange: { startDate, endDate } },
+      }
+    );
 
     // Calculate financial data for each gig
     const gigsWithFinancials = gigs.map((gig) => {
@@ -181,9 +190,19 @@ export async function GET(req: NextRequest) {
     };
 
     setCacheEntry(cacheKey, payload, 60);
+    recordMetric("GET /api/reports/financial [SUCCESS]", 0, {
+      endpoint: "/api/reports/financial",
+      userId,
+      status: 200,
+      metadata: { gigCount: gigsWithFinancials.length },
+    });
     return NextResponse.json(payload, { headers: getApiCacheHeaders(60, "MISS") });
   } catch (error) {
     console.error("GET /api/reports/financial error:", error);
+    recordMetric("GET /api/reports/financial [ERROR]", 0, {
+      endpoint: "/api/reports/financial",
+      status: 500,
+    });
     return NextResponse.json(
       { error: "Failed to generate financial report" },
       { status: 500 }

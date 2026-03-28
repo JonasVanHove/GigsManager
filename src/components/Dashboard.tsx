@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue } from "react";
+import { recordWebVital } from "@/lib/web-vitals-logger";
+import { recordMetric } from "@/lib/performance-metrics";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
@@ -69,7 +71,54 @@ export default function Dashboard() {
     gigsRef.current = gigs;
   }, [gigs]);
 
-  // Load overview expanded preference from localStorage
+  // Track Web Vitals on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // PerformanceObserver for CLS (Cumulative Layout Shift)
+    try {
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if ((entry as any).hadRecentInput) continue;
+          const delta = (entry as any).value;
+          // Rate CLS: good < 0.1, needs improvement < 0.25, else poor
+          const clsRating: "good" | "needs improvement" | "poor" =
+            delta < 0.1 ? "good" : delta < 0.25 ? "needs improvement" : "poor";
+          recordWebVital({
+            name: "CLS",
+            value: delta,
+            rating: clsRating,
+            delta: delta,
+            id: `cls-${entry.startTime}`,
+            navigationType: "navigate",
+          });
+        }
+      });
+      observer.observe({ type: "layout-shift", buffered: true });
+      return () => observer.disconnect();
+    } catch (e) {
+      console.warn("CLS tracking not supported");
+    }
+  }, []);
+
+  // Track page load time (FCP/LCP proxy)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const pageStart = performance.now();
+    const handlePageComplete = () => {
+      const pageLoadTime = performance.now() - pageStart;
+      if (pageLoadTime > 0) {
+        recordMetric("Dashboard Page Load", pageLoadTime, {
+          endpoint: "/dashboard",
+        });
+      }
+    };
+
+    const timer = setTimeout(handlePageComplete, 100);
+    return () => clearTimeout(timer);
+  }, [gigs]);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem("overview-expanded");

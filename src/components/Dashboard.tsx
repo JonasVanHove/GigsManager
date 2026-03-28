@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [isActiveSectionExpanded, setIsActiveSectionExpanded] = useState(true);
   const [isHandledSectionExpanded, setIsHandledSectionExpanded] = useState(false);
   const fetchGigsInFlightRef = useRef(false);
+  const noSessionLoggedRef = useRef(false);
   const gigsRef = useRef<Gig[]>([]);
   const gigsCacheKey = useMemo(
     () => (session?.user?.id ? `gigs-cache:${session.user.id}` : null),
@@ -179,13 +180,23 @@ export default function Dashboard() {
       return;
     }
 
+    // Wait until auth bootstrap completes to avoid noisy initial no-session calls.
+    if (authLoading) {
+      return;
+    }
+
     if (!session?.user) {
-      console.log("[fetchGigs] No user session");
+      if (!noSessionLoggedRef.current) {
+        console.log("[fetchGigs] No user session");
+        noSessionLoggedRef.current = true;
+      }
       setGigs([]);
       setTotalGigCount(0);
       setLoading(false);
       return;
     }
+
+    noSessionLoggedRef.current = false;
 
     try {
       fetchGigsInFlightRef.current = true;
@@ -269,7 +280,7 @@ export default function Dashboard() {
       fetchGigsInFlightRef.current = false;
       setLoading(false);
     }
-  }, [session?.user, getAccessToken, gigsCacheKey, toast]);
+  }, [authLoading, session?.user, getAccessToken, gigsCacheKey, toast]);
 
   useEffect(() => {
     fetchGigs();

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue, useTransition } from "react";
 import { recordWebVital } from "@/lib/web-vitals-logger";
 import { recordMetric } from "@/lib/performance-metrics";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
@@ -29,6 +29,28 @@ const CalendarView = lazy(() => import("./CalendarView"));
 const SetlistsTab = lazy(() => import("./SetlistsTab"));
 const SharedLinksTab = lazy(() => import("./SharedLinksTab"));
 
+type DashboardTab =
+  | "gigs"
+  | "all-gigs"
+  | "analytics"
+  | "investments"
+  | "band-members"
+  | "reports"
+  | "calendar"
+  | "setlists"
+  | "shared-links";
+
+const TAB_PRELOADERS: Partial<Record<DashboardTab, () => Promise<unknown>>> = {
+  "all-gigs": () => import("./AllGigsTab"),
+  analytics: () => import("./AnalyticsPage"),
+  investments: () => import("./InvestmentsTab"),
+  "band-members": () => import("./BandMembers"),
+  reports: () => import("./FinancialReports"),
+  calendar: () => import("./CalendarView"),
+  setlists: () => import("./SetlistsTab"),
+  "shared-links": () => import("./SharedLinksTab"),
+};
+
 const TabLoader = () => (
   <div className="flex items-center justify-center py-12">
     <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600 dark:border-brand-800 dark:border-t-brand-300" />
@@ -50,7 +72,8 @@ export default function Dashboard() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
-  const [activeTab, setActiveTab] = useState<"gigs" | "all-gigs" | "analytics" | "investments" | "band-members" | "reports" | "calendar" | "setlists" | "shared-links">("gigs");
+  const [activeTab, setActiveTab] = useState<DashboardTab>("gigs");
+  const [, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -172,6 +195,45 @@ export default function Dashboard() {
     },
     [gigs, handleEditGig]
   );
+
+  const handleTabChange = useCallback(
+    (nextTab: DashboardTab) => {
+      if (nextTab === activeTab) {
+        setShowMobileMenu(false);
+        return;
+      }
+
+      TAB_PRELOADERS[nextTab]?.();
+      startTransition(() => {
+        setActiveTab(nextTab);
+        setShowMobileMenu(false);
+      });
+    },
+    [activeTab, startTransition]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const browser = globalThis as typeof globalThis & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    const preloadLikelyTabs = () => {
+      TAB_PRELOADERS.calendar?.();
+      TAB_PRELOADERS["all-gigs"]?.();
+      TAB_PRELOADERS.analytics?.();
+    };
+
+    if (typeof browser.requestIdleCallback === "function") {
+      const idleId = browser.requestIdleCallback(preloadLikelyTabs, { timeout: 1500 });
+      return () => browser.cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = setTimeout(preloadLikelyTabs, 1200);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   // -- Data fetching ----------------------------------------------------------
 
@@ -810,7 +872,7 @@ export default function Dashboard() {
               {/* Navigation */}
               <nav className="space-y-1">
                 <button
-                  onClick={() => { setActiveTab("gigs"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("gigs")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "gigs" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -821,7 +883,7 @@ export default function Dashboard() {
                   Overview
                 </button>
                 <button
-                  onClick={() => { setActiveTab("calendar"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("calendar")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "calendar" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -832,7 +894,7 @@ export default function Dashboard() {
                   Calendar
                 </button>
                 <button
-                  onClick={() => { setActiveTab("all-gigs"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("all-gigs")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "all-gigs" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -843,7 +905,7 @@ export default function Dashboard() {
                   All Gigs
                 </button>
                 <button
-                  onClick={() => { setActiveTab("band-members"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("band-members")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "band-members" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -854,7 +916,7 @@ export default function Dashboard() {
                   Band Members
                 </button>
                 <button
-                  onClick={() => { setActiveTab("setlists"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("setlists")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "setlists" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -865,7 +927,7 @@ export default function Dashboard() {
                   Setlists
                 </button>
                 <button
-                  onClick={() => { setActiveTab("shared-links"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("shared-links")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "shared-links" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -876,7 +938,7 @@ export default function Dashboard() {
                   Shared Links
                 </button>
                 <button
-                  onClick={() => { setActiveTab("analytics"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("analytics")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "analytics" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -887,7 +949,7 @@ export default function Dashboard() {
                   Analytics
                 </button>
                 <button
-                  onClick={() => { setActiveTab("reports"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("reports")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "reports" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -898,7 +960,7 @@ export default function Dashboard() {
                   Reports
                 </button>
                 <button
-                  onClick={() => { setActiveTab("investments"); setShowMobileMenu(false); }}
+                  onClick={() => handleTabChange("investments")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                     activeTab === "investments" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
@@ -998,7 +1060,7 @@ export default function Dashboard() {
         <div className="mb-6 hidden lg:flex gap-1 sm:gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
           {/* Overview */}
           <button
-            onClick={() => setActiveTab("gigs")}
+            onClick={() => handleTabChange("gigs")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "gigs"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1014,7 +1076,7 @@ export default function Dashboard() {
           </button>
           {/* Calendar */}
           <button
-            onClick={() => setActiveTab("calendar")}
+            onClick={() => handleTabChange("calendar")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "calendar"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1030,7 +1092,7 @@ export default function Dashboard() {
           </button>
           {/* All Gigs */}
           <button
-            onClick={() => setActiveTab("all-gigs")}
+            onClick={() => handleTabChange("all-gigs")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "all-gigs"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1046,7 +1108,7 @@ export default function Dashboard() {
           </button>
           {/* Band Members */}
           <button
-            onClick={() => setActiveTab("band-members")}
+            onClick={() => handleTabChange("band-members")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "band-members"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1062,7 +1124,7 @@ export default function Dashboard() {
           </button>
           {/* Setlists */}
           <button
-            onClick={() => setActiveTab("setlists")}
+            onClick={() => handleTabChange("setlists")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "setlists"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1078,7 +1140,7 @@ export default function Dashboard() {
           </button>
           {/* Analytics */}
           <button
-            onClick={() => setActiveTab("analytics")}
+            onClick={() => handleTabChange("analytics")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "analytics"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1094,7 +1156,7 @@ export default function Dashboard() {
           </button>
           {/* Shared Links */}
           <button
-            onClick={() => setActiveTab("shared-links")}
+            onClick={() => handleTabChange("shared-links")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "shared-links"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1110,7 +1172,7 @@ export default function Dashboard() {
           </button>
           {/* Reports */}
           <button
-            onClick={() => setActiveTab("reports")}
+            onClick={() => handleTabChange("reports")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "reports"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
@@ -1126,7 +1188,7 @@ export default function Dashboard() {
           </button>
           {/* Investments */}
           <button
-            onClick={() => setActiveTab("investments")}
+            onClick={() => handleTabChange("investments")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               activeTab === "investments"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"

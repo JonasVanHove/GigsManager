@@ -7,6 +7,8 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useAuth } from "./AuthProvider";
 import type { Gig as AppGig } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
+import { getBandColorStyles, formatDateTime } from "@/lib/preferences";
+import BandTag from "./BandTag";
 
 moment.updateLocale("en", {
   week: {
@@ -19,6 +21,7 @@ const localizer = momentLocalizer(moment);
 interface Gig {
   id: string;
   eventName: string;
+  performers: string;
   date: string;
   isCharity: boolean;
   clientPaymentReceived: boolean;
@@ -69,6 +72,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
       return {
         id: gig.id,
         eventName: gig.eventName,
+        performers: gig.performers,
         date: String(gig.date),
         isCharity: gig.isCharity,
         clientPaymentReceived: gig.paymentReceived,
@@ -121,19 +125,14 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
 
   const eventStyleGetter = (event: CalendarEvent) => {
     const gig = event.resource;
-    
-    let backgroundColor = "#64748b"; // slate-500 default
-    let borderColor = "#475569"; // slate-600
-    
+
+    const bandStyles = getBandColorStyles(gig.performers || gig.eventName);
+    let backgroundColor: string = bandStyles.solid.backgroundColor;
+    let borderColor: string = bandStyles.solid.borderColor;
+
     if (gig.isCharity) {
       backgroundColor = "#ec4899"; // pink-500
       borderColor = "#db2777"; // pink-600
-    } else if (gig.clientPaymentReceived && gig.bandPaymentComplete) {
-      backgroundColor = "#10b981"; // emerald-500
-      borderColor = "#059669"; // emerald-600
-    } else if (gig.clientPaymentReceived) {
-      backgroundColor = "#f59e0b"; // amber-500
-      borderColor = "#d97706"; // amber-600
     }
 
     return {
@@ -244,7 +243,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
                     {selectedEvent.resource.eventName}
                   </h3>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {moment(selectedEvent.resource.date).format("MMMM D, YYYY [at] h:mm A")}
+                    {formatDateTime(selectedEvent.resource.date)}
                   </p>
                 </div>
                 <button
@@ -268,7 +267,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
                       : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                   }`}
                 >
-                  {selectedEvent.resource.isCharity ? "Charity Event" : "Paid Gig"}
+                  {selectedEvent.resource.isCharity ? "Charity Event" : <BandTag name={selectedEvent.resource.performers} variant="solid" />}
                 </span>
               </div>
 

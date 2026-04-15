@@ -147,7 +147,14 @@ export function formatCurrency(
 }
 
 export function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
+  const locale =
+    typeof document !== "undefined" && document.documentElement.lang
+      ? document.documentElement.lang
+      : typeof navigator !== "undefined" && navigator.language
+        ? navigator.language
+        : "en-US";
+
+  return new Date(dateString).toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",

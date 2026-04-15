@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Gig } from "@/types";
 import { calculateGigFinancials } from "@/lib/calculations";
+import { resolveLocale } from "@/lib/preferences";
 
 interface AnalyticsChartsProps {
   gigs: Gig[];
@@ -70,7 +71,7 @@ export default function AnalyticsCharts({ gigs, fmtCurrency }: AnalyticsChartsPr
 
       const managerEarnings = calc.myEarnings;
       const date = new Date(gig.date);
-      const monthKey = date.toLocaleDateString("nl-NL", { year: "numeric", month: "2-digit" });
+      const monthKey = date.toLocaleDateString(resolveLocale(), { year: "numeric", month: "2-digit" });
 
       // Monthly aggregation
       monthlyMap.set(monthKey, {

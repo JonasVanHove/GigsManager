@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Notification } from "@/lib/notifications";
 import { formatNotificationMessage } from "@/lib/notifications";
+import { formatDateTime } from "@/lib/preferences";
 
 interface NotificationCenterProps {
   notifications: Notification[];
@@ -86,12 +87,7 @@ export default function NotificationCenter({
                       <p className="font-medium text-slate-900 dark:text-white">{notif.title}</p>
                       <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{notif.message}</p>
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                        {new Date(notif.createdAt).toLocaleString("nl-NL", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTime(notif.createdAt)}
                       </p>
 
                       {/* Action Button */}

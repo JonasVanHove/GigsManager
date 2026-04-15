@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import type { UserSettingsData } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { useAuth } from "./AuthProvider";
+import { formatDate, formatDateTime, resolveLocale, type AppLanguage } from "@/lib/preferences";
 
 interface SettingsContextType {
   settings: UserSettingsData;
@@ -13,6 +14,16 @@ interface SettingsContextType {
   updateSettings: (patch: Partial<UserSettingsData>) => Promise<void>;
   /** Format an amount using the user's chosen currency */
   fmtCurrency: (amount: number) => string;
+  /** UI language preference (system / en / nl) */
+  language: AppLanguage;
+  /** Update the UI language preference */
+  setLanguage: (language: AppLanguage) => void;
+  /** Resolved locale string used for dates / currency */
+  locale: string;
+  /** Format a date using the active locale */
+  fmtDate: (value: string | null | undefined) => string;
+  /** Format a date/time using the active locale */
+  fmtDateTime: (value: string | null | undefined) => string;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -21,11 +32,32 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { session, getAccessToken } = useAuth();
   const [settings, setSettings] = useState<UserSettingsData>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
+  const [language, setLanguageState] = useState<AppLanguage>("system");
+
+  const locale = resolveLocale(language);
+
+  const setLanguage = useCallback((nextLanguage: AppLanguage) => {
+    setLanguageState(nextLanguage);
+    try {
+      localStorage.setItem("gig-manager-language", nextLanguage);
+    } catch {
+      // ignore storage failures
+    }
+  }, []);
 
   // -- Fetch on login ------------------------------------------------------
 
   useEffect(() => {
     let cancelled = false;
+
+    try {
+      const storedLanguage = localStorage.getItem("gig-manager-language") as AppLanguage | null;
+      if (storedLanguage === "system" || storedLanguage === "en" || storedLanguage === "nl") {
+        setLanguageState(storedLanguage);
+      }
+    } catch {
+      // ignore storage failures
+    }
 
     const load = async () => {
       if (!session?.user) {
@@ -59,6 +91,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     load();
     return () => { cancelled = true; };
   }, [session?.user, getAccessToken]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.lang = locale.startsWith("nl") ? "nl" : "en";
+  }, [locale]);
 
   // -- Persist changes -----------------------------------------------------
 
@@ -107,15 +144,29 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const fmtCurrency = useCallback(
     (amount: number) => {
       const cur = settings.currency || "EUR";
-      const locale =
-        cur === "USD" ? "en-US" : cur === "GBP" ? "en-GB" : cur === "EUR" ? "nl-BE" : "en-US";
       return new Intl.NumberFormat(locale, { style: "currency", currency: cur }).format(amount);
     },
-    [settings.currency]
+    [settings.currency, locale]
+  );
+
+  const fmtDate = useCallback(
+    (value: string | null | undefined) => {
+      if (!value) return "";
+      return formatDate(value, locale);
+    },
+    [locale]
+  );
+
+  const fmtDateTime = useCallback(
+    (value: string | null | undefined) => {
+      if (!value) return "";
+      return formatDateTime(value, locale);
+    },
+    [locale]
   );
 
   return (
-    <SettingsContext.Provider value={{ settings, loading, updateSettings, fmtCurrency }}>
+    <SettingsContext.Provider value={{ settings, loading, updateSettings, fmtCurrency, language, setLanguage, locale, fmtDate, fmtDateTime }}>
       {children}
     </SettingsContext.Provider>
   );

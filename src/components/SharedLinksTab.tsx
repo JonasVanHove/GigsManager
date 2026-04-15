@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Gig, ShareLinkItem, ShareLinkVisibility } from "@/types";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastContainer";
+import { formatDate } from "@/lib/preferences";
+import BandTag from "./BandTag";
 
 const DEFAULT_SHARE_LINK_VISIBILITY: ShareLinkVisibility = {
   showEventName: true,
@@ -58,15 +60,6 @@ const visibilityGroups: Array<{
     ],
   },
 ];
-
-function formatDate(date: string | null) {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export default function SharedLinksTab() {
   const { getAccessToken } = useAuth();
@@ -423,7 +416,7 @@ export default function SharedLinksTab() {
                     📎 {link.title || "Untitled Shared Overview"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Created: {formatDate(link.createdAt)} • Expires: {formatDate(link.expiresAt)} • Gigs: {link.gigCount}
+                    Created: {formatDate(link.createdAt)} • Expires: {link.expiresAt ? formatDate(link.expiresAt) : "Never"} • Gigs: {link.gigCount}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
                     {link.passwordProtected && (
@@ -611,7 +604,7 @@ export default function SharedLinksTab() {
                         <span className="min-w-0">
                           <span className="block truncate font-medium text-slate-800 dark:text-slate-200">{gig.eventName}</span>
                           <span className="block text-xs text-slate-500 dark:text-slate-400">
-                            {formatDate(gig.date)} • {gig.performers}
+                            {formatDate(gig.date)} • {gig.performers && <BandTag name={gig.performers} variant="soft" />}
                           </span>
                         </span>
                       </label>

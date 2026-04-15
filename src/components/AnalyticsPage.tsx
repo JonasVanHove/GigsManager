@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Gig } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/calculations";
+import { resolveLocale } from "@/lib/preferences";
 
 interface AnalyticsPageProps {
   gigs: Gig[];
@@ -255,7 +256,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
               const percentage = maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
               const [year, monthNum] = month.split("-");
               const monthName = new Date(parseInt(year), parseInt(monthNum) - 1).toLocaleString(
-                "en-US",
+                resolveLocale(),
                 { month: "short", year: "numeric" }
               );
 

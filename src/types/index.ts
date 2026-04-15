@@ -157,6 +157,8 @@ export interface UserSettingsData {
   theme: "light" | "dark" | "system";
 }
 
+export type AppLanguage = "system" | "en" | "nl";
+
 export const DEFAULT_SETTINGS: UserSettingsData = {
   currency: "EUR",
   claimPerformanceFee: true,

@@ -3,6 +3,7 @@
 import { useState, useMemo, useDeferredValue, useEffect } from "react";
 import type { Gig } from "@/types";
 import GigCard from "./GigCard";
+import BandTag from "./BandTag";
 
 interface AllGigsTabProps {
   gigs: Gig[];
@@ -11,7 +12,7 @@ interface AllGigsTabProps {
   loading: boolean;
 }
 
-type SortOption = "date-asc" | "date-desc" | "fee-high" | "fee-low";
+type SortOption = "date-asc" | "date-desc" | "band-asc" | "band-desc" | "fee-high" | "fee-low" | "payment-status";
 
 export default function AllGigsTab({
   gigs,
@@ -51,6 +52,12 @@ export default function AllGigsTab({
       case "date-asc":
         sorted.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         break;
+      case "band-asc":
+        sorted.sort((a, b) => a.performers.localeCompare(b.performers) || new Date(b.date).getTime() - new Date(a.date).getTime());
+        break;
+      case "band-desc":
+        sorted.sort((a, b) => b.performers.localeCompare(a.performers) || new Date(b.date).getTime() - new Date(a.date).getTime());
+        break;
       case "fee-high":
         sorted.sort(
           (a, b) =>
@@ -64,6 +71,13 @@ export default function AllGigsTab({
             (a.performanceFee + a.technicalFee) -
             (b.performanceFee + b.technicalFee)
         );
+        break;
+      case "payment-status":
+        sorted.sort((a, b) => {
+          const aScore = (a.paymentReceived ? 2 : 0) + (a.bandPaid ? 1 : 0);
+          const bScore = (b.paymentReceived ? 2 : 0) + (b.bandPaid ? 1 : 0);
+          return bScore - aScore || new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
         break;
     }
 
@@ -131,8 +145,11 @@ export default function AllGigsTab({
           >
             <option value="date-desc">Newest First</option>
             <option value="date-asc">Oldest First</option>
+            <option value="band-asc">Band A-Z</option>
+            <option value="band-desc">Band Z-A</option>
             <option value="fee-high">Highest Fee</option>
             <option value="fee-low">Lowest Fee</option>
+            <option value="payment-status">Payment Status</option>
           </select>
         </div>
 
@@ -163,7 +180,7 @@ export default function AllGigsTab({
                       : "border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 bg-white dark:bg-slate-800"
                   }`}
                 >
-                  {artist}
+                  <BandTag name={artist} variant={selectedArtists.has(artist) ? "solid" : "soft"} />
                   {selectedArtists.has(artist) && (
                     <svg className="ml-1.5 h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

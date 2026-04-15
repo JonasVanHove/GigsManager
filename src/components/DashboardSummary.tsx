@@ -2,8 +2,9 @@
 
 import { useState, type KeyboardEvent } from "react";
 import type { DashboardSummary, Gig } from "@/types";
-import { calculateGigFinancials } from "@/lib/calculations";
+import { calculateGigFinancials, formatDate } from "@/lib/calculations";
 import { XAITooltip } from "./XAITooltip";
+import BandTag from "./BandTag";
 
 interface DashboardSummaryProps {
   summary: DashboardSummary;
@@ -172,7 +173,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                 <div className="space-y-1">
                   {sortedBands.map(([band, data]) => (
                     <div key={`perf-${band}`} className="flex items-center justify-between text-xs rounded px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50">
-                      <p className="truncate font-medium text-slate-900 dark:text-slate-100">{band}</p>
+                      <BandTag name={band} variant="soft" />
                       <p className="text-slate-600 dark:text-slate-400 flex-shrink-0 ml-2">{data.gigs}</p>
                     </div>
                   ))}
@@ -253,9 +254,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                       <div key={band} className="rounded border border-slate-200 bg-white p-1.5 sm:p-2 dark:border-slate-700 dark:bg-slate-800">
                         <div className="flex items-center justify-between gap-1.5">
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium text-slate-900 dark:text-slate-100">
-                              {band}
-                            </p>
+                            <BandTag name={band} variant="soft" />
                             <p className="text-xs text-slate-500 dark:text-slate-400">
                               {data.gigs} gig{data.gigs !== 1 ? "s" : ""}
                             </p>
@@ -440,11 +439,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                                   : "text-orange-600 dark:text-orange-400"
                                               }`}
                                             >
-                                              {new Date(gig.date).toLocaleDateString("nl-NL", {
-                                                weekday: "short",
-                                                day: "numeric",
-                                                month: "short",
-                                              })}
+                                              {formatDate(gig.date)}
                                               {isOverdue && (
                                                 <span className="ml-1.5 font-bold text-red-700 dark:text-red-300">⚠ OVERDUE</span>
                                               )}
@@ -525,9 +520,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                     .filter(([_, data]) => data.owed > 0)
                     .map(([band, data]) => (
                       <div key={`outstanding-${band}`} className="flex items-center justify-between rounded px-2 py-1.5 sm:py-2 bg-white/50 dark:bg-slate-800/50">
-                        <p className="truncate text-xs font-medium text-pink-900 dark:text-pink-200">
-                          {band}
-                        </p>
+                        <BandTag name={band} variant="soft" />
                         <p className="font-semibold text-pink-800 dark:text-pink-300 whitespace-nowrap flex-shrink-0">
                           {fmtCurrency(data.owed)}
                         </p>

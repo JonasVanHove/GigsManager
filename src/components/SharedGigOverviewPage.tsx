@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PublicSharedGig, ShareLinkVisibility } from "@/types";
+import BandTag from "./BandTag";
+import { formatDate, resolveLocale } from "@/lib/preferences";
 
 interface SharePayload {
   token: string;
@@ -28,18 +30,9 @@ const financialFieldLabels: Array<{
   { key: "totalCost", label: "Total Cost" },
 ];
 
-function formatDate(value: string | null) {
-  if (!value) return "";
-  return new Date(value).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 function formatMoney(value: number | null) {
   if (value === null || Number.isNaN(value)) return null;
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(resolveLocale(), {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 0,
@@ -406,7 +399,7 @@ export default function SharedGigOverviewPage({ token }: SharedGigOverviewPagePr
                         {isExpanded && (
                           <div className="mt-3 space-y-2">
                             {gig.performers && (
-                              <p className="text-sm text-slate-600 dark:text-slate-300">Band: {gig.performers}</p>
+                              <BandTag name={gig.performers} variant="soft" />
                             )}
                             {gig.bookingDate && (
                               <p className="text-xs text-slate-500 dark:text-slate-400">Booked: {formatDate(gig.bookingDate)}</p>
@@ -524,7 +517,7 @@ export default function SharedGigOverviewPage({ token }: SharedGigOverviewPagePr
                         {isExpanded && (
                           <div className="mt-3 space-y-2">
                             {gig.performers && (
-                              <p className="text-sm text-slate-600 dark:text-slate-300">Band: {gig.performers}</p>
+                              <BandTag name={gig.performers} variant="soft" />
                             )}
                             {gig.bookingDate && (
                               <p className="text-xs text-slate-500 dark:text-slate-400">Booked: {formatDate(gig.bookingDate)}</p>

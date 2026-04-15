@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
+import type { AppLanguage } from "@/types";
 
 const CURRENCIES = [
   { code: "EUR", label: "Euro (€)", symbol: "€" },
@@ -27,11 +28,12 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ onClose }: SettingsModalProps) {
   const { session } = useAuth();
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, language, setLanguage } = useSettings();
   const [currency, setCurrency] = useState(settings.currency);
   const [claimPerf, setClaimPerf] = useState(settings.claimPerformanceFee);
   const [claimTech, setClaimTech] = useState(settings.claimTechnicalFee);
   const [theme, setTheme] = useState(settings.theme);
+  const [appLanguage, setAppLanguage] = useState<AppLanguage>(language);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -43,7 +45,8 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     currency !== settings.currency ||
     claimPerf !== settings.claimPerformanceFee ||
     claimTech !== settings.claimTechnicalFee ||
-    theme !== settings.theme;
+    theme !== settings.theme ||
+    appLanguage !== language;
 
   const hasProfileChanges =
     displayName !== (session?.user?.user_metadata?.name || "") ||
@@ -54,6 +57,10 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     setAvatarUrl(session?.user?.user_metadata?.avatar_url || "");
     setAvatarFile(null);
   }, [session?.user]);
+
+  useEffect(() => {
+    setAppLanguage(language);
+  }, [language]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,6 +130,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           claimTechnicalFee: claimTech,
           theme,
         });
+        setLanguage(appLanguage);
       }
 
       if (hasProfileChanges) {
@@ -243,6 +251,29 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             </select>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               All amounts will be displayed in this currency.
+            </p>
+          </div>
+
+          {/* -- Language -------------------------- */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Language
+            </label>
+            <select
+              value={appLanguage}
+              onChange={(e) => setAppLanguage(e.target.value as AppLanguage)}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-sm transition focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-400/20"
+            >
+              <option value="system">System language</option>
+              <option value="en">English</option>
+              <option value="nl">Nederlands</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {appLanguage === "system"
+                ? "Matches your device language and date/time format."
+                : appLanguage === "nl"
+                ? "Dutch interface with Dutch date/time formatting."
+                : "English interface with English date/time formatting."}
             </p>
           </div>
 

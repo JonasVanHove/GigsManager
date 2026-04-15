@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Gig } from "@/types";
-import { formatCurrency, formatDate } from "@/lib/calculations";
+import { formatCurrency, formatDate, calculateGigFinancials } from "@/lib/calculations";
 import { resolveLocale } from "@/lib/preferences";
 
 interface AnalyticsPageProps {
@@ -22,11 +22,38 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
     const regularGigs = gigs.filter((g) => !g.isCharity);
     const gigsWithAdvance = gigs.filter((g) => g.advanceReceivedByManager > 0 || g.advanceToMusicians > 0);
 
-    const totalReceived = paid.reduce((sum, g) => sum + (g.performanceFee + g.technicalFee), 0);
+    // Total received = actual manager earnings from paid gigs (not raw fees)
+    const totalReceived = paid.reduce((sum, g) => {
+      const calc = calculateGigFinancials(
+        g.performanceFee,
+        g.technicalFee,
+        g.managerBonusType,
+        g.managerBonusAmount,
+        g.numberOfMusicians,
+        g.claimPerformanceFee,
+        g.claimTechnicalFee,
+        g.technicalFeeClaimAmount,
+        g.advanceReceivedByManager,
+        g.advanceToMusicians,
+        g.isCharity
+      );
+      return sum + calc.myEarnings;
+    }, 0);
     const totalEarned = paid.reduce((sum, g) => {
-      const perfShare = g.claimPerformanceFee ? g.performanceFee / g.numberOfMusicians : 0;
-      const techShare = g.technicalFeeClaimAmount ?? (g.claimTechnicalFee ? g.technicalFee : 0);
-      return sum + perfShare + techShare;
+      const calc = calculateGigFinancials(
+        g.performanceFee,
+        g.technicalFee,
+        g.managerBonusType,
+        g.managerBonusAmount,
+        g.numberOfMusicians,
+        g.claimPerformanceFee,
+        g.claimTechnicalFee,
+        g.technicalFeeClaimAmount,
+        g.advanceReceivedByManager,
+        g.advanceToMusicians,
+        g.isCharity
+      );
+      return sum + calc.myEarnings;
     }, 0);
 
     const charityEarnings = charityGigs.reduce((sum, g) => sum + (g.performanceFee + g.technicalFee), 0);

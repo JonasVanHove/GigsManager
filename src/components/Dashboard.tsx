@@ -980,7 +980,7 @@ export default function Dashboard() {
         </>
       )}
 
-      <main className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-8 sm:px-6 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-950 min-h-screen transition-colors">
+      <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-8 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-950 min-h-screen transition-colors">
         {/* Search results indicator */}
         {searchQuery && (
           <div className="mb-4 flex items-center justify-between rounded-lg bg-brand-50 px-4 py-2 text-sm dark:bg-brand-950/30">
@@ -1329,7 +1329,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           {isActiveSectionExpanded && (
-                            <div className="grid gap-5">
+                            <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
                               {activeGigs.map((gig) => (
                                 <GigCard
                                   key={gig.id}
@@ -1399,7 +1399,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           {isHandledSectionExpanded && (
-                            <div className="grid gap-5">
+                            <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
                               {handledGigs.map((gig) => (
                                 <GigCard
                                   key={gig.id}

@@ -8,18 +8,18 @@ interface LoadingSpinnerProps {
 
 export default function LoadingSpinner({ size = "md", message, fullScreen = false }: LoadingSpinnerProps) {
   const sizes = {
-    sm: "h-4 w-4 border-2",
-    md: "h-8 w-8 border-4",
-    lg: "h-12 w-12 border-4",
+    sm: "h-5 w-5",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
   };
 
   const spinner = (
     <div className="flex flex-col items-center justify-center gap-3">
-      <div
-        className={`${sizes[size]} animate-spin rounded-full border-brand-200 border-t-brand-600 dark:border-brand-800 dark:border-t-brand-300`}
-        role="status"
-        aria-label="Loading"
-      />
+      <div className="relative" role="status" aria-label="Loading">
+        <div className={`${sizes[size]} rounded-full border border-brand-200/70 dark:border-brand-800/70`} />
+        <div className={`absolute inset-0 ${sizes[size]} animate-spin rounded-full border-2 border-transparent border-t-brand-600 border-r-brand-500 dark:border-t-brand-300 dark:border-r-brand-400`} />
+        <div className="absolute inset-[30%] rounded-full bg-brand-500/15 dark:bg-brand-300/20 animate-pulse" />
+      </div>
       {message && (
         <p className="text-sm text-slate-600 dark:text-slate-400">{message}</p>
       )}

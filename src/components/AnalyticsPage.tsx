@@ -22,23 +22,8 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
     const regularGigs = gigs.filter((g) => !g.isCharity);
     const gigsWithAdvance = gigs.filter((g) => g.advanceReceivedByManager > 0 || g.advanceToMusicians > 0);
 
-    // Total received = actual manager earnings from paid gigs (not raw fees)
-    const totalReceived = paid.reduce((sum, g) => {
-      const calc = calculateGigFinancials(
-        g.performanceFee,
-        g.technicalFee,
-        g.managerBonusType,
-        g.managerBonusAmount,
-        g.numberOfMusicians,
-        g.claimPerformanceFee,
-        g.claimTechnicalFee,
-        g.technicalFeeClaimAmount,
-        g.advanceReceivedByManager,
-        g.advanceToMusicians,
-        g.isCharity
-      );
-      return sum + calc.myEarnings;
-    }, 0);
+    // Gross client receipts should reflect the actual money invoiced to clients.
+    const grossReceived = paid.reduce((sum, g) => sum + g.performanceFee + g.technicalFee, 0);
     const totalEarned = paid.reduce((sum, g) => {
       const calc = calculateGigFinancials(
         g.performanceFee,
@@ -60,7 +45,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
     const totalAdvanceReceived = gigsWithAdvance.reduce((sum, g) => sum + g.advanceReceivedByManager, 0);
     const totalAdvancePaid = gigsWithAdvance.reduce((sum, g) => sum + g.advanceToMusicians, 0);
 
-    const avgGigSize = gigs.length > 0 ? totalReceived / gigs.length : 0;
+    const avgGigSize = gigs.length > 0 ? grossReceived / gigs.length : 0;
     const avgEarningsPerGig = paid.length > 0 ? totalEarned / paid.length : 0;
 
     // Payment timeline
@@ -120,7 +105,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
       totalGigs: gigs.length,
       paidGigs: paid.length,
       unpaidGigs: unpaid.length,
-      totalReceived,
+      grossReceived,
       totalEarned,
       avgGigSize,
       avgEarningsPerGig,
@@ -158,8 +143,8 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
             color="emerald"
           />
           <MetricCard
-            label="Total Received"
-            value={fmtCurrency(stats.totalReceived)}
+            label="Gross Received"
+            value={fmtCurrency(stats.grossReceived)}
             color="brand"
           />
           <MetricCard
@@ -219,7 +204,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600 dark:text-slate-400">Total Received (Clients)</span>
               <span className="font-bold text-slate-900 dark:text-slate-100">
-                {fmtCurrency(stats.totalReceived)}
+                {fmtCurrency(stats.grossReceived)}
               </span>
             </div>
             <div className="h-px bg-slate-200 dark:bg-slate-700" />
@@ -232,7 +217,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-600 dark:text-slate-400">Band Share</span>
               <span className="font-bold text-amber-700 dark:text-amber-300">
-                {fmtCurrency(stats.totalReceived - stats.totalEarned)}
+                {fmtCurrency(stats.grossReceived - stats.totalEarned)}
               </span>
             </div>
           </div>
@@ -450,7 +435,7 @@ function MetricCard({
   };
 
   return (
-    <div className={`rounded-lg border ring-1 ${colorMap[color]} px-4 py-3`}>
+    <div className={`rounded-lg border ring-1 shadow-sm transition duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md ${colorMap[color]} px-4 py-3`}>
       <p className="text-xs font-medium uppercase tracking-wider opacity-75">
         {label}
       </p>

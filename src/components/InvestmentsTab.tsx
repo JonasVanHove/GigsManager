@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./AuthProvider";
 import type { Investment, InvestmentFormData } from "@/types";
+import LoadingSpinner from "./LoadingSpinner";
 
 interface InvestmentsTabProps {
   fmtCurrency: (amount: number) => string;
@@ -162,8 +163,9 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
           onClick={() => setShowForm(!showForm)}
           className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 dark:hover:bg-brand-700"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 9.75A3.75 3.75 0 0 1 6 6h12a3.75 3.75 0 0 1 3.75 3.75v5.25A3.75 3.75 0 0 1 18 18.75H6A3.75 3.75 0 0 1 2.25 15V9.75Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9h12M7.5 13.5h2.25" />
           </svg>
           {showForm ? "Cancel" : "Add Investment"}
         </button>
@@ -257,10 +259,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
       {/* -- List -------------------------------------------------------- */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
+          <LoadingSpinner size="md" message="Loading investments..." />
         </div>
       ) : investments.length === 0 ? (
         <div className="text-center py-12">

@@ -50,9 +50,7 @@ const TAB_PRELOADERS: Partial<Record<DashboardTab, () => Promise<unknown>>> = {
 };
 
 const TabLoader = () => (
-  <div className="flex items-center justify-center py-12">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600 dark:border-brand-800 dark:border-t-brand-300" />
-  </div>
+  <LoadingSpinner size="lg" message="Loading section..." />
 );
 
 
@@ -667,10 +665,7 @@ export default function Dashboard() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
+        <LoadingSpinner size="lg" message="Loading dashboard..." />
       </div>
     );
   }
@@ -684,7 +679,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
       {/* -- Navbar -------------------------------------------------------- */}
       <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg dark:backdrop-blur-xl transition-colors">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8">
           {/* Left: Hamburger (mobile) + Logo */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             {/* Mobile hamburger */}
@@ -1194,7 +1189,8 @@ export default function Dashboard() {
           >
             <span className="inline-flex items-center gap-1.5">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 3.07-.879 4.242 0M9.75 17.25c0 .552-.448 1-1 1H5.625c-.552 0-1-.448-1-1m12.621-4.47c.409-.34.659-.934.659-1.591v-2.64c0-1.228-.841-2.265-1.964-2.565A6.521 6.521 0 0 0 12 2.25c-1.466 0-2.869.36-4.095 1.001C6.041 3.476 5.2 4.513 5.2 5.74v2.637c0 .657.25 1.251.659 1.591m0 0c.409.34 1.227.855 2.966 1.694C9.75 15.75 11.565 16.5 12 16.5c.435 0 2.25-.75 3.175-1.32 1.738-.839 2.557-1.354 2.966-1.694" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 9.75A3.75 3.75 0 0 1 6 6h12a3.75 3.75 0 0 1 3.75 3.75v5.25A3.75 3.75 0 0 1 18 18.75H6A3.75 3.75 0 0 1 2.25 15V9.75Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9h12M7.5 13.5h3" />
               </svg>
               <span className="hidden sm:inline">Invest</span>
             </span>
@@ -1209,10 +1205,7 @@ export default function Dashboard() {
             {/* -- Overview: Smart sorted performances ---------------------- */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <svg className="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <LoadingSpinner size="lg" message="Loading performances..." />
               </div>
             ) : filteredGigs.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 py-20 text-center">

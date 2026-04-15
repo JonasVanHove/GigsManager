@@ -874,6 +874,9 @@ export default function Dashboard() {
 
               {/* Navigation */}
               <nav className="space-y-1">
+                <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  Core
+                </div>
                 <button
                   onClick={() => handleTabChange("gigs")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
@@ -907,6 +910,9 @@ export default function Dashboard() {
                   </svg>
                   All Gigs
                 </button>
+                <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  Band
+                </div>
                 <button
                   onClick={() => handleTabChange("band-members")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
@@ -940,6 +946,9 @@ export default function Dashboard() {
                   </svg>
                   Shared Links
                 </button>
+                <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  Insights
+                </div>
                 <button
                   onClick={() => handleTabChange("analytics")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
@@ -951,6 +960,9 @@ export default function Dashboard() {
                   </svg>
                   Insights
                 </button>
+                <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  Finance
+                </div>
                 <button
                   onClick={() => handleTabChange("investments")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
@@ -1050,6 +1062,9 @@ export default function Dashboard() {
 
         {/* -- Tabs (desktop only) ----------------------------------------------------- */}
         <div className="mb-6 hidden lg:flex gap-1 sm:gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+          <div className="flex items-center px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            Core
+          </div>
           {/* Overview */}
           <button
             onClick={() => handleTabChange("gigs")}
@@ -1098,6 +1113,9 @@ export default function Dashboard() {
               <span className="hidden sm:inline">All Gigs</span>
             </span>
           </button>
+          <div className="flex items-center px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            Band
+          </div>
           {/* Band Members */}
           <button
             onClick={() => handleTabChange("band-members")}
@@ -1130,6 +1148,9 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Setlists</span>
             </span>
           </button>
+          <div className="flex items-center px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            Insights
+          </div>
           {/* Shared Links */}
           <button
             onClick={() => handleTabChange("shared-links")}

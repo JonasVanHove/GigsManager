@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Notification } from "@/lib/notifications";
 import { formatNotificationMessage } from "@/lib/notifications";
 import { formatDateTime } from "@/lib/preferences";
+import { useSettings } from "./SettingsProvider";
 
 interface NotificationCenterProps {
   notifications: Notification[];
@@ -18,10 +19,34 @@ export default function NotificationCenter({
   onDismiss,
   onClearAll,
 }: NotificationCenterProps) {
+  const { language } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
 
   const unreadCount = notifications.filter((n) => n.status === "unread").length;
   const visibleNotifications = notifications.filter((n) => n.status !== "dismissed").slice(0, 10);
+  const copy = language === "nl"
+    ? {
+        notifications: "Meldingen",
+        alerts: "Meldingen",
+        new: "nieuw",
+        noNotificationsYet: "Nog geen meldingen",
+        view: "Bekijken",
+        markAsRead: "Markeren als gelezen",
+        dismiss: "Verbergen",
+        clearAll: "Alles wissen",
+        close: "Sluiten",
+      }
+    : {
+        notifications: "Notifications",
+        alerts: "Alerts",
+        new: "new",
+        noNotificationsYet: "No notifications yet",
+        view: "View",
+        markAsRead: "Mark as read",
+        dismiss: "Dismiss",
+        clearAll: "Clear All",
+        close: "Close",
+      };
 
   return (
     <div className="relative">
@@ -29,7 +54,7 @@ export default function NotificationCenter({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
-        title="Notifications"
+        title={copy.notifications}
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path
@@ -38,7 +63,7 @@ export default function NotificationCenter({
             d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 002.689 6.072m0 0a23.9 23.9 0 0135.378-3.15M9.3 20.25H3.75a1.5 1.5 0 01-1.5-1.5V15m13.875 9h3.75a1.5 1.5 0 001.5-1.5V15"
           />
         </svg>
-        <span className="text-xs">Alerts</span>
+        <span className="text-xs">{copy.alerts}</span>
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -51,10 +76,10 @@ export default function NotificationCenter({
         <div className="absolute right-0 mt-2 w-96 rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 z-50 max-h-96 overflow-hidden flex flex-col">
           {/* Header */}
           <div className="border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900 dark:text-white">Notifications</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white">{copy.notifications}</h3>
             {unreadCount > 0 && (
               <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                {unreadCount} new
+                {unreadCount} {copy.new}
               </span>
             )}
           </div>
@@ -66,7 +91,7 @@ export default function NotificationCenter({
                 <svg className="mb-3 h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 012.689 6.072m0 0a23.9 23.9 0 0135.378-3.15" />
                 </svg>
-                <p className="text-sm text-slate-500 dark:text-slate-400">No notifications yet</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{copy.noNotificationsYet}</p>
               </div>
             ) : (
               visibleNotifications.map((notif) => (
@@ -96,7 +121,7 @@ export default function NotificationCenter({
                           href={notif.actionUrl}
                           className="mt-2 inline-block text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
                         >
-                          {notif.actionLabel || "View"}
+                          {notif.actionLabel || copy.view}
                         </a>
                       )}
                     </div>
@@ -107,7 +132,7 @@ export default function NotificationCenter({
                         <button
                           onClick={() => onMarkAsRead(notif.id)}
                           className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition"
-                          title="Mark as read"
+                          title={copy.markAsRead}
                         >
                           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
@@ -118,7 +143,7 @@ export default function NotificationCenter({
                         <button
                           onClick={() => onDismiss(notif.id)}
                           className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition"
-                          title="Dismiss"
+                          title={copy.dismiss}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -135,19 +160,19 @@ export default function NotificationCenter({
           {/* Footer */}
           {visibleNotifications.length > 0 && (
             <div className="border-t border-slate-200 dark:border-slate-700 px-4 py-2 flex gap-2">
-              {onClearAll && (
+                  {onClearAll && (
                 <button
                   onClick={onClearAll}
                   className="flex-1 rounded px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 >
-                  Clear All
+                  {copy.clearAll}
                 </button>
               )}
               <button
                 onClick={() => setIsOpen(false)}
                 className="flex-1 rounded bg-slate-100 px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
-                Close
+                {copy.close}
               </button>
             </div>
           )}

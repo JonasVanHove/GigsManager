@@ -4,6 +4,7 @@ import { useState, useMemo, useDeferredValue, useEffect } from "react";
 import type { Gig } from "@/types";
 import GigCard from "./GigCard";
 import BandTag from "./BandTag";
+import { useSettings } from "./SettingsProvider";
 
 interface AllGigsTabProps {
   gigs: Gig[];
@@ -20,11 +21,48 @@ export default function AllGigsTab({
   fmtCurrency,
   loading,
 }: AllGigsTabProps) {
+  const { language } = useSettings();
   const PAGE_SIZE = 24;
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const deferredGigs = useDeferredValue(gigs);
+
+  const copy = language === "nl"
+    ? {
+        noPerformancesYet: "Nog geen optredens",
+        sortBy: "Sorteer op",
+        newestFirst: "Nieuwste eerst",
+        oldestFirst: "Oudste eerst",
+        bandAz: "Band A-Z",
+        bandZa: "Band Z-A",
+        highestFee: "Hoogste vergoeding",
+        lowestFee: "Laagste vergoeding",
+        paymentStatus: "Betaalstatus",
+        filterByArtist: "Filter op artiest",
+        clearAll: "Alles wissen",
+        performances: "optredens",
+        noMatches: "Geen optredens komen overeen met je filters",
+        loadMore: "Meer laden",
+        left: "over",
+      }
+    : {
+        noPerformancesYet: "No performances yet",
+        sortBy: "Sort by",
+        newestFirst: "Newest First",
+        oldestFirst: "Oldest First",
+        bandAz: "Band A-Z",
+        bandZa: "Band Z-A",
+        highestFee: "Highest Fee",
+        lowestFee: "Lowest Fee",
+        paymentStatus: "Payment Status",
+        filterByArtist: "Filter by Artist",
+        clearAll: "Clear all",
+        performances: "performances",
+        noMatches: "No performances match your filters",
+        loadMore: "Load more",
+        left: "left",
+      };
 
   // Get all unique artists
   const artists = useMemo(() => {
@@ -123,7 +161,7 @@ export default function AllGigsTab({
           <path strokeLinecap="round" strokeLinejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z" />
         </svg>
         <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
-          No performances yet
+          {copy.noPerformancesYet}
         </h3>
       </div>
     );
@@ -136,20 +174,20 @@ export default function AllGigsTab({
         {/* Sort dropdown */}
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Sort by
+            {copy.sortBy}
           </label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             className="block w-full max-w-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-sm focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           >
-            <option value="date-desc">Newest First</option>
-            <option value="date-asc">Oldest First</option>
-            <option value="band-asc">Band A-Z</option>
-            <option value="band-desc">Band Z-A</option>
-            <option value="fee-high">Highest Fee</option>
-            <option value="fee-low">Lowest Fee</option>
-            <option value="payment-status">Payment Status</option>
+            <option value="date-desc">{copy.newestFirst}</option>
+            <option value="date-asc">{copy.oldestFirst}</option>
+            <option value="band-asc">{copy.bandAz}</option>
+            <option value="band-desc">{copy.bandZa}</option>
+            <option value="fee-high">{copy.highestFee}</option>
+            <option value="fee-low">{copy.lowestFee}</option>
+            <option value="payment-status">{copy.paymentStatus}</option>
           </select>
         </div>
 
@@ -158,14 +196,14 @@ export default function AllGigsTab({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Filter by Artist
+                {copy.filterByArtist}
               </label>
               {selectedArtists.size > 0 && (
                 <button
                   onClick={() => setSelectedArtists(new Set())}
                   className="text-xs text-brand-600 dark:text-brand-400 hover:underline"
                 >
-                  Clear all
+                  {copy.clearAll}
                 </button>
               )}
             </div>
@@ -196,7 +234,7 @@ export default function AllGigsTab({
       {/* -- Results -------------------------------------------------------- */}
       <div className="space-y-1">
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-          {sortedGigs.length} of {deferredGigs.length} performances
+          {sortedGigs.length} of {deferredGigs.length} {copy.performances}
         </p>
       </div>
 
@@ -206,7 +244,7 @@ export default function AllGigsTab({
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10a4 4 0 018 0" />
           </svg>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            No performances match your filters
+            {copy.noMatches}
           </p>
         </div>
       ) : (
@@ -230,7 +268,7 @@ export default function AllGigsTab({
                 onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
                 className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700"
               >
-                Load more ({remainingCount} left)
+                {copy.loadMore} ({remainingCount} {copy.left})
               </button>
             </div>
           )}

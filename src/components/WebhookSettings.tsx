@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Webhook } from "@/lib/webhooks";
+import { useSettings } from "./SettingsProvider";
 
 interface WebhookSettingsProps {
   webhooks?: Webhook[];
@@ -16,6 +17,7 @@ export default function WebhookSettings({
   onToggleWebhook,
   onDeleteWebhook,
 }: WebhookSettingsProps) {
+  const { language } = useSettings();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<{
     provider: "discord" | "n8n" | "custom";
@@ -32,12 +34,54 @@ export default function WebhookSettings({
   const [error, setError] = useState("");
 
   const eventOptions = [
-    { id: "payment_received", label: "Payment Received", icon: "💰" },
-    { id: "payment_overdue", label: "Payment Overdue", icon: "⚠️" },
-    { id: "band_paid", label: "Band Payment Sent", icon: "✅" },
-    { id: "upcoming_gig", label: "Upcoming Performance", icon: "🎵" },
-    { id: "gig_completed", label: "Gig Completed", icon: "🎉" },
+    { id: "payment_received", label: language === "nl" ? "Betaling ontvangen" : "Payment Received", icon: "💰" },
+    { id: "payment_overdue", label: language === "nl" ? "Betaling te laat" : "Payment Overdue", icon: "⚠️" },
+    { id: "band_paid", label: language === "nl" ? "Band betaald" : "Band Payment Sent", icon: "✅" },
+    { id: "upcoming_gig", label: language === "nl" ? "Aankomend optreden" : "Upcoming Performance", icon: "🎵" },
+    { id: "gig_completed", label: language === "nl" ? "Optreden voltooid" : "Gig Completed", icon: "🎉" },
   ];
+
+  const copy = language === "nl"
+    ? {
+        webhooks: "Webhooks",
+        description: "Stuur meldingen naar Discord, n8n of aangepaste webhooks",
+        addWebhook: "Webhook toevoegen",
+        createWebhook: "Nieuwe webhook maken",
+        provider: "Provider",
+        webhookUrl: "Webhook-URL *",
+        nameOptional: "Naam (optioneel)",
+        eventsToNotify: "Gebeurtenissen om te melden *",
+        cancel: "Annuleren",
+        creating: "Aanmaken...",
+        create: "Webhook maken",
+        noWebhooks: "Nog geen webhooks ingesteld",
+        noWebhooksHelp: "Voeg er een toe om te starten met externe integraties",
+        requiredFields: "Vul alle verplichte velden in",
+        findDiscord: "Te vinden in de serverinstellingen van Discord",
+        n8nUrl: "Je n8n webhook-URL",
+        customEndpoint: "Elk HTTP POST-endpoint",
+        imageExample: "bijv. Mijn",
+      }
+    : {
+        webhooks: "Webhooks",
+        description: "Send notifications to Discord, n8n, or custom webhooks",
+        addWebhook: "Add Webhook",
+        createWebhook: "Create New Webhook",
+        provider: "Provider",
+        webhookUrl: "Webhook URL *",
+        nameOptional: "Name (optional)",
+        eventsToNotify: "Events to Notify *",
+        cancel: "Cancel",
+        creating: "Creating...",
+        create: "Create Webhook",
+        noWebhooks: "No webhooks configured yet",
+        noWebhooksHelp: "Add one to get started with external integrations",
+        requiredFields: "Please fill in all required fields",
+        findDiscord: "Find this in your Discord server settings",
+        n8nUrl: "Your n8n webhook URL",
+        customEndpoint: "Any HTTP POST endpoint",
+        imageExample: "e.g., My",
+      };
 
   const handleAddEvent = (eventId: string) => {
     setFormData((prev) => ({
@@ -55,7 +99,7 @@ export default function WebhookSettings({
 
     try {
       if (!formData.url || formData.events.length === 0) {
-        setError("Please fill in all required fields");
+        setError(copy.requiredFields);
         setLoading(false);
         return;
       }
@@ -83,7 +127,7 @@ export default function WebhookSettings({
       });
       setShowForm(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to create webhook";
+      const msg = err instanceof Error ? err.message : (language === "nl" ? "Webhook maken mislukt" : "Failed to create webhook");
       setError(msg);
     } finally {
       setLoading(false);
@@ -95,9 +139,9 @@ export default function WebhookSettings({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Webhooks</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{copy.webhooks}</h3>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Send notifications to Discord, n8n, or custom webhooks
+            {copy.description}
           </p>
         </div>
         <button
@@ -107,14 +151,14 @@ export default function WebhookSettings({
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Add Webhook
+          {copy.addWebhook}
         </button>
       </div>
 
       {/* Add Webhook Form */}
       {showForm && (
         <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-          <h4 className="mb-4 font-semibold text-slate-900 dark:text-white">Create New Webhook</h4>
+          <h4 className="mb-4 font-semibold text-slate-900 dark:text-white">{copy.createWebhook}</h4>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-2 text-sm text-red-700 dark:text-red-400">
@@ -124,7 +168,7 @@ export default function WebhookSettings({
 
             {/* Provider Selection */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Provider</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{copy.provider}</label>
               <div className="mt-2 flex gap-2">
                 {(["discord", "n8n", "custom"] as const).map((provider) => (
                   <button
@@ -147,7 +191,7 @@ export default function WebhookSettings({
 
             {/* Webhook URL */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Webhook URL *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{copy.webhookUrl}</label>
               <input
                 type="url"
                 value={formData.url}
@@ -162,29 +206,29 @@ export default function WebhookSettings({
               />
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {formData.provider === "discord" &&
-                  "Find this in your Discord server settings"}
+                  copy.findDiscord}
                 {formData.provider === "n8n" &&
-                  "Your n8n webhook URL"}
+                  copy.n8nUrl}
                 {formData.provider === "custom" &&
-                  "Any HTTP POST endpoint"}
+                  copy.customEndpoint}
               </p>
             </div>
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name (optional)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{copy.nameOptional}</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder={`e.g., My ${formData.provider.charAt(0).toUpperCase() + formData.provider.slice(1)} Bot`}
+                placeholder={`${copy.imageExample} ${formData.provider.charAt(0).toUpperCase() + formData.provider.slice(1)} Bot`}
                 className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
             {/* Events Selection */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Events to Notify *</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{copy.eventsToNotify}</label>
               <div className="mt-2 space-y-2">
                 {eventOptions.map((event) => (
                   <label key={event.id} className="flex items-center gap-2">
@@ -209,14 +253,14 @@ export default function WebhookSettings({
                 onClick={() => setShowForm(false)}
                 className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Cancel
+                {copy.cancel}
               </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create Webhook"}
+                {loading ? copy.creating : copy.create}
               </button>
             </div>
           </form>
@@ -230,10 +274,10 @@ export default function WebhookSettings({
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            No webhooks configured yet
+            {copy.noWebhooks}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Add one to get started with external integrations
+            {copy.noWebhooksHelp}
           </p>
         </div>
       ) : (

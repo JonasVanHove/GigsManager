@@ -35,7 +35,6 @@ type DashboardTab =
   | "analytics"
   | "investments"
   | "band-members"
-  | "reports"
   | "calendar"
   | "setlists"
   | "shared-links";
@@ -45,7 +44,6 @@ const TAB_PRELOADERS: Partial<Record<DashboardTab, () => Promise<unknown>>> = {
   analytics: () => import("./AnalyticsPage"),
   investments: () => import("./InvestmentsTab"),
   "band-members": () => import("./BandMembers"),
-  reports: () => import("./FinancialReports"),
   calendar: () => import("./CalendarView"),
   setlists: () => import("./SetlistsTab"),
   "shared-links": () => import("./SharedLinksTab"),
@@ -73,6 +71,7 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>("gigs");
+  const [insightsView, setInsightsView] = useState<"analytics" | "reports">("analytics");
   const [, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -204,6 +203,9 @@ export default function Dashboard() {
       }
 
       TAB_PRELOADERS[nextTab]?.();
+      if (nextTab === "analytics") {
+        import("./FinancialReports");
+      }
       startTransition(() => {
         setActiveTab(nextTab);
         setShowMobileMenu(false);
@@ -224,6 +226,7 @@ export default function Dashboard() {
       TAB_PRELOADERS.calendar?.();
       TAB_PRELOADERS["all-gigs"]?.();
       TAB_PRELOADERS.analytics?.();
+      import("./FinancialReports");
     };
 
     if (typeof browser.requestIdleCallback === "function") {
@@ -946,18 +949,7 @@ export default function Dashboard() {
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 6.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75ZM16.5 6.75c0-.621.504-1.125 1.125-1.125h2.25C20.496 5.625 21 6.129 21 6.75v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75Z" />
                   </svg>
-                  Analytics
-                </button>
-                <button
-                  onClick={() => handleTabChange("reports")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                    activeTab === "reports" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                  </svg>
-                  Reports
+                  Insights
                 </button>
                 <button
                   onClick={() => handleTabChange("investments")}
@@ -1138,22 +1130,6 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Setlists</span>
             </span>
           </button>
-          {/* Analytics */}
-          <button
-            onClick={() => handleTabChange("analytics")}
-            className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-              activeTab === "analytics"
-                ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
-                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-            }`}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 6.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75ZM16.5 6.75c0-.621.504-1.125 1.125-1.125h2.25C20.496 5.625 21 6.129 21 6.75v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75Z" />
-              </svg>
-              <span className="hidden sm:inline">Analytics</span>
-            </span>
-          </button>
           {/* Shared Links */}
           <button
             onClick={() => handleTabChange("shared-links")}
@@ -1170,20 +1146,20 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Shared Links</span>
             </span>
           </button>
-          {/* Reports */}
+          {/* Insights */}
           <button
-            onClick={() => handleTabChange("reports")}
+            onClick={() => handleTabChange("analytics")}
             className={`px-2 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition whitespace-nowrap ${
-              activeTab === "reports"
+              activeTab === "analytics"
                 ? "border-b-2 border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
             <span className="inline-flex items-center gap-1.5">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 6.75c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75ZM16.5 6.75c0-.621.504-1.125 1.125-1.125h2.25C20.496 5.625 21 6.129 21 6.75v13.5c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V6.75Z" />
               </svg>
-              <span className="hidden sm:inline">Reports</span>
+              <span className="hidden sm:inline">Insights</span>
             </span>
           </button>
           {/* Investments */}
@@ -1433,9 +1409,37 @@ export default function Dashboard() {
             />
           </Suspense>
         ) : activeTab === "analytics" ? (
-          <Suspense fallback={<TabLoader />}>
-            <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
-          </Suspense>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 p-2">
+              <button
+                onClick={() => setInsightsView("analytics")}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  insightsView === "analytics"
+                    ? "bg-brand-600 text-white"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => setInsightsView("reports")}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  insightsView === "reports"
+                    ? "bg-brand-600 text-white"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                }`}
+              >
+                Reports
+              </button>
+            </div>
+            <Suspense fallback={<TabLoader />}>
+              {insightsView === "analytics" ? (
+                <AnalyticsPage gigs={gigs} fmtCurrency={fmtCurrency} />
+              ) : (
+                <FinancialReports fmtCurrency={fmtCurrency} />
+              )}
+            </Suspense>
+          </div>
         ) : activeTab === "investments" ? (
           <Suspense fallback={<TabLoader />}>
             <InvestmentsTab fmtCurrency={fmtCurrency} />
@@ -1451,10 +1455,6 @@ export default function Dashboard() {
         ) : activeTab === "shared-links" ? (
           <Suspense fallback={<TabLoader />}>
             <SharedLinksTab />
-          </Suspense>
-        ) : activeTab === "reports" ? (
-          <Suspense fallback={<TabLoader />}>
-            <FinancialReports fmtCurrency={fmtCurrency} />
           </Suspense>
         ) : activeTab === "calendar" ? (
           <Suspense fallback={<TabLoader />}>

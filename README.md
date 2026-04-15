@@ -442,11 +442,11 @@ npm run release:major    # Breaking changes (1.8.0 → 2.0.0)
 - [x] Netlify deployment with auto-builds
 
 ### 🚧 In Progress (v1.9.0)
-- [ ] **Multi-user authentication** — Each user sees only their gigs
-- [ ] **Team/band management** — Multiple bands per manager
-- [ ] **Advanced filtering** — By date range, venue, payment status
-- [ ] **CSV/PDF export** — Download financial reports
-- [ ] **Dark mode toggle** — User preference with system detection
+- [x] **Multi-user authentication** — Each user sees only their gigs
+- [x] **Team/band management** — Multiple bands per manager
+- [ ] **Advanced filtering** — Date range and venue filters still pending (payment status available)
+- [ ] **CSV/PDF export** — CSV available, PDF export still pending
+- [x] **Dark mode toggle** — User preference with system detection
 
 ### 🔮 Future Ideas (v2.0+)
 - [ ] **Calendar view** — Visual timeline of upcoming gigs

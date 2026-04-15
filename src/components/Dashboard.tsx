@@ -18,7 +18,6 @@ import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 import BulkEditor from "./BulkEditor";
 import LoadingSpinner, { CardSkeleton } from "./LoadingSpinner";
-import SharedLinksTab from "./SharedLinksTab";
 
 // Lazy load heavy components for better initial load time
 const AnalyticsPage = lazy(() => import("./AnalyticsPage"));
@@ -28,6 +27,7 @@ const BandMembers = lazy(() => import("./BandMembers"));
 const FinancialReports = lazy(() => import("./FinancialReports"));
 const CalendarView = lazy(() => import("./CalendarView"));
 const SetlistsTab = lazy(() => import("./SetlistsTab"));
+const SharedLinksTab = lazy(() => import("./SharedLinksTab"));
 
 const TabLoader = () => (
   <div className="flex items-center justify-center py-12">

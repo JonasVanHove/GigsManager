@@ -832,8 +832,8 @@ export default function Dashboard() {
       {showMobileMenu && (
         <>
           <div className="lg:hidden fixed inset-0 z-[100] bg-black/50" onClick={() => setShowMobileMenu(false)} />
-          <div className="lg:hidden fixed left-0 top-0 bottom-0 z-[101] w-64 bg-white dark:bg-slate-900 shadow-xl overflow-y-auto">
-            <div className="p-4">
+          <div className="lg:hidden fixed left-0 top-0 bottom-0 z-[101] w-[84vw] max-w-[19rem] bg-white dark:bg-slate-900 shadow-xl overflow-y-auto">
+            <div className="p-3">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Menu</h2>
                 <button
@@ -847,7 +847,7 @@ export default function Dashboard() {
               </div>
               
               {/* Mobile search */}
-              <div className="mb-4 md:hidden">
+              <div className="mb-3 md:hidden">
                 <div className="relative">
                   <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -857,7 +857,7 @@ export default function Dashboard() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search gigs..."
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-sm transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   />
                   {searchQuery && (
                     <button
@@ -873,13 +873,13 @@ export default function Dashboard() {
               </div>
 
               {/* Navigation */}
-              <nav className="space-y-1">
-                <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+              <nav className="space-y-2">
+                <div className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                   Core
                 </div>
                 <button
                   onClick={() => handleTabChange("gigs")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "gigs" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -890,7 +890,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => handleTabChange("calendar")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "calendar" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -901,7 +901,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => handleTabChange("all-gigs")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "all-gigs" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -910,12 +910,12 @@ export default function Dashboard() {
                   </svg>
                   All Gigs
                 </button>
-                <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                   Band
                 </div>
                 <button
                   onClick={() => handleTabChange("band-members")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "band-members" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -926,7 +926,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => handleTabChange("setlists")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "setlists" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -937,7 +937,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => handleTabChange("shared-links")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "shared-links" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -946,12 +946,12 @@ export default function Dashboard() {
                   </svg>
                   Shared Links
                 </button>
-                <div className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                   Insights
                 </div>
                 <button
                   onClick={() => handleTabChange("analytics")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "analytics" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -965,7 +965,7 @@ export default function Dashboard() {
                 </div>
                 <button
                   onClick={() => handleTabChange("investments")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "investments" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >

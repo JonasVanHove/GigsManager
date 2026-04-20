@@ -101,6 +101,53 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
     .map(([band, data]): [string, typeof data & { totalReceived: number }] => [band, { ...data, totalReceived: data.received }])
     .sort((a, b) => b[1].totalReceived - a[1].totalReceived);
 
+  const outstandingByBand = gigs.reduce(
+    (acc, gig) => {
+      if (!gig.managerHandlesDistribution || gig.bandPaid) {
+        return acc;
+      }
+
+      const calc = calculateGigFinancials(
+        gig.performanceFee,
+        gig.technicalFee,
+        gig.managerBonusType,
+        gig.managerBonusAmount,
+        gig.numberOfMusicians,
+        gig.claimPerformanceFee,
+        gig.claimTechnicalFee,
+        gig.technicalFeeClaimAmount,
+        gig.advanceReceivedByManager,
+        gig.advanceToMusicians,
+        gig.isCharity
+      );
+
+      if (calc.amountOwedToOthers <= 0) {
+        return acc;
+      }
+
+      const bandName = gig.performers || "Unknown Band";
+      if (!acc[bandName]) {
+        acc[bandName] = {
+          totalOwed: 0,
+          gigs: [],
+        };
+      }
+
+      acc[bandName].totalOwed += calc.amountOwedToOthers;
+      acc[bandName].gigs.push({
+        id: gig.id,
+        eventName: gig.eventName || "Unnamed gig",
+        date: gig.date,
+        owed: calc.amountOwedToOthers,
+      });
+
+      return acc;
+    },
+    {} as Record<string, { totalOwed: number; gigs: Array<{ id: string; eventName: string; date: string; owed: number }> }>
+  );
+
+  const sortedOutstandingBands = Object.entries(outstandingByBand).sort((a, b) => b[1].totalOwed - a[1].totalOwed);
+
   return (
     <div className="space-y-2 sm:space-y-3">
       {/* -- Main Grid: single column to avoid empty space when cards expand ------ */}
@@ -222,7 +269,15 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
           {expandedCard === "earnings" && (
             <div className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
               {/* Summary row */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="rounded-lg border-2 border-brand-500 bg-brand-500/10 p-2 sm:p-2.5 dark:border-brand-400 dark:bg-brand-500/20">
+                  <p className="text-xs font-medium text-brand-700 dark:text-brand-300">
+                    Total
+                  </p>
+                  <p className="mt-0.5 font-bold text-brand-800 dark:text-brand-200 text-sm sm:text-base">
+                    {fmtCurrency(summary.totalEarnings)}
+                  </p>
+                </div>
                 <div className="rounded-lg border-2 border-lime-500 bg-lime-500/10 p-2 sm:p-2.5 dark:border-lime-400 dark:bg-lime-500/20">
                   <p className="text-xs font-medium text-lime-700 dark:text-lime-300">
                     ✓ Received
@@ -521,20 +576,60 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
               <p className="text-xs font-medium text-pink-600 dark:text-pink-400 mb-2">
                 Outstanding by Band
               </p>
-              {sortedBands.filter(([_, data]) => data.owed > 0).length === 0 ? (
+              {sortedOutstandingBands.length === 0 ? (
                 <p className="text-xs text-pink-700 dark:text-pink-400">All obligations settled ✓</p>
               ) : (
                 <div className="space-y-1.5">
-                  {sortedBands
-                    .filter(([_, data]) => data.owed > 0)
-                    .map(([band, data]) => (
-                      <div key={`outstanding-${band}`} className="flex items-center justify-between rounded px-2 py-1.5 sm:py-2 bg-white/50 dark:bg-slate-800/50">
-                        <BandTag name={band} variant="soft" />
-                        <p className="font-semibold text-pink-800 dark:text-pink-300 whitespace-nowrap flex-shrink-0">
-                          {fmtCurrency(data.owed)}
-                        </p>
+                  {sortedOutstandingBands.map(([band, data]) => {
+                    const isExpanded = expandedUnpaidBand === band;
+
+                    return (
+                      <div key={`outstanding-${band}`} className="rounded bg-white/40 dark:bg-slate-800/40">
+                        <button
+                          onClick={() => toggleUnpaidBand(band)}
+                          type="button"
+                          className="w-full flex items-center justify-between gap-2 rounded px-2 py-1.5 sm:py-2 text-left hover:bg-pink-100/60 dark:hover:bg-pink-900/20 transition"
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <svg
+                              className={`h-4 w-4 text-pink-700 dark:text-pink-300 transition-transform flex-shrink-0 ${isExpanded ? "rotate-90" : ""}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <BandTag name={band} variant="soft" />
+                            <span className="text-xs text-pink-600 dark:text-pink-400">{data.gigs.length} gigs</span>
+                          </div>
+                          <p className="font-semibold text-pink-800 dark:text-pink-300 whitespace-nowrap flex-shrink-0">
+                            {fmtCurrency(data.totalOwed)}
+                          </p>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-1 ml-4 sm:ml-5 space-y-1 border-l-2 border-pink-300 dark:border-pink-700 pl-2.5 sm:pl-3 pb-1">
+                            {data.gigs
+                              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                              .map((gig) => (
+                                <div
+                                  key={gig.id}
+                                  className="flex items-center justify-between gap-2 rounded border border-pink-200/70 dark:border-pink-800/70 bg-pink-50/60 dark:bg-pink-900/10 px-2 py-1.5"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium text-pink-900 dark:text-pink-200 truncate">{gig.eventName}</p>
+                                    <p className="text-xs text-pink-700 dark:text-pink-400">{formatDate(gig.date)}</p>
+                                  </div>
+                                  <p className="text-xs sm:text-sm font-semibold text-pink-800 dark:text-pink-300 whitespace-nowrap">
+                                    {fmtCurrency(gig.owed)}
+                                  </p>
+                                </div>
+                              ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

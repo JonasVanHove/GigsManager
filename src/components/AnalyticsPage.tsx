@@ -414,9 +414,16 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="text-slate-600 dark:text-slate-400">{monthName}</span>
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {fmtCurrency(data.total)} ({data.count} gigs {data.charity > 0 ? `, ${data.charity} charity` : ""})
+                      {fmtCurrency(data.total)} ({data.count} gigs{data.charity > 0 ? `, waarvan ${data.charity} charity` : ""})
                     </span>
                   </div>
+                  {data.charity > 0 && (
+                    <div className="mb-1">
+                      <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+                        waarvan {data.charity} charity
+                      </span>
+                    </div>
+                  )}
                   <div className="mb-1 flex items-center justify-between text-xs">
                     <span className="text-emerald-700 dark:text-emerald-300">{fmtCurrency(data.received)} received</span>
                     <span className="text-orange-700 dark:text-orange-300">{fmtCurrency(data.pending)} pending</span>
@@ -502,11 +509,11 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
             )}
 
             {/* Band management insights */}
-            <div className="rounded-lg border border-purple-200 dark:border-purple-700/50 bg-purple-50 dark:bg-purple-950/20 p-4">
-              <p className="text-sm font-semibold text-purple-900 dark:text-purple-200">
+            <div className="rounded-lg border border-rose-200 dark:border-rose-700/50 bg-rose-50 dark:bg-rose-950/20 p-4">
+              <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
                 👥 Band Management Strategy
               </p>
-              <ul className="mt-2 space-y-1 text-xs text-purple-700 dark:text-purple-400">
+              <ul className="mt-2 space-y-1 text-xs text-rose-700 dark:text-rose-400">
                 <li>
                   • Have {Math.max(2, Math.ceil(stats.busiestMonth?.avgGigs || 1))}+ reliable bands for your peak season
                 </li>
@@ -518,7 +525,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                 </li>
                 {stats.charityCount > 0 && (
                   <li>
-                    • You've done {stats.charityCount} charity performances ({Math.round((stats.charityCount / stats.totalGigs) * 100)}% of gigs)
+                    • You've done <span className="font-semibold text-rose-800 dark:text-rose-300">{stats.charityCount} charity performances</span> ({Math.round((stats.charityCount / stats.totalGigs) * 100)}% of gigs)
                   </li>
                 )}
               </ul>
@@ -582,7 +589,7 @@ function MetricCard({
     emerald: "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-200 ring-emerald-200 dark:ring-emerald-700/50",
     brand: "bg-brand-50 dark:bg-brand-950/20 text-brand-700 dark:text-brand-200 ring-brand-200 dark:ring-brand-700/50",
     blue: "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-200 ring-blue-200 dark:ring-blue-700/50",
-    purple: "bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-200 ring-purple-200 dark:ring-purple-700/50",
+    purple: "bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-200 ring-rose-200 dark:ring-rose-700/50",
     orange: "bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-200 ring-orange-200 dark:ring-orange-700/50",
   };
 

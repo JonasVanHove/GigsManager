@@ -23,9 +23,25 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
     const regularGigs = gigs.filter((g) => !g.isCharity);
     const gigsWithAdvance = gigs.filter((g) => g.advanceReceivedByManager > 0 || g.advanceToMusicians > 0);
 
-    // Gross client receipts should reflect the actual money invoiced to clients.
-    const grossReceived = paid.reduce((sum, g) => sum + g.performanceFee + g.technicalFee, 0);
-    const totalEarned = paid.reduce((sum, g) => {
+    let clientReceived = 0;
+    let clientPending = 0;
+    let totalEarned = 0;
+    let myReceived = 0;
+    let myPending = 0;
+    let managedByMeReceived = 0;
+    let managedByMePending = 0;
+    let externallyManagedForMeReceived = 0;
+    let externallyManagedForMePending = 0;
+
+    const charityEarnings = charityGigs.reduce((sum, g) => sum + (g.performanceFee + g.technicalFee), 0);
+    const totalAdvanceReceived = gigsWithAdvance.reduce((sum, g) => sum + g.advanceReceivedByManager, 0);
+    const totalAdvancePaid = gigsWithAdvance.reduce((sum, g) => sum + g.advanceToMusicians, 0);
+
+    // Monthly breakdown now tracks both received and pending client amounts.
+    const monthlyData: Record<string, { count: number; total: number; received: number; pending: number; charity: number; paidGigs: number }> = {};
+    const timeline: Array<{ date: Date; amount: number; eventName: string; received: boolean }> = [];
+
+    gigs.forEach((g) => {
       const calc = calculateGigFinancials(
         g.performanceFee,
         g.technicalFee,
@@ -39,41 +55,59 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         g.advanceToMusicians,
         g.isCharity
       );
-      return sum + calc.myEarnings;
-    }, 0);
 
-    const charityEarnings = charityGigs.reduce((sum, g) => sum + (g.performanceFee + g.technicalFee), 0);
-    const totalAdvanceReceived = gigsWithAdvance.reduce((sum, g) => sum + g.advanceReceivedByManager, 0);
-    const totalAdvancePaid = gigsWithAdvance.reduce((sum, g) => sum + g.advanceToMusicians, 0);
+      const clientReceivedForGig = g.paymentReceived
+        ? calc.totalReceived
+        : Math.min(calc.totalReceived, g.advanceReceivedByManager || 0);
+      const clientPendingForGig = Math.max(0, calc.totalReceived - clientReceivedForGig);
+      const myReceivedForGig = g.paymentReceived ? calc.myEarnings : calc.myEarningsAlreadyReceived;
+      const myPendingForGig = g.paymentReceived ? 0 : calc.myEarningsStillOwed;
 
-    const avgGigSize = gigs.length > 0 ? grossReceived / gigs.length : 0;
-    const avgEarningsPerGig = paid.length > 0 ? totalEarned / paid.length : 0;
+      clientReceived += clientReceivedForGig;
+      clientPending += clientPendingForGig;
+      totalEarned += calc.myEarnings;
+      myReceived += myReceivedForGig;
+      myPending += myPendingForGig;
 
-    // Payment timeline
-    const timeline = paid
-      .map((g) => ({
-        date: g.paymentReceivedDate ? new Date(g.paymentReceivedDate) : new Date(g.date),
-        amount: g.performanceFee + g.technicalFee,
-        eventName: g.eventName,
-        received: g.paymentReceived,
-      }))
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
+      if (g.managerHandlesDistribution) {
+        managedByMeReceived += clientReceivedForGig;
+        managedByMePending += clientPendingForGig;
+      } else {
+        externallyManagedForMeReceived += myReceivedForGig;
+        externallyManagedForMePending += myPendingForGig;
+      }
 
-    // Monthly breakdown with booking dates
-    const monthlyData: Record<string, { count: number; total: number; charity: number; paidGigs: number }> = {};
-    gigs.forEach((g) => {
+      if (g.paymentReceived) {
+        timeline.push({
+          date: g.paymentReceivedDate ? new Date(g.paymentReceivedDate) : new Date(g.date),
+          amount: calc.totalReceived,
+          eventName: g.eventName,
+          received: true,
+        });
+      }
+
       const date = new Date(g.date);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      if (!monthlyData[key]) monthlyData[key] = { count: 0, total: 0, charity: 0, paidGigs: 0 };
+      if (!monthlyData[key]) {
+        monthlyData[key] = { count: 0, total: 0, received: 0, pending: 0, charity: 0, paidGigs: 0 };
+      }
       monthlyData[key].count += 1;
+      monthlyData[key].total += calc.totalReceived;
+      monthlyData[key].received += clientReceivedForGig;
+      monthlyData[key].pending += clientPendingForGig;
       if (g.isCharity) {
         monthlyData[key].charity += 1;
       }
       if (g.paymentReceived) {
         monthlyData[key].paidGigs += 1;
-        monthlyData[key].total += g.performanceFee + g.technicalFee;
       }
     });
+
+    timeline.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const totalContracted = clientReceived + clientPending;
+    const avgGigSize = gigs.length > 0 ? totalContracted / gigs.length : 0;
+    const avgEarningsPerGig = gigs.length > 0 ? totalEarned / gigs.length : 0;
 
     const months = Object.entries(monthlyData)
       .sort(([a], [b]) => b.localeCompare(a))
@@ -106,8 +140,17 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
       totalGigs: gigs.length,
       paidGigs: paid.length,
       unpaidGigs: unpaid.length,
-      grossReceived,
+      grossReceived: clientReceived,
+      clientReceived,
+      clientPending,
+      totalContracted,
       totalEarned,
+      myReceived,
+      myPending,
+      managedByMeReceived,
+      managedByMePending,
+      externallyManagedForMeReceived,
+      externallyManagedForMePending,
       avgGigSize,
       avgEarningsPerGig,
       bandPaidCount: bandPaid.length,
@@ -168,14 +211,14 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
             color="emerald"
           />
           <MetricCard
-            label="Gross Received"
-            value={fmtCurrency(stats.grossReceived)}
+            label="Client Received"
+            value={fmtCurrency(stats.clientReceived)}
             color="brand"
           />
           <MetricCard
-            label="Average Per Gig"
-            value={fmtCurrency(stats.avgGigSize)}
-            color="blue"
+            label="Client Pending"
+            value={fmtCurrency(stats.clientPending)}
+            color="orange"
           />
         </div>
       </div>
@@ -229,22 +272,53 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
               <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Income</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Total Received (Clients)</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Client received</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
-                    {fmtCurrency(stats.grossReceived)}
+                    {fmtCurrency(stats.clientReceived)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Client pending</span>
+                  <span className="font-bold text-orange-700 dark:text-orange-300">
+                    {fmtCurrency(stats.clientPending)}
                   </span>
                 </div>
                 <div className="h-px bg-slate-200 dark:bg-slate-700" />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Your Earnings</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">You already received</span>
                   <span className="font-bold text-brand-700 dark:text-brand-300">
-                    {fmtCurrency(stats.totalEarned)}
+                    {fmtCurrency(stats.myReceived)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Band Share</span>
-                  <span className="font-bold text-amber-700 dark:text-amber-300">
-                    {fmtCurrency(stats.grossReceived - stats.totalEarned)}
+                  <span className="text-sm text-slate-600 dark:text-slate-400">You still to receive</span>
+                  <span className="font-bold text-orange-700 dark:text-orange-300">
+                    {fmtCurrency(stats.myPending)}
+                  </span>
+                </div>
+                <div className="h-px bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">You manage yourself</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {fmtCurrency(stats.managedByMeReceived)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">You manage, still open</span>
+                  <span className="font-bold text-orange-700 dark:text-orange-300">
+                    {fmtCurrency(stats.managedByMePending)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Managed by others for you</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {fmtCurrency(stats.externallyManagedForMeReceived)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Managed by others, still open</span>
+                  <span className="font-bold text-orange-700 dark:text-orange-300">
+                    {fmtCurrency(stats.externallyManagedForMePending)}
                   </span>
                 </div>
               </div>
@@ -290,7 +364,10 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Total Revenue (All Gigs)</p>
                   <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">
-                    {fmtCurrency(stats.grossReceived)}
+                    {fmtCurrency(stats.totalContracted)}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {fmtCurrency(stats.clientReceived)} received · {fmtCurrency(stats.clientPending)} pending
                   </p>
                 </div>
                 <div>
@@ -317,10 +394,15 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
             Monthly Income (Last 12 Months)
           </h3>
+          <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+            Green = already received, Orange = still pending.
+          </p>
           <div className="space-y-3">
             {stats.months.map(([month, data]) => {
               const maxTotal = Math.max(...stats.months.map(([, d]) => d.total), 1);
-              const percentage = maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
+              const totalPercentage = maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
+              const receivedShare = data.total > 0 ? (data.received / data.total) * 100 : 0;
+              const pendingShare = data.total > 0 ? (data.pending / data.total) * 100 : 0;
               const [year, monthNum] = month.split("-");
               const monthName = new Date(parseInt(year), parseInt(monthNum) - 1).toLocaleString(
                 resolveLocale(),
@@ -335,11 +417,26 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                       {fmtCurrency(data.total)} ({data.count} gigs {data.charity > 0 ? `, ${data.charity} charity` : ""})
                     </span>
                   </div>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-emerald-700 dark:text-emerald-300">{fmtCurrency(data.received)} received</span>
+                    <span className="text-orange-700 dark:text-orange-300">{fmtCurrency(data.pending)} pending</span>
+                  </div>
                   <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700">
                     <div
-                      className="h-full rounded-full bg-brand-500 dark:bg-brand-600 transition-all"
-                      style={{ width: `${percentage}%` }}
-                    />
+                      className="h-full overflow-hidden rounded-full transition-all"
+                      style={{ width: `${totalPercentage}%` }}
+                    >
+                      <div className="flex h-full w-full">
+                        <div
+                          className="h-full bg-emerald-500 dark:bg-emerald-600"
+                          style={{ width: `${receivedShare}%` }}
+                        />
+                        <div
+                          className="h-full bg-orange-400 dark:bg-orange-500"
+                          style={{ width: `${pendingShare}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

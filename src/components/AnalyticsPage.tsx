@@ -40,8 +40,9 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
     const totalAdvanceReceived = gigsWithAdvance.reduce((sum, g) => sum + g.advanceReceivedByManager, 0);
     const totalAdvancePaid = gigsWithAdvance.reduce((sum, g) => sum + g.advanceToMusicians, 0);
 
-    // Monthly breakdown now tracks both received and pending client amounts.
-    const monthlyData: Record<string, { count: number; total: number; received: number; pending: number; charity: number; paidGigs: number }> = {};
+    // Monthly breakdown tracks both management (client flow) and personal (my earnings) modes.
+    const monthlyManagementData: Record<string, { count: number; total: number; received: number; pending: number; charity: number; paidGigs: number }> = {};
+    const monthlyPersonalData: Record<string, { count: number; total: number; received: number; pending: number; charity: number; paidGigs: number }> = {};
     const timeline: Array<{ date: Date; amount: number; eventName: string; received: boolean }> = [];
 
     gigs.forEach((g) => {
@@ -93,18 +94,31 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
 
       const date = new Date(g.date);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      if (!monthlyData[key]) {
-        monthlyData[key] = { count: 0, total: 0, received: 0, pending: 0, charity: 0, paidGigs: 0 };
+      if (!monthlyManagementData[key]) {
+        monthlyManagementData[key] = { count: 0, total: 0, received: 0, pending: 0, charity: 0, paidGigs: 0 };
       }
-      monthlyData[key].count += 1;
-      monthlyData[key].total += calc.totalReceived;
-      monthlyData[key].received += clientReceivedForGig;
-      monthlyData[key].pending += clientPendingForGig;
+      monthlyManagementData[key].count += 1;
+      monthlyManagementData[key].total += calc.totalReceived;
+      monthlyManagementData[key].received += clientReceivedForGig;
+      monthlyManagementData[key].pending += clientPendingForGig;
+
+      if (!monthlyPersonalData[key]) {
+        monthlyPersonalData[key] = { count: 0, total: 0, received: 0, pending: 0, charity: 0, paidGigs: 0 };
+      }
+      monthlyPersonalData[key].count += 1;
+      monthlyPersonalData[key].total += calc.myEarnings;
+      monthlyPersonalData[key].received += myReceivedForGig;
+      monthlyPersonalData[key].pending += myPendingForGig;
+
       if (g.isCharity) {
-        monthlyData[key].charity += 1;
+        monthlyManagementData[key].charity += 1;
+        monthlyPersonalData[key].charity += 1;
       }
       if (g.paymentReceived) {
-        monthlyData[key].paidGigs += 1;
+        monthlyManagementData[key].paidGigs += 1;
+      }
+      if (myPendingForGig === 0) {
+        monthlyPersonalData[key].paidGigs += 1;
       }
     });
 
@@ -114,14 +128,19 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
     const avgGigSize = gigs.length > 0 ? totalContracted / gigs.length : 0;
     const avgEarningsPerGig = gigs.length > 0 ? totalEarned / gigs.length : 0;
 
-    const months = Object.entries(monthlyData)
+    const monthsManagement = Object.entries(monthlyManagementData)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 12)
+      .reverse();
+
+    const monthsPersonal = Object.entries(monthlyPersonalData)
       .sort(([a], [b]) => b.localeCompare(a))
       .slice(0, 12)
       .reverse();
 
     // Calculate busiest/quietest months of year
     const monthsByCalMonth: Record<string, { count: number; total: number; years: number }> = {};
-    months.forEach(([monthKey, data]) => {
+    monthsManagement.forEach(([monthKey, data]) => {
       const [year, month] = monthKey.split("-");
       if (!monthsByCalMonth[month]) monthsByCalMonth[month] = { count: 0, total: 0, years: 0 };
       monthsByCalMonth[month].count += data.count;
@@ -167,13 +186,30 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
       totalAdvanceReceived,
       totalAdvancePaid,
       timeline,
-      months,
+      monthsManagement,
+      monthsPersonal,
       monthPatterns,
       currentMonthPattern,
       busiestMonth: monthPatterns[0],
       quietestMonth: monthPatterns[monthPatterns.length - 1],
     };
   }, [gigs]);
+
+  const monthlyMode = viewMode === "personal"
+    ? {
+        months: stats.monthsPersonal,
+        received: stats.myReceived,
+        pending: stats.myPending,
+        total: stats.totalEarned,
+        label: tr("Personal Income", "Persoonlijke inkomsten"),
+      }
+    : {
+        months: stats.monthsManagement,
+        received: stats.clientReceived,
+        pending: stats.clientPending,
+        total: stats.totalContracted,
+        label: tr("Management Cashflow", "Management cashflow"),
+      };
 
   return (
     <div className="space-y-6 pb-6">
@@ -394,24 +430,27 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
       </div>
 
       {/* -- Monthly trend ---------------------------------------------------- */}
-      {stats.months.length > 0 && (
+      {monthlyMode.months.length > 0 && (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
             Monthly Income (Last 12 Months)
           </h3>
+          <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+            {monthlyMode.label}
+          </p>
           <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/20">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{tr("Received", "Ontvangen")}</p>
-              <p className="mt-0.5 text-sm font-bold text-emerald-800 dark:text-emerald-200">{fmtCurrency(stats.clientReceived)}</p>
+              <p className="mt-0.5 text-sm font-bold text-emerald-800 dark:text-emerald-200">{fmtCurrency(monthlyMode.received)}</p>
             </div>
             <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-800/60 dark:bg-orange-950/20">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">{tr("Pending", "Openstaand")}</p>
-              <p className="mt-0.5 text-sm font-bold text-orange-800 dark:text-orange-200">{fmtCurrency(stats.clientPending)}</p>
+              <p className="mt-0.5 text-sm font-bold text-orange-800 dark:text-orange-200">{fmtCurrency(monthlyMode.pending)}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/50">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{tr("Completion", "Voltooiing")}</p>
               <p className="mt-0.5 text-sm font-bold text-slate-900 dark:text-slate-100">
-                {stats.totalContracted > 0 ? `${Math.round((stats.clientReceived / stats.totalContracted) * 100)}%` : "0%"}
+                {monthlyMode.total > 0 ? `${Math.round((monthlyMode.received / monthlyMode.total) * 100)}%` : "0%"}
               </p>
             </div>
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-800/60 dark:bg-rose-950/20">
@@ -425,8 +464,8 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
           </p>
 
           <div className="space-y-3">
-            {stats.months.map(([month, data]) => {
-              const maxTotal = Math.max(...stats.months.map(([, d]) => d.total), 1);
+            {monthlyMode.months.map(([month, data]) => {
+              const maxTotal = Math.max(...monthlyMode.months.map(([, d]) => d.total), 1);
               const totalPercentage = maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
               const receivedShare = data.total > 0 ? (data.received / data.total) * 100 : 0;
               const pendingShare = data.total > 0 ? (data.pending / data.total) * 100 : 0;

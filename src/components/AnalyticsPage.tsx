@@ -394,15 +394,38 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
           <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
             Monthly Income (Last 12 Months)
           </h3>
+          <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Received</p>
+              <p className="mt-0.5 text-sm font-bold text-emerald-800 dark:text-emerald-200">{fmtCurrency(stats.clientReceived)}</p>
+            </div>
+            <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-800/60 dark:bg-orange-950/20">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">Pending</p>
+              <p className="mt-0.5 text-sm font-bold text-orange-800 dark:text-orange-200">{fmtCurrency(stats.clientPending)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/50">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Completion</p>
+              <p className="mt-0.5 text-sm font-bold text-slate-900 dark:text-slate-100">
+                {stats.totalContracted > 0 ? `${Math.round((stats.clientReceived / stats.totalContracted) * 100)}%` : "0%"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-800/60 dark:bg-rose-950/20">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">Charity</p>
+              <p className="mt-0.5 text-sm font-bold text-rose-800 dark:text-rose-200">{stats.charityCount} gigs</p>
+            </div>
+          </div>
+
           <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            Green = already received, Orange = still pending.
+            Each month shows total volume and split: <span className="font-semibold text-emerald-700 dark:text-emerald-300">received</span> vs <span className="font-semibold text-orange-700 dark:text-orange-300">pending</span>.
           </p>
+
           <div className="space-y-3">
             {stats.months.map(([month, data]) => {
               const maxTotal = Math.max(...stats.months.map(([, d]) => d.total), 1);
               const totalPercentage = maxTotal > 0 ? (data.total / maxTotal) * 100 : 0;
               const receivedShare = data.total > 0 ? (data.received / data.total) * 100 : 0;
               const pendingShare = data.total > 0 ? (data.pending / data.total) * 100 : 0;
+              const completion = data.total > 0 ? Math.round((data.received / data.total) * 100) : 0;
               const [year, monthNum] = month.split("-");
               const monthName = new Date(parseInt(year), parseInt(monthNum) - 1).toLocaleString(
                 resolveLocale(),
@@ -410,27 +433,37 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
               );
 
               return (
-                <div key={month}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">{monthName}</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {fmtCurrency(data.total)} ({data.count} gigs{data.charity > 0 ? `, waarvan ${data.charity} charity` : ""})
-                    </span>
-                  </div>
-                  {data.charity > 0 && (
-                    <div className="mb-1">
-                      <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                        waarvan {data.charity} charity
+                <div
+                  key={month}
+                  className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/30"
+                >
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{monthName}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {data.count} gigs
+                      </span>
+                      {data.charity > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+                          {data.charity} charity
+                        </span>
+                      )}
+                      <span className="inline-flex items-center rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
+                        {completion}% complete
                       </span>
                     </div>
-                  )}
-                  <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-emerald-700 dark:text-emerald-300">{fmtCurrency(data.received)} received</span>
-                    <span className="text-orange-700 dark:text-orange-300">{fmtCurrency(data.pending)} pending</span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-700">
+
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(data.total)} total</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {data.charity > 0 ? `including ${data.charity} charity` : "no charity"}
+                    </span>
+                  </div>
+
+                  <div className="h-2.5 rounded-full bg-slate-100 dark:bg-slate-700">
                     <div
-                      className="h-full overflow-hidden rounded-full transition-all"
+                      className="h-full overflow-hidden rounded-full transition-all duration-300"
                       style={{ width: `${totalPercentage}%` }}
                     >
                       <div className="flex h-full w-full">
@@ -443,6 +476,15 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                           style={{ width: `${pendingShare}%` }}
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded bg-emerald-50 px-2 py-1 dark:bg-emerald-950/30">
+                      <span className="text-emerald-700 dark:text-emerald-300">{fmtCurrency(data.received)} received</span>
+                    </div>
+                    <div className="rounded bg-orange-50 px-2 py-1 text-right dark:bg-orange-950/30">
+                      <span className="text-orange-700 dark:text-orange-300">{fmtCurrency(data.pending)} pending</span>
                     </div>
                   </div>
                 </div>

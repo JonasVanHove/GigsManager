@@ -7,7 +7,7 @@
   publish   = ".next"
 
 [build.environment]
-  NODE_VERSION        = "18"
+  NODE_VERSION        = "20"
   # Git clone settings
   GIT_LFS_ENABLED = "false"
   # Prisma needs the engine for the Lambda runtime

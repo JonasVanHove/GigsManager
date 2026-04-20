@@ -40,6 +40,21 @@ type DashboardTab =
   | "setlists"
   | "shared-links";
 
+const DASHBOARD_TABS: DashboardTab[] = [
+  "gigs",
+  "all-gigs",
+  "analytics",
+  "investments",
+  "band-members",
+  "calendar",
+  "setlists",
+  "shared-links",
+];
+
+const isDashboardTab = (value: string | null): value is DashboardTab => {
+  return value !== null && DASHBOARD_TABS.includes(value as DashboardTab);
+};
+
 const TAB_PRELOADERS: Partial<Record<DashboardTab, () => Promise<unknown>>> = {
   "all-gigs": () => import("./AllGigsTab"),
   analytics: () => import("./AnalyticsPage"),
@@ -71,9 +86,8 @@ export default function Dashboard() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
-  const queryTab = searchParams.get("tab") as DashboardTab | null;
-  const validTabs: DashboardTab[] = ["gigs", "all-gigs", "analytics", "investments", "band-members", "calendar", "setlists", "shared-links"];
-  const [activeTab, setActiveTab] = useState<DashboardTab>(queryTab && validTabs.includes(queryTab) ? queryTab : "gigs");
+  const queryTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<DashboardTab>(isDashboardTab(queryTab) ? queryTab : "gigs");
   const [insightsView, setInsightsView] = useState<"analytics" | "reports">("analytics");
   const [, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,8 +162,8 @@ export default function Dashboard() {
 
   // Sync URL query param with activeTab state
   useEffect(() => {
-    const queryTab = searchParams.get("tab") as DashboardTab | null;
-    if (queryTab && validTabs.includes(queryTab) && queryTab !== activeTab) {
+    const queryTab = searchParams.get("tab");
+    if (isDashboardTab(queryTab) && queryTab !== activeTab) {
       setActiveTab(queryTab);
     }
   }, [searchParams, activeTab]);

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Gig } from "@/types";
 import { formatCurrency, formatDate, calculateGigFinancials } from "@/lib/calculations";
 import { resolveLocale } from "@/lib/preferences";
@@ -11,6 +11,7 @@ interface AnalyticsPageProps {
 }
 
 export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps) {
+  const [viewMode, setViewMode] = useState<"personal" | "management">("personal");
   // -- Computed stats ----------------------------------------------------------
 
   const stats = useMemo(() => {
@@ -128,6 +129,30 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
 
   return (
     <div className="space-y-6 pb-6">
+      {/* -- View Mode Toggle ------------------------------------------------- */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 p-2">
+        <button
+          onClick={() => setViewMode("personal")}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+            viewMode === "personal"
+              ? "bg-brand-600 text-white"
+              : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          }`}
+        >
+          Personal
+        </button>
+        <button
+          onClick={() => setViewMode("management")}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+            viewMode === "management"
+              ? "bg-brand-600 text-white"
+              : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          }`}
+        >
+          Management
+        </button>
+      </div>
+
       {/* -- Key metrics ------------------------------------------------------ */}
       <div>
         <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">Key Metrics</h2>
@@ -198,62 +223,92 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
 
       {/* -- Earnings breakdown ----------------------------------------------- */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Income</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Total Received (Clients)</span>
-              <span className="font-bold text-slate-900 dark:text-slate-100">
-                {fmtCurrency(stats.grossReceived)}
-              </span>
+        {viewMode === "personal" ? (
+          <>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Income</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Total Received (Clients)</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    {fmtCurrency(stats.grossReceived)}
+                  </span>
+                </div>
+                <div className="h-px bg-slate-200 dark:bg-slate-700" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Your Earnings</span>
+                  <span className="font-bold text-brand-700 dark:text-brand-300">
+                    {fmtCurrency(stats.totalEarned)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Band Share</span>
+                  <span className="font-bold text-amber-700 dark:text-amber-300">
+                    {fmtCurrency(stats.grossReceived - stats.totalEarned)}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="h-px bg-slate-200 dark:bg-slate-700" />
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Your Earnings</span>
-              <span className="font-bold text-brand-700 dark:text-brand-300">
-                {fmtCurrency(stats.totalEarned)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-600 dark:text-slate-400">Band Share</span>
-              <span className="font-bold text-amber-700 dark:text-amber-300">
-                {fmtCurrency(stats.grossReceived - stats.totalEarned)}
-              </span>
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Payment Status</h3>
-          <div className="space-y-3">
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Client Payments</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  {stats.paidGigs} paid, {stats.unpaidGigs} pending
-                </span>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Payment Status</h3>
+              <div className="space-y-3">
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-400">Client Payments</span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                      {stats.paidGigs} paid, {stats.unpaidGigs} pending
+                    </span>
+                  </div>
+                  <ProgressBar
+                    value={stats.paidGigs}
+                    max={stats.totalGigs}
+                    color="emerald"
+                  />
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-400">Band Payments</span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                      {stats.bandPaidCount} paid, {stats.bandUnpaidCount} pending
+                    </span>
+                  </div>
+                  <ProgressBar
+                    value={stats.bandPaidCount}
+                    max={stats.totalGigs}
+                    color="blue"
+                  />
+                </div>
               </div>
-              <ProgressBar
-                value={stats.paidGigs}
-                max={stats.totalGigs}
-                color="emerald"
-              />
             </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">Band Payments</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">
-                  {stats.bandPaidCount} paid, {stats.bandUnpaidCount} pending
-                </span>
+          </>
+        ) : (
+          <>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm lg:col-span-2">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Total Revenue & Volume</h3>
+              <div className="grid gap-6 sm:grid-cols-3">
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Revenue (All Gigs)</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">
+                    {fmtCurrency(stats.grossReceived)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Gigs</p>
+                  <p className="mt-2 text-3xl font-bold text-brand-700 dark:text-brand-300">
+                    {stats.totalGigs}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Revenue per Gig</p>
+                  <p className="mt-2 text-3xl font-bold text-blue-700 dark:text-blue-300">
+                    {fmtCurrency(stats.avgGigSize)}
+                  </p>
+                </div>
               </div>
-              <ProgressBar
-                value={stats.bandPaidCount}
-                max={stats.totalGigs}
-                color="blue"
-              />
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* -- Monthly trend ---------------------------------------------------- */}

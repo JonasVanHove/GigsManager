@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { recordWebVital } from "@/lib/web-vitals-logger";
 import { recordMetric } from "@/lib/performance-metrics";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
@@ -55,6 +56,8 @@ const TabLoader = () => (
 
 
 export default function Dashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { session, isLoading: authLoading, signOut, getAccessToken } = useAuth();
   const { settings, fmtCurrency } = useSettings();
   const toast = useToast();
@@ -68,7 +71,9 @@ export default function Dashboard() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
-  const [activeTab, setActiveTab] = useState<DashboardTab>("gigs");
+  const queryTab = searchParams.get("tab") as DashboardTab | null;
+  const validTabs: DashboardTab[] = ["gigs", "all-gigs", "analytics", "investments", "band-members", "calendar", "setlists", "shared-links"];
+  const [activeTab, setActiveTab] = useState<DashboardTab>(queryTab && validTabs.includes(queryTab) ? queryTab : "gigs");
   const [insightsView, setInsightsView] = useState<"analytics" | "reports">("analytics");
   const [, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,6 +83,7 @@ export default function Dashboard() {
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(true);
+  const [exportingType, setExportingType] = useState<"gigs" | "summary" | "report" | null>(null);
   const [isActiveSectionExpanded, setIsActiveSectionExpanded] = useState(true);
   const [isHandledSectionExpanded, setIsHandledSectionExpanded] = useState(false);
   const fetchGigsInFlightRef = useRef(false);
@@ -139,6 +145,14 @@ export default function Dashboard() {
     const timer = setTimeout(handlePageComplete, 100);
     return () => clearTimeout(timer);
   }, [gigs]);
+
+  // Sync URL query param with activeTab state
+  useEffect(() => {
+    const queryTab = searchParams.get("tab") as DashboardTab | null;
+    if (queryTab && validTabs.includes(queryTab) && queryTab !== activeTab) {
+      setActiveTab(queryTab);
+    }
+  }, [searchParams, activeTab]);
 
   useEffect(() => {
     try {
@@ -206,10 +220,11 @@ export default function Dashboard() {
       }
       startTransition(() => {
         setActiveTab(nextTab);
+        router.push(`?tab=${nextTab}`, { scroll: false } as any);
         setShowMobileMenu(false);
       });
     },
-    [activeTab, startTransition]
+    [activeTab, startTransition, router]
   );
 
   useEffect(() => {
@@ -496,7 +511,31 @@ export default function Dashboard() {
     toast.info("Collapsed all performances");
   };
 
+  const getDownloadFilename = (
+    contentDisposition: string | null,
+    fallbackType: "gigs" | "summary" | "report",
+    fallbackFormat: "csv" | "json"
+  ) => {
+    const utf8Match = contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i);
+    const quotedMatch = contentDisposition?.match(/filename="?([^";]+)"?/i);
+    const rawName = utf8Match?.[1] || quotedMatch?.[1];
+
+    if (rawName) {
+      try {
+        return decodeURIComponent(rawName);
+      } catch {
+        return rawName;
+      }
+    }
+
+    const datePart = new Date().toISOString().split("T")[0];
+    return `${fallbackType}-${datePart}.${fallbackFormat}`;
+  };
+
   const handleExport = async (type: "gigs" | "summary" | "report") => {
+    if (exportingType) return;
+
+    setExportingType(type);
     try {
       const token = await getAccessToken();
       if (!token) {
@@ -505,11 +544,12 @@ export default function Dashboard() {
       }
 
       const format = type === "report" ? "json" : "csv";
+      const typeLabel = type === "gigs" ? "Gig export" : type === "summary" ? "Summary export" : "Report export";
       const responsePromise = fetch(`/api/exports/summary?type=${type}&format=${format}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      toast.info("Generating export...");
+      toast.info(`Generating ${typeLabel.toLowerCase()}...`);
       const response = await responsePromise;
 
       if (!response.ok) {
@@ -517,24 +557,24 @@ export default function Dashboard() {
       }
 
       const blob = await response.blob();
-      const file = new File([blob], `export-${Date.now()}.${format}`, {
-        type: format === "json" ? "application/json" : "text/csv",
-      });
+      const filename = getDownloadFilename(response.headers.get("Content-Disposition"), type, format);
 
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = file.name;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("Export downloaded successfully!");
+      toast.success(`${typeLabel} downloaded.`);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Export failed";
       console.error("[handleExport]", msg);
       toast.error(msg);
+    } finally {
+      setExportingType(null);
     }
   };
 
@@ -999,32 +1039,56 @@ export default function Dashboard() {
               {/* Export buttons */}
               <button
                 onClick={() => handleExport("gigs")}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                disabled={Boolean(exportingType)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Export all gigs as CSV"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33A3 3 0 0 1 20.25 10.5H16.5" />
-                </svg>
+                {exportingType === "gigs" ? (
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+                    <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M7.5 10.5 12 15m0 0 4.5-4.5M12 15V3" />
+                  </svg>
+                )}
                 <span className="hidden sm:inline">Export</span>
               </button>
               <button
                 onClick={() => handleExport("summary")}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                disabled={Boolean(exportingType)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Export financial summary as CSV"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.66V18a2.25 2.25 0 002.25 2.25H18M9 9h3.75" />
-                </svg>
+                {exportingType === "summary" ? (
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+                    <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18M7.5 14.25 10.5 11l2.25 2.25 4.5-5.25" />
+                  </svg>
+                )}
                 <span className="hidden sm:inline">Summary</span>
               </button>
               <button
                 onClick={() => handleExport("report")}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition"
+                disabled={Boolean(exportingType)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Export financial report as JSON"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.875 14.25l1.06-1.061a2.25 2.25 0 113.182 0l1.060 1.061M3 7.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 10.125v-2.25zm9-3c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25zm-9 9c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-2.25zm9 0c-.621 0-1.125.504-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h2.25c.621 0 1.125-.504 1.125-1.125v-2.25c0-.621-.504-1.125-1.125-1.125h-2.25z" />
-                </svg>
+                {exportingType === "report" ? (
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
+                    <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3h6.879a2.25 2.25 0 0 1 1.591.659l2.371 2.371A2.25 2.25 0 0 1 19 7.621V18.75A2.25 2.25 0 0 1 16.75 21H7.5A2.25 2.25 0 0 1 5.25 18.75V5.25A2.25 2.25 0 0 1 7.5 3Zm1.5 11.25h6m-6 3h6m-6-6h3" />
+                  </svg>
+                )}
                 <span className="hidden sm:inline">Report</span>
               </button>
               {/* Collapse/expand toggle */}

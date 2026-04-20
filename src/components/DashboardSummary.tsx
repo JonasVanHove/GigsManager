@@ -103,8 +103,8 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
 
   return (
     <div className="space-y-2 sm:space-y-3">
-      {/* -- Main Grid: 1 column on mobile, 2x2 on desktop ----------------------- */}
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
+      {/* -- Main Grid: single column to avoid empty space when cards expand ------ */}
+      <div className="grid grid-cols-1 gap-2 sm:gap-3">
         {/* Total Gigs Card - Expandable */}
         <div>
           <button
@@ -198,7 +198,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                   My Earnings
                 </p>
                 <p className="mt-1 text-base sm:text-xl font-bold text-brand-800 dark:text-brand-300">
-                  {fmtCurrency(summary.totalEarnings)}
+                  {fmtCurrency(summary.totalEarningsReceived)}
                 </p>
                 <p className="mt-1 text-xs text-brand-600 dark:text-brand-400 hidden sm:block">
                   Click to see breakdown →
@@ -280,8 +280,8 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
         </div>
       </div>
 
-      {/* -- Row 2: Client Awaiting + Outstanding to Band (full width mobile) --- */}
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
+      {/* -- Row 2: stacked cards to keep expansion behavior consistent ---------- */}
+      <div className="grid grid-cols-1 gap-2 sm:gap-3">
         {/* Pending Payments Card */}
         <div>
           <button
@@ -324,6 +324,29 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                     const bandGigs = gigs.filter(
                       (g) => (g.performers || "Unknown Band") === item.band && !g.paymentReceived
                     );
+                    const bandManagerTotals = bandGigs.reduce(
+                      (sum, gig) => {
+                        const calc = calculateGigFinancials(
+                          gig.performanceFee,
+                          gig.technicalFee,
+                          gig.managerBonusType,
+                          gig.managerBonusAmount,
+                          gig.numberOfMusicians,
+                          gig.claimPerformanceFee,
+                          gig.claimTechnicalFee,
+                          gig.technicalFeeClaimAmount,
+                          gig.advanceReceivedByManager,
+                          gig.advanceToMusicians,
+                          gig.isCharity
+                        );
+
+                        return {
+                          stillOwed: sum.stillOwed + calc.myEarningsStillOwed,
+                          alreadyReceived: sum.alreadyReceived + calc.myEarningsAlreadyReceived,
+                        };
+                      },
+                      { stillOwed: 0, alreadyReceived: 0 }
+                    );
                     const isExpanded = expandedBand === item.band;
                     const now = new Date();
 
@@ -358,28 +381,14 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                             <p className="text-xs sm:text-sm font-semibold text-orange-800 dark:text-orange-200 whitespace-nowrap">
                               {fmtCurrency(item.amount)}
                             </p>
-                            <p className="text-xs text-orange-600 dark:text-orange-400">
-                              {(() => {
-                                const myPortion = bandGigs.reduce((sum, gig) => {
-                                  const calc = calculateGigFinancials(
-                                    gig.performanceFee,
-                                    gig.technicalFee,
-                                    gig.managerBonusType,
-                                    gig.managerBonusAmount,
-                                    gig.numberOfMusicians,
-                                    gig.claimPerformanceFee,
-                                    gig.claimTechnicalFee,
-                                    gig.technicalFeeClaimAmount,
-                                    gig.advanceReceivedByManager,
-                                    gig.advanceToMusicians,
-                                    gig.isCharity
-                                  );
-                                  const myPending = Math.max(0, calc.myEarnings - gig.advanceReceivedByManager);
-                                  return sum + myPending;
-                                }, 0);
-                                return `${fmtCurrency(myPortion)} for you`;
-                              })()}
+                            <p className="text-xs text-orange-600 dark:text-orange-400 text-right">
+                              {fmtCurrency(bandManagerTotals.stillOwed)} for you
                             </p>
+                            {bandManagerTotals.alreadyReceived > 0 && (
+                              <p className="text-xs text-orange-500 dark:text-orange-400/90 text-right">
+                                after {fmtCurrency(bandManagerTotals.alreadyReceived)} advance already received
+                              </p>
+                            )}
                           </div>
                         </button>
 
@@ -461,7 +470,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                               ? "text-red-600 dark:text-red-400"
                                               : "text-orange-600 dark:text-orange-400"
                                           }`}>
-                                            whereof <span className="font-semibold">{fmtCurrency(Math.max(0, calc.myEarnings - gig.advanceReceivedByManager))}</span> for you
+                                            whereof <span className="font-semibold">{fmtCurrency(calc.myEarningsStillOwed)}</span> for you
                                           </p>
                                         </div>
                                       </div>

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Gig } from "@/types";
 import { formatCurrency, formatDate, calculateGigFinancials } from "@/lib/calculations";
 import { resolveLocale } from "@/lib/preferences";
+import { useSettings } from "./SettingsProvider";
 
 interface AnalyticsPageProps {
   gigs: Gig[];
@@ -11,7 +12,9 @@ interface AnalyticsPageProps {
 }
 
 export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps) {
+  const { language } = useSettings();
   const [viewMode, setViewMode] = useState<"personal" | "management">("personal");
+  const tr = (en: string, nl: string) => (language === "nl" ? nl : en);
   // -- Computed stats ----------------------------------------------------------
 
   const stats = useMemo(() => {
@@ -78,12 +81,14 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
       }
 
       if (g.paymentReceived) {
-        timeline.push({
-          date: g.paymentReceivedDate ? new Date(g.paymentReceivedDate) : new Date(g.date),
-          amount: calc.totalReceived,
-          eventName: g.eventName,
-          received: true,
-        });
+        if (calc.totalReceived > 0) {
+          timeline.push({
+            date: g.paymentReceivedDate ? new Date(g.paymentReceivedDate) : new Date(g.date),
+            amount: calc.totalReceived,
+            eventName: g.eventName,
+            received: true,
+          });
+        }
       }
 
       const date = new Date(g.date);
@@ -182,7 +187,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
               : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           }`}
         >
-          Personal
+          {tr("Personal", "Persoonlijk")}
         </button>
         <button
           onClick={() => setViewMode("management")}
@@ -192,31 +197,31 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
               : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           }`}
         >
-          Management
+          {tr("Management", "Management")}
         </button>
       </div>
 
       {/* -- Key metrics ------------------------------------------------------ */}
       <div>
-        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">Key Metrics</h2>
+        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">{tr("Key Metrics", "Kerncijfers")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Total Gigs"
+            label={tr("Total Gigs", "Totaal optredens")}
             value={stats.totalGigs.toString()}
             color="slate"
           />
           <MetricCard
-            label="Gigs Paid"
+            label={tr("Gigs Paid", "Optredens betaald")}
             value={`${stats.paidGigs} / ${stats.totalGigs}`}
             color="emerald"
           />
           <MetricCard
-            label="Client Received"
+            label={tr("Client Received", "Door klant ontvangen")}
             value={fmtCurrency(stats.clientReceived)}
             color="brand"
           />
           <MetricCard
-            label="Client Pending"
+            label={tr("Client Pending", "Nog te ontvangen van klant")}
             value={fmtCurrency(stats.clientPending)}
             color="orange"
           />
@@ -225,36 +230,36 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
 
       {/* -- Charity & Advance Stats ------------------------------------------ */}
       <div>
-        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">Charity & Advances</h2>
+        <h2 className="mb-4 text-xl font-bold text-slate-900 dark:text-slate-100">{tr("Charity & Advances", "Charity & voorschotten")}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <MetricCard
-            label="Charity Performances"
-            value={`${stats.charityCount} gigs`}
+            label={tr("Charity Performances", "Charity-optredens")}
+            value={`${stats.charityCount} ${tr("gigs", "optredens")}`}
             color="purple"
           />
           <MetricCard
-            label="Advance Payments"
-            value={`${stats.gigsWithAdvanceCount} gigs`}
+            label={tr("Advance Payments", "Voorschotten")}
+            value={`${stats.gigsWithAdvanceCount} ${tr("gigs", "optredens")}`}
             color="orange"
           />
           <MetricCard
-            label="Total Advances Received"
+            label={tr("Total Advances Received", "Totaal ontvangen voorschotten")}
             value={fmtCurrency(stats.totalAdvanceReceived)}
             color="blue"
           />
         </div>
         {stats.gigsWithAdvanceCount > 0 && (
           <div className="mt-4 rounded-xl border border-orange-200 dark:border-orange-700/50 bg-orange-50 dark:bg-orange-950/20 p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-semibold text-orange-900 dark:text-orange-200">Advance Summary</h3>
+            <h3 className="mb-4 text-lg font-semibold text-orange-900 dark:text-orange-200">{tr("Advance Summary", "Voorschotoverzicht")}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-sm text-orange-700 dark:text-orange-300">Total Advances Received (from clients)</p>
+                <p className="text-sm text-orange-700 dark:text-orange-300">{tr("Total Advances Received (from clients)", "Totaal ontvangen voorschotten (van klanten)")}</p>
                 <p className="mt-1 text-2xl font-bold text-orange-800 dark:text-orange-200">
                   {fmtCurrency(stats.totalAdvanceReceived)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-orange-700 dark:text-orange-300">Total Advances Paid (to musicians)</p>
+                <p className="text-sm text-orange-700 dark:text-orange-300">{tr("Total Advances Paid (to musicians)", "Totaal betaalde voorschotten (aan muzikanten)")}</p>
                 <p className="mt-1 text-2xl font-bold text-orange-800 dark:text-orange-200">
                   {fmtCurrency(stats.totalAdvancePaid)}
                 </p>
@@ -269,54 +274,54 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         {viewMode === "personal" ? (
           <>
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Income</h3>
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{tr("Income", "Inkomsten")}</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Client received</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("Client received", "Door klant ontvangen")}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {fmtCurrency(stats.clientReceived)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Client pending</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("Client pending", "Klant nog openstaand")}</span>
                   <span className="font-bold text-orange-700 dark:text-orange-300">
                     {fmtCurrency(stats.clientPending)}
                   </span>
                 </div>
                 <div className="h-px bg-slate-200 dark:bg-slate-700" />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">You already received</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("You already received", "Door jou al ontvangen")}</span>
                   <span className="font-bold text-brand-700 dark:text-brand-300">
                     {fmtCurrency(stats.myReceived)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">You still to receive</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("You still to receive", "Door jou nog te ontvangen")}</span>
                   <span className="font-bold text-orange-700 dark:text-orange-300">
                     {fmtCurrency(stats.myPending)}
                   </span>
                 </div>
                 <div className="h-px bg-slate-200 dark:bg-slate-700" />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">You manage yourself</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("You manage yourself", "Zelf door jou beheerd")}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {fmtCurrency(stats.managedByMeReceived)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">You manage, still open</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("You manage, still open", "Door jou beheerd, nog open")}</span>
                   <span className="font-bold text-orange-700 dark:text-orange-300">
                     {fmtCurrency(stats.managedByMePending)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Managed by others for you</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("Managed by others for you", "Door anderen voor jou beheerd")}</span>
                   <span className="font-bold text-slate-900 dark:text-slate-100">
                     {fmtCurrency(stats.externallyManagedForMeReceived)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Managed by others, still open</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{tr("Managed by others, still open", "Door anderen beheerd, nog open")}</span>
                   <span className="font-bold text-orange-700 dark:text-orange-300">
                     {fmtCurrency(stats.externallyManagedForMePending)}
                   </span>
@@ -325,13 +330,13 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
             </div>
 
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Payment Status</h3>
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{tr("Payment Status", "Betaalstatus")}</h3>
               <div className="space-y-3">
                 <div>
                   <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Client Payments</span>
+                    <span className="text-slate-600 dark:text-slate-400">{tr("Client Payments", "Klantbetalingen")}</span>
                     <span className="font-medium text-slate-900 dark:text-slate-100">
-                      {stats.paidGigs} paid, {stats.unpaidGigs} pending
+                      {stats.paidGigs} {tr("paid", "betaald")}, {stats.unpaidGigs} {tr("pending", "openstaand")}
                     </span>
                   </div>
                   <ProgressBar
@@ -342,9 +347,9 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                 </div>
                 <div>
                   <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Band Payments</span>
+                    <span className="text-slate-600 dark:text-slate-400">{tr("Band Payments", "Bandbetalingen")}</span>
                     <span className="font-medium text-slate-900 dark:text-slate-100">
-                      {stats.bandPaidCount} paid, {stats.bandUnpaidCount} pending
+                      {stats.bandPaidCount} {tr("paid", "betaald")}, {stats.bandUnpaidCount} {tr("pending", "openstaand")}
                     </span>
                   </div>
                   <ProgressBar
@@ -359,25 +364,25 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
         ) : (
           <>
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm lg:col-span-2">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Total Revenue & Volume</h3>
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{tr("Total Revenue & Volume", "Totale omzet & volume")}</h3>
               <div className="grid gap-6 sm:grid-cols-3">
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Revenue (All Gigs)</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{tr("Total Revenue (All Gigs)", "Totale omzet (alle optredens)")}</p>
                   <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">
                     {fmtCurrency(stats.totalContracted)}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {fmtCurrency(stats.clientReceived)} received · {fmtCurrency(stats.clientPending)} pending
+                      {fmtCurrency(stats.clientReceived)} {tr("received", "ontvangen")} · {fmtCurrency(stats.clientPending)} {tr("pending", "openstaand")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Total Gigs</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{tr("Total Gigs", "Totaal optredens")}</p>
                   <p className="mt-2 text-3xl font-bold text-brand-700 dark:text-brand-300">
                     {stats.totalGigs}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Revenue per Gig</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{tr("Revenue per Gig", "Omzet per optreden")}</p>
                   <p className="mt-2 text-3xl font-bold text-blue-700 dark:text-blue-300">
                     {fmtCurrency(stats.avgGigSize)}
                   </p>
@@ -396,27 +401,27 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
           </h3>
           <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800/60 dark:bg-emerald-950/20">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Received</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">{tr("Received", "Ontvangen")}</p>
               <p className="mt-0.5 text-sm font-bold text-emerald-800 dark:text-emerald-200">{fmtCurrency(stats.clientReceived)}</p>
             </div>
             <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 dark:border-orange-800/60 dark:bg-orange-950/20">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">Pending</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700 dark:text-orange-300">{tr("Pending", "Openstaand")}</p>
               <p className="mt-0.5 text-sm font-bold text-orange-800 dark:text-orange-200">{fmtCurrency(stats.clientPending)}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/50">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">Completion</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{tr("Completion", "Voltooiing")}</p>
               <p className="mt-0.5 text-sm font-bold text-slate-900 dark:text-slate-100">
                 {stats.totalContracted > 0 ? `${Math.round((stats.clientReceived / stats.totalContracted) * 100)}%` : "0%"}
               </p>
             </div>
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 dark:border-rose-800/60 dark:bg-rose-950/20">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">Charity</p>
-              <p className="mt-0.5 text-sm font-bold text-rose-800 dark:text-rose-200">{stats.charityCount} gigs</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">{tr("Charity", "Charity")}</p>
+              <p className="mt-0.5 text-sm font-bold text-rose-800 dark:text-rose-200">{stats.charityCount} {tr("gigs", "optredens")}</p>
             </div>
           </div>
 
           <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            Each month shows total volume and split: <span className="font-semibold text-emerald-700 dark:text-emerald-300">received</span> vs <span className="font-semibold text-orange-700 dark:text-orange-300">pending</span>.
+            {tr("Each month shows total volume and split:", "Elke maand toont totaal volume en verdeling:")} <span className="font-semibold text-emerald-700 dark:text-emerald-300">{tr("received", "ontvangen")}</span> {tr("vs", "vs")} <span className="font-semibold text-orange-700 dark:text-orange-300">{tr("pending", "openstaand")}</span>.
           </p>
 
           <div className="space-y-3">
@@ -441,23 +446,23 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
                     <span className="font-semibold text-slate-700 dark:text-slate-300">{monthName}</span>
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center rounded-full bg-slate-200/70 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                        {data.count} gigs
+                        {data.count} {tr("gigs", "optredens")}
                       </span>
                       {data.charity > 0 && (
                         <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                          {data.charity} charity
+                          {data.charity} {tr("charity", "charity")}
                         </span>
                       )}
                       <span className="inline-flex items-center rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">
-                        {completion}% complete
+                        {completion}% {tr("complete", "voltooid")}
                       </span>
                     </div>
                   </div>
 
                   <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(data.total)} total</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{fmtCurrency(data.total)} {tr("total", "totaal")}</span>
                     <span className="text-slate-500 dark:text-slate-400">
-                      {data.charity > 0 ? `including ${data.charity} charity` : "no charity"}
+                      {data.charity > 0 ? tr(`including ${data.charity} charity`, `waarvan ${data.charity} charity`) : tr("no charity", "geen charity")}
                     </span>
                   </div>
 
@@ -481,10 +486,10 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
 
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                     <div className="rounded bg-emerald-50 px-2 py-1 dark:bg-emerald-950/30">
-                      <span className="text-emerald-700 dark:text-emerald-300">{fmtCurrency(data.received)} received</span>
+                      <span className="text-emerald-700 dark:text-emerald-300">{fmtCurrency(data.received)} {tr("received", "ontvangen")}</span>
                     </div>
                     <div className="rounded bg-orange-50 px-2 py-1 text-right dark:bg-orange-950/30">
-                      <span className="text-orange-700 dark:text-orange-300">{fmtCurrency(data.pending)} pending</span>
+                      <span className="text-orange-700 dark:text-orange-300">{fmtCurrency(data.pending)} {tr("pending", "openstaand")}</span>
                     </div>
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import type { DashboardSummary, Gig } from "@/types";
 import { calculateGigFinancials, formatDate } from "@/lib/calculations";
 import { XAITooltip } from "./XAITooltip";
 import BandTag from "./BandTag";
+import { useSettings } from "./SettingsProvider";
 
 interface DashboardSummaryProps {
   summary: DashboardSummary;
@@ -24,6 +25,8 @@ interface DashboardSummaryProps {
  * - HCI-optimized spacing and hierarchy
  */
 export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummaryProps) {
+  const { language } = useSettings();
+  const tr = (en: string, nl: string) => (language === "nl" ? nl : en);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [expandedBand, setExpandedBand] = useState<string | null>(null);
   const [expandedUnpaidBand, setExpandedUnpaidBand] = useState<string | null>(null);
@@ -162,14 +165,14 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
-                  Performances
+                  {tr("Performances", "Optredens")}
                 </p>
                 <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-purple-700 dark:text-purple-300">
                   {summary.totalGigs}
                 </p>
                 {expandedCard !== "performances" && (
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                    Click to see breakdown →
+                    {tr("Click to see breakdown", "Klik voor detail")} →
                   </p>
                 )}
               </div>
@@ -193,13 +196,13 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                   <p className="mt-1 text-base sm:text-lg font-bold text-purple-900 dark:text-purple-200">{summary.totalGigs}</p>
                 </div>
                 <div className="rounded bg-green-50 dark:bg-green-900/20 p-2">
-                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">Paid</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">{tr("Paid", "Betaald")}</p>
                   <p className="mt-1 text-base sm:text-lg font-bold text-green-900 dark:text-green-200">
                     {gigs.filter(g => g.paymentReceived).length}
                   </p>
                 </div>
                 <div className="rounded bg-orange-50 dark:bg-orange-900/20 p-2">
-                  <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">Pending</p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">{tr("Pending", "Openstaand")}</p>
                   <p className="mt-1 text-base sm:text-lg font-bold text-orange-900 dark:text-orange-200">
                     {gigs.filter(g => !g.paymentReceived).length}
                   </p>
@@ -215,7 +218,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
               {/* By band breakdown */}
               <div className="border-t border-purple-200 dark:border-purple-800 pt-2">
                 <p className="text-xs font-semibold uppercase tracking-widest text-purple-600 dark:text-purple-300 mb-2">
-                  By Band
+                  {tr("By Band", "Per band")}
                 </p>
                 <div className="space-y-1">
                   {sortedBands.map(([band, data]) => (
@@ -242,23 +245,23 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
             <div className="flex items-start justify-between gap-2 sm:gap-3">
               <div className="flex-1 text-left min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-brand-700 dark:text-brand-300">
-                  My Earnings
+                  {tr("My Earnings", "Mijn verdiensten")}
                 </p>
                 <p className="mt-1 text-base sm:text-xl font-bold text-brand-800 dark:text-brand-300">
                   {fmtCurrency(summary.totalEarningsReceived)}
                 </p>
                 <p className="mt-1 text-xs text-brand-600 dark:text-brand-400 hidden sm:block">
-                  Click to see breakdown →
+                  {tr("Click to see breakdown", "Klik voor detail")} →
                 </p>
               </div>
               <div className="flex-shrink-0">
                 <XAITooltip
-                  title="My Earnings"
-                  description="Total money you've earned from all performances based on claims and bonus settings."
+                  title={tr("My Earnings", "Mijn verdiensten")}
+                  description={tr("Total money you've earned from all performances based on claims and bonus settings.", "Totale inkomsten uit alle optredens op basis van claims en bonusinstellingen.")}
                   tips={[
-                    "Only includes fees & bonuses you claim",
-                    "Updates when payment status changes",
-                    "Click card to see received vs pending",
+                    tr("Only includes fees & bonuses you claim", "Bevat enkel vergoedingen en bonussen die je claimt"),
+                    tr("Updates when payment status changes", "Wordt bijgewerkt bij wijziging van betaalstatus"),
+                    tr("Click card to see received vs pending", "Klik op de kaart voor ontvangen vs openstaand"),
                   ]}
                 />
               </div>
@@ -299,10 +302,10 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
               {/* Band breakdown */}
               <div className="max-h-48 sm:max-h-64 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-2.5 dark:border-slate-700 dark:bg-slate-800/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600">
                 <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400 sticky top-0 bg-slate-50 dark:bg-slate-800/50 py-1">
-                  By Band
+                  {tr("By Band", "Per band")}
                 </p>
                 {sortedBands.length === 0 ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">No bands yet</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{tr("No bands yet", "Nog geen bands")}</p>
                 ) : (
                   <div className="space-y-1.5">
                     {sortedBands.map(([band, data]) => (
@@ -311,7 +314,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                           <div className="min-w-0 flex-1">
                             <BandTag name={band} variant="soft" />
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {data.gigs} gig{data.gigs !== 1 ? "s" : ""}
+                              {data.gigs} {tr(data.gigs === 1 ? "gig" : "gigs", data.gigs === 1 ? "optreden" : "optredens")}
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
@@ -347,7 +350,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 text-left min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-orange-700 dark:text-orange-300">
-                  Client Awaiting
+                  {tr("Client Awaiting", "Klant wachtend")}
                 </p>
                 <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-orange-800 dark:text-orange-200">
                   {summary.pendingClientPayments}
@@ -370,7 +373,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
           {expandedCard === "pending" && summary.pendingByBand.length > 0 && (
             <div className="mt-2 sm:mt-3 space-y-1.5 rounded-lg border border-orange-200 bg-orange-50/50 p-2 sm:p-3 dark:border-orange-800 dark:bg-orange-900/10">
               <p className="text-xs font-medium text-orange-600 dark:text-orange-400 mb-2">
-                Gigs awaiting payment
+                {tr("Gigs awaiting payment", "Optredens in afwachting van betaling")}
               </p>
               <div className="space-y-1.5 max-h-96 overflow-y-auto">
                 {summary.pendingByBand
@@ -428,7 +431,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                 {item.band}
                               </p>
                               <p className="text-xs text-orange-600 dark:text-orange-400">
-                                {item.count} {item.count === 1 ? "gig" : "gigs"}
+                                {item.count} {tr(item.count === 1 ? "gig" : "gigs", item.count === 1 ? "optreden" : "optredens")}
                               </p>
                             </div>
                           </div>
@@ -437,11 +440,11 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                               {fmtCurrency(item.amount)}
                             </p>
                             <p className="text-xs text-orange-600 dark:text-orange-400 text-right">
-                              {fmtCurrency(bandManagerTotals.stillOwed)} for you
+                              {fmtCurrency(bandManagerTotals.stillOwed)} {tr("for you", "voor jou")}
                             </p>
                             {bandManagerTotals.alreadyReceived > 0 && (
                               <p className="text-xs text-orange-500 dark:text-orange-400/90 text-right">
-                                after {fmtCurrency(bandManagerTotals.alreadyReceived)} advance already received
+                                {tr("after", "na")} {fmtCurrency(bandManagerTotals.alreadyReceived)} {tr("advance already received", "reeds ontvangen voorschot")}
                               </p>
                             )}
                           </div>
@@ -451,7 +454,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                           <div className="mt-2 sm:mt-2.5 ml-4 sm:ml-5 space-y-1 border-l-2 border-orange-300 dark:border-orange-600 pl-2.5 sm:pl-3">
                             {bandGigs.length === 0 ? (
                               <p className="text-xs text-orange-600 dark:text-orange-400 italic py-1">
-                                No gigs found for this band
+                                {tr("No gigs found for this band", "Geen optredens gevonden voor deze band")}
                               </p>
                             ) : (
                               bandGigs
@@ -505,7 +508,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                             >
                                               {formatDate(gig.date)}
                                               {isOverdue && (
-                                                <span className="ml-1.5 font-bold text-red-700 dark:text-red-300">⚠ OVERDUE</span>
+                                                <span className="ml-1.5 font-bold text-red-700 dark:text-red-300">⚠ {tr("OVERDUE", "TE LAAT")}</span>
                                               )}
                                             </p>
                                           </div>
@@ -525,7 +528,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                                               ? "text-red-600 dark:text-red-400"
                                               : "text-orange-600 dark:text-orange-400"
                                           }`}>
-                                            whereof <span className="font-semibold">{fmtCurrency(calc.myEarningsStillOwed)}</span> for you
+                                            {tr("whereof", "waarvan")} <span className="font-semibold">{fmtCurrency(calc.myEarningsStillOwed)}</span> {tr("for you", "voor jou")}
                                           </p>
                                         </div>
                                       </div>
@@ -553,7 +556,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 text-left min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-pink-700 dark:text-pink-300">
-                  Owe to Band
+                  {tr("Owe to Band", "Verschuldigd aan band")}
                 </p>
                 <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-bold text-pink-800 dark:text-pink-200">
                   {fmtCurrency(summary.outstandingToBand)}
@@ -574,10 +577,10 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
           {expandedCard === "outstanding" && (
             <div className="mt-2 sm:mt-3 space-y-1.5 rounded-lg border border-pink-200 bg-pink-50/50 p-2 sm:p-3 dark:border-pink-800 dark:bg-pink-900/10">
               <p className="text-xs font-medium text-pink-600 dark:text-pink-400 mb-2">
-                Outstanding by Band
+                {tr("Outstanding by Band", "Openstaand per band")}
               </p>
               {sortedOutstandingBands.length === 0 ? (
-                <p className="text-xs text-pink-700 dark:text-pink-400">All obligations settled ✓</p>
+                <p className="text-xs text-pink-700 dark:text-pink-400">{tr("All obligations settled", "Alle verplichtingen vereffend")} ✓</p>
               ) : (
                 <div className="space-y-1.5">
                   {sortedOutstandingBands.map(([band, data]) => {
@@ -600,7 +603,7 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                             <BandTag name={band} variant="soft" />
-                            <span className="text-xs text-pink-600 dark:text-pink-400">{data.gigs.length} gigs</span>
+                            <span className="text-xs text-pink-600 dark:text-pink-400">{data.gigs.length} {tr("gigs", "optredens")}</span>
                           </div>
                           <p className="font-semibold text-pink-800 dark:text-pink-300 whitespace-nowrap flex-shrink-0">
                             {fmtCurrency(data.totalOwed)}
@@ -641,10 +644,10 @@ export function DashboardSummary({ summary, gigs, fmtCurrency }: DashboardSummar
       {summary.totalGigs === 0 && (
         <div className="rounded-xl border-2 border-cyan-400 bg-cyan-500/10 p-3 dark:bg-cyan-500/15">
           <p className="text-sm font-medium text-cyan-900 dark:text-cyan-200">
-            👋 Ready to add your first performance?
+            👋 {tr("Ready to add your first performance?", "Klaar om je eerste optreden toe te voegen?")}
           </p>
           <p className="mt-1 text-xs text-cyan-700 dark:text-cyan-400">
-            Click the "Add" button above to get started tracking your gigs and earnings.
+            {tr("Click the \"Add\" button above to get started tracking your gigs and earnings.", "Klik hierboven op \"Toevoegen\" om je optredens en inkomsten te beginnen volgen.")}
           </p>
         </div>
       )}

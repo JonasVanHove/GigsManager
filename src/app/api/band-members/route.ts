@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getOrCreateUser } from "@/lib/auth-helpers";
@@ -73,6 +74,37 @@ export async function GET(req: NextRequest) {
       orderBy: { name: "asc" },
     });
 
+    const investedByMemberId = new Map<string, number>();
+    try {
+      const investmentRows = await prisma.$queryRaw<
+        Array<{ amount: number; bandMemberId: string | null; contributorCount: number }>
+      >(Prisma.sql`
+        SELECT
+          i.amount,
+          ic."bandMemberId" AS "bandMemberId",
+          contributor_counts.count AS "contributorCount"
+        FROM "Investment" i
+        LEFT JOIN (
+          SELECT "investmentId", COUNT(*)::int AS count
+          FROM "InvestmentContributor"
+          GROUP BY "investmentId"
+        ) contributor_counts ON contributor_counts."investmentId" = i.id
+        LEFT JOIN "InvestmentContributor" ic ON ic."investmentId" = i.id
+        WHERE i."userId" = ${user.id}
+      `);
+
+      for (const row of investmentRows) {
+        if (!row.bandMemberId || row.contributorCount <= 0) continue;
+        const perPersonShare = row.amount / (row.contributorCount + 1);
+        investedByMemberId.set(
+          row.bandMemberId,
+          (investedByMemberId.get(row.bandMemberId) || 0) + perPersonShare
+        );
+      }
+    } catch (investmentError) {
+      console.warn("[band-members] Invested totals unavailable, continuing without them", investmentError);
+    }
+
     // Calculate totals for each band member
     const bandMembersWithTotals = bandMembers.map((member) => {
       let totalEarned = 0;
@@ -132,6 +164,7 @@ export async function GET(req: NextRequest) {
         bands: member.bands,
         updatedAt: member.updatedAt,
         totalEarned,
+        totalInvested: investedByMemberId.get(member.id) || 0,
         totalPaid: totalReceived,
         totalOwed: totalPending,
         gigsCount: member.gigs.length,

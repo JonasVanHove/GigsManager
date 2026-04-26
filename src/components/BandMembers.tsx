@@ -24,6 +24,7 @@ interface BandMember {
   bands: string[];
   updatedAt: string;
   totalEarned: number;
+  totalInvested: number;
   totalPaid: number;
   totalOwed: number;
   gigsCount: number;
@@ -81,6 +82,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
         noMembersYet: "Nog geen bandleden",
         addFirstMember: "Voeg je eerste bandlid toe om betalingen bij te houden",
         assignGigs: "Optredens toewijzen",
+        invested: "Geinvesteerd",
         edit: "Bewerken",
         delete: "Verwijderen",
         selectBands: "Selecteer bestaande bands of voeg nieuwe toe.",
@@ -100,6 +102,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
         noMembersYet: "No band members yet",
         addFirstMember: "Add your first band member to start tracking payments",
         assignGigs: "Assign gigs",
+        invested: "Invested",
         edit: "Edit",
         delete: "Delete",
         selectBands: "Select existing bands or add new ones.",
@@ -740,13 +743,21 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                         </div>
 
                         <div className="space-y-3 px-4 py-3">
-                          <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="grid grid-cols-3 gap-3 text-sm">
                             <div>
                               <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
                                 Total Earned
                               </p>
                               <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
                                 {fmtCurrency(member.totalEarned)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                {copy.invested}
+                              </p>
+                              <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
+                                {fmtCurrency(member.totalInvested)}
                               </p>
                             </div>
                             <div>
@@ -849,13 +860,21 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                   </div>
 
                   <div className="space-y-3 px-4 py-3">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-3 gap-3 text-sm">
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
                           Total Earned
                         </p>
                         <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
                           {fmtCurrency(member.totalEarned)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                          {copy.invested}
+                        </p>
+                        <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
+                          {fmtCurrency(member.totalInvested)}
                         </p>
                       </div>
                       <div>

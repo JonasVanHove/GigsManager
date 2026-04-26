@@ -171,15 +171,28 @@ export const DEFAULT_SETTINGS: UserSettingsData = {
 export interface Investment {
   id: string;
   amount: number;
+  sharedWithMusician: boolean;
   description: string | null;
   date: string; // ISO string
   userId: string;
+  contributors?: InvestmentContributor[];
   createdAt: string;
   updatedAt: string;
 }
 
+export interface InvestmentContributor {
+  id: string;
+  bandMemberId: string;
+  bandMember: {
+    id: string;
+    name: string;
+  };
+}
+
 export interface InvestmentFormData {
   amount: number;
+  sharedWithMusician: boolean;
+  contributorIds: string[];
   description: string;
   date: string; // "YYYY-MM-DD"
 }

@@ -218,8 +218,12 @@ model Investment {
 
   // Investment details
   amount      Float
+  sharedWithMusician Boolean @default(false)
   description String?
   date        DateTime @default(now())
+
+  // Musicians who contribute to this investment
+  contributors InvestmentContributor[]
 
   // Owner
   userId String
@@ -230,6 +234,22 @@ model Investment {
 
   @@index([userId])
   @@index([date])
+}
+
+model InvestmentContributor {
+  id String @id @default(cuid())
+
+  investmentId String
+  investment   Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  bandMemberId String
+  bandMember   BandMember @relation(fields: [bandMemberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([investmentId, bandMemberId])
+  @@index([investmentId])
+  @@index([bandMemberId])
 }
 
 // ── Band Members & Relationships ─────────────────────────────────
@@ -249,6 +269,9 @@ model BandMember {
 
   // Gigs this member participated in
   gigs GigBandMember[]
+
+  // Investments this member contributes to
+  investments InvestmentContributor[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

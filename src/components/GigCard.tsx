@@ -9,6 +9,16 @@ import {
 import { getBandColorStyles } from "@/lib/preferences";
 import BandTag from "./BandTag";
 
+function isPastGigDate(value: string) {
+  const gigDay = new Date(value);
+  if (Number.isNaN(gigDay.getTime())) return false;
+
+  const today = new Date();
+  gigDay.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  return gigDay < today;
+}
+
 interface GigCardProps {
   gig: Gig;
   onEdit: (gig: Gig) => void;
@@ -35,6 +45,10 @@ const GigCard = memo(function GigCard({
   
   // Use global expand state if provided, otherwise use local state
   const effectiveIsExpanded = isExpandedGlobal !== undefined ? isExpandedGlobal : isExpanded;
+  const isClientPaymentOverdue = useMemo(
+    () => !gig.paymentReceived && isPastGigDate(gig.date),
+    [gig.date, gig.paymentReceived]
+  );
 
   const calc = useMemo(
     () =>
@@ -70,7 +84,13 @@ const GigCard = memo(function GigCard({
   const bandStyles = useMemo(() => getBandColorStyles(gig.performers), [gig.performers]);
 
   return (
-    <div className={`group overflow-hidden rounded-xl border shadow-sm transition hover:shadow-md dark:border-slate-700 ${isSelected ? 'border-blue-400 bg-blue-50 shadow-md dark:bg-blue-950/20 dark:border-blue-400' : 'border-slate-200 bg-white shadow-sm dark:bg-slate-900'}`}>
+    <div className={`group overflow-hidden rounded-xl border shadow-sm transition hover:shadow-md ${
+      isSelected
+        ? 'border-blue-400 bg-blue-50 shadow-md dark:bg-blue-950/20 dark:border-blue-400'
+        : isClientPaymentOverdue
+          ? 'border-red-300 bg-red-50/70 shadow-red-100 dark:border-red-500/40 dark:bg-red-950/20 dark:shadow-red-950/20'
+          : 'border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900'
+    }`}>
       <div className="h-1 w-full" style={{ backgroundColor: bandStyles.solid.backgroundColor }} />
       {/* -- Header ------------------------------------------------------ */}
       <div className={`flex items-start justify-between border-b ${isSelected ? 'border-blue-200 bg-blue-100/30 dark:border-blue-800/50 dark:bg-blue-900/20' : 'border-slate-100 bg-slate-50/50 dark:border-slate-700/50 dark:bg-slate-800/50'} px-5 py-4`}>
@@ -363,7 +383,9 @@ const GigCard = memo(function GigCard({
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
             gig.paymentReceived
               ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-600/20 dark:ring-emerald-500/30"
-              : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 ring-1 ring-amber-600/20 dark:ring-amber-500/30"
+              : isClientPaymentOverdue
+                ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 ring-1 ring-red-600/20 dark:ring-red-500/30"
+                : "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 ring-1 ring-amber-600/20 dark:ring-amber-500/30"
           }`}
         >
           {gig.paymentReceived ? (
@@ -388,7 +410,7 @@ const GigCard = memo(function GigCard({
                   clipRule="evenodd"
                 />
               </svg>
-              Awaiting Payment
+              {isClientPaymentOverdue ? "Payment overdue" : "Awaiting Payment"}
             </>
           )}
         </span>

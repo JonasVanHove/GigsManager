@@ -104,6 +104,7 @@ export default function Dashboard() {
   const [exportingType, setExportingType] = useState<"gigs" | "summary" | "report" | null>(null);
   const [isActiveSectionExpanded, setIsActiveSectionExpanded] = useState(true);
   const [isHandledSectionExpanded, setIsHandledSectionExpanded] = useState(false);
+  const [isWideView, setIsWideView] = useState(false);
   const fetchGigsInFlightRef = useRef(false);
   const noSessionLoggedRef = useRef(false);
   const gigsRef = useRef<Gig[]>([]);
@@ -183,6 +184,17 @@ export default function Dashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("dashboard-wide-view");
+      if (saved !== null) {
+        setIsWideView(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Failed to load wide view preference:", e);
+    }
+  }, []);
+
   // Save overview expanded preference to localStorage
   const handleToggleOverview = useCallback(() => {
     setIsOverviewExpanded((prev) => {
@@ -191,6 +203,18 @@ export default function Dashboard() {
         localStorage.setItem("overview-expanded", JSON.stringify(newVal));
       } catch (e) {
         console.error("Failed to save overview preference:", e);
+      }
+      return newVal;
+    });
+  }, []);
+
+  const handleToggleWideView = useCallback(() => {
+    setIsWideView((prev) => {
+      const newVal = !prev;
+      try {
+        localStorage.setItem("dashboard-wide-view", JSON.stringify(newVal));
+      } catch (e) {
+        console.error("Failed to save wide view preference:", e);
       }
       return newVal;
     });
@@ -737,7 +761,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
       {/* -- Navbar -------------------------------------------------------- */}
       <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg dark:backdrop-blur-xl transition-colors">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8">
+        <div className={`mx-auto flex w-full items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3 lg:px-8 ${isWideView ? "max-w-none 2xl:px-10" : "max-w-[1800px]"}`}>
           {/* Left: Hamburger (mobile) + Logo */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             {/* Mobile hamburger */}
@@ -811,6 +835,20 @@ export default function Dashboard() {
               Notities
             </button>
             <button
+              onClick={handleToggleWideView}
+              className={`hidden sm:inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                isWideView
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+              title={isWideView ? "Kleine layout" : "XL / volledige breedte"}
+            >
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8.25 3.75H4.5A.75.75 0 0 0 3.75 4.5v3.75M15.75 3.75h3.75a.75.75 0 0 1 .75.75v3.75M20.25 15.75V19.5a.75.75 0 0 1-.75.75h-3.75M3.75 15.75V19.5a.75.75 0 0 0 .75.75h3.75" />
+              </svg>
+              XL
+            </button>
+            <button
               onClick={() => handleTabChange("songs")}
               className={`sm:hidden p-1.5 rounded-lg border transition flex-shrink-0 ${
                 activeTab === "songs"
@@ -822,6 +860,20 @@ export default function Dashboard() {
               <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4.5 4.5A2.25 2.25 0 0 1 6.75 2.25h8.25a2.25 2.25 0 0 1 2.25 2.25v15A2.25 2.25 0 0 1 15 21.75H6.75A2.25 2.25 0 0 1 4.5 19.5v-15Z" />
                 <path d="M8.25 6.75h7.5M8.25 10.5h7.5M8.25 14.25H12" />
+              </svg>
+            </button>
+
+            <button
+              onClick={handleToggleWideView}
+              className={`sm:hidden p-1.5 rounded-lg border transition flex-shrink-0 ${
+                isWideView
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+              title={isWideView ? "Kleine layout" : "XL"}
+            >
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8.25 3.75H4.5A.75.75 0 0 0 3.75 4.5v3.75M15.75 3.75h3.75a.75.75 0 0 1 .75.75v3.75M20.25 15.75V19.5a.75.75 0 0 1-.75.75h-3.75M3.75 15.75V19.5a.75.75 0 0 0 .75.75h3.75" />
               </svg>
             </button>
 
@@ -943,6 +995,22 @@ export default function Dashboard() {
                     <path d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                   Add gig
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false);
+                    handleToggleWideView();
+                  }}
+                  className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                    isWideView
+                      ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8.25 3.75H4.5A.75.75 0 0 0 3.75 4.5v3.75M15.75 3.75h3.75a.75.75 0 0 1 .75.75v3.75M20.25 15.75V19.5a.75.75 0 0 1-.75.75h-3.75M3.75 15.75V19.5a.75.75 0 0 0 .75.75h3.75" />
+                  </svg>
+                  {isWideView ? "Normaal" : "XL"}
                 </button>
                 <button
                   onClick={() => {
@@ -1104,7 +1172,7 @@ export default function Dashboard() {
         </>
       )}
 
-      <main className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-8 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-950 min-h-screen transition-colors">
+      <main className={`mx-auto w-full px-3 sm:px-4 lg:px-6 py-4 sm:py-8 dark:bg-gradient-to-b dark:from-slate-900 dark:to-slate-950 min-h-screen transition-colors ${isWideView ? "max-w-none 2xl:px-10" : "max-w-[1800px]"}`}>
         {/* Search results indicator */}
         {searchQuery && (
           <div className="mb-4 flex items-center justify-between rounded-lg bg-brand-50 px-4 py-2 text-sm dark:bg-brand-950/30">

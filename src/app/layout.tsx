@@ -7,6 +7,7 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+  fallback: ["system-ui", "arial"],
 });
 
 export const metadata: Metadata = {
@@ -57,9 +58,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="dns-prefetch" href="https://supabase.co" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://supabase.co" />
+        <link rel="preload" href="/favicon.png" as="image" type="image/png" />
+        <link rel="preload" as="font" href="https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHAPMtMepHY4ICH5d-ekw.woff2" type="font/woff2" crossOrigin="anonymous" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -75,6 +78,21 @@ export default function RootLayout({
                   document.documentElement.classList.add('dark');
                 }
               } catch (e) {}
+            `,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').then((reg) => {
+                    console.log('Service Worker registered');
+                  }).catch((err) => {
+                    console.log('Service Worker registration failed:', err);
+                  });
+                });
+              }
             `,
           }}
         />

@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Disallow bot crawling of dynamic/generated pages that aren't useful
+Disallow: /api/
+Disallow: /?tab=*
+Disallow: /share/*
+Disallow: /docs
+
+# Cache directives for crawlers
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: https://gigmanager.app/sitemap.xml
+
+# Performance: Restrict crawling of non-essential resources
+User-agent: *
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /*?*_rsc=*

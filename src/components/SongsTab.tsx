@@ -32,6 +32,13 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
     ctxRef.current = ctx;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const historyRef = useRef<string[]>([]);
+    // Save initial state
+    try {
+      historyRef.current.push(canvas.toDataURL("image/webp", 0.9));
+    } catch {
+      // ignore
+    }
   }, []);
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -53,6 +60,17 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
   const handlePointerUp = () => {
     drawing.current = false;
     ctxRef.current?.closePath();
+    // push snapshot to history for undo
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      const url = canvas.toDataURL("image/webp", 0.9);
+      historyRef.current.push(url);
+      // limit history
+      if (historyRef.current.length > 30) historyRef.current.shift();
+    } catch {
+      // ignore
+    }
   };
 
   const clear = () => {
@@ -61,6 +79,9 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
     ctxRef.current.clearRect(0, 0, canvas.width, canvas.height);
     ctxRef.current.fillStyle = "#ffffff";
     ctxRef.current.fillRect(0, 0, canvas.width, canvas.height);
+    try {
+      historyRef.current.push(canvas.toDataURL("image/webp", 0.9));
+    } catch {}
   };
 
   const exportImage = async () => {
@@ -72,6 +93,22 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
         resolve();
       }, "image/webp", 0.9);
     });
+  };
+
+  const undo = () => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+    // pop current state
+    if (historyRef.current.length <= 1) return;
+    historyRef.current.pop();
+    const prev = historyRef.current[historyRef.current.length - 1];
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = prev;
   };
 
   return (
@@ -106,7 +143,11 @@ export default function SongsTab() {
   const [notes, setNotes] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [attachmentsMeta, setAttachmentsMeta] = useState<AttachmentMeta[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+  const [editingSongId, setEditingSongId] = useState<string | null>(null);
+  const [deletingAttachmentIds, setDeletingAttachmentIds] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchSongs();
@@ -221,6 +262,41 @@ export default function SongsTab() {
     }
   };
 
+  const startEdit = (song: any) => {
+    setEditingSongId(song.id);
+    setTitle(song.title || "");
+    setNotes(song.notes || "");
+    setExistingAttachments((song.attachments || []).map((a: any) => ({ id: a.id, storagePath: a.storagePath || a.storage_path || a.storagePath, publicUrl: a.publicUrl || a.public_url || a.publicUrl, contentType: a.contentType || a.content_type || 'image', caption: a.caption || null })));
+    setAttachmentsMeta([]);
+    setSelectedFiles([]);
+    setShowForm(true);
+    setDeletingAttachmentIds(new Set());
+  };
+
+  const toggleDeleteExistingAttachment = (id: string) => {
+    setDeletingAttachmentIds((prev) => {
+      const copy = new Set(prev);
+      if (copy.has(id)) copy.delete(id); else copy.add(id);
+      return copy;
+    });
+  };
+
+  const updateExistingAttachmentCaption = (id: string, caption: string) => {
+    setExistingAttachments((prev) => prev.map((a) => (a.id === id ? { ...a, caption } : a)));
+  };
+
+  const moveExistingAttachment = (index: number, dir: -1 | 1) => {
+    setExistingAttachments((prev) => {
+      const arr = [...prev];
+      const to = index + dir;
+      if (to < 0 || to >= arr.length) return prev;
+      const tmp = arr[to];
+      arr[to] = arr[index];
+      arr[index] = tmp;
+      return arr;
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -243,15 +319,56 @@ export default function SongsTab() {
           </div>
 
           <div>
-            <CanvasEditor onExport={handleDrawingExport} />
-          </div>
+                <CanvasEditor onExport={handleDrawingExport} />
+              </div>
 
-          <div className="flex gap-2">
-            <button onClick={handleSave} disabled={uploading} className="rounded-lg bg-brand-600 text-white px-3 py-2">Save</button>
-            <button onClick={() => { setShowForm(false); setSelectedFiles([]); setAttachmentsMeta([]); }} className="rounded-lg border px-3 py-2">Cancel</button>
-          </div>
-        </div>
-      )}
+              {/* Existing attachments (when editing) */}
+              {existingAttachments.length > 0 && (
+                <div className="space-y-2">
+                  <div className="font-semibold">Existing attachments</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {existingAttachments.map((a, idx) => (
+                      <div key={a.id} className={`rounded overflow-hidden border p-2 ${deletingAttachmentIds.has(a.id) ? 'opacity-50' : ''}`}>
+                        <img src={a.publicUrl} className="h-24 w-full object-cover rounded" alt="attachment" />
+                        <div className="mt-2 flex gap-2 items-center">
+                          <button onClick={() => moveExistingAttachment(idx, -1)} className="px-2 py-1 border rounded">◀</button>
+                          <button onClick={() => moveExistingAttachment(idx, 1)} className="px-2 py-1 border rounded">▶</button>
+                          <button onClick={() => toggleDeleteExistingAttachment(a.id)} className={`ml-auto px-2 py-1 rounded ${deletingAttachmentIds.has(a.id) ? 'bg-red-600 text-white' : 'border'}`}>{deletingAttachmentIds.has(a.id) ? 'Undo' : 'Delete'}</button>
+                        </div>
+                        <input value={a.caption || ''} onChange={(e) => updateExistingAttachmentCaption(a.id, e.target.value)} placeholder="Caption" className="mt-2 w-full rounded border px-2 py-1 text-sm" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New attachments preview (selected files and drawings) */}
+              {(selectedFiles.length > 0 || attachmentsMeta.length > 0) && (
+                <div className="space-y-2">
+                  <div className="font-semibold">New attachments</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedFiles.map((f, i) => (
+                      <div key={f.name + i} className="rounded overflow-hidden border p-2">
+                        <div className="h-24 w-full bg-slate-100 flex items-center justify-center text-sm">{f.name}</div>
+                        <div className="mt-2 text-xs text-slate-500">{Math.round((uploadProgress[`${session?.user?.id}-${Date.now()}-${i}`] || 0)}%</div>
+                      </div>
+                    ))}
+                    {attachmentsMeta.map((a, i) => (
+                      <div key={a.storagePath} className="rounded overflow-hidden border p-2">
+                        <img src={a.publicUrl} className="h-24 w-full object-cover rounded" alt="attachment" />
+                        <input value={a.caption || ''} onChange={(e) => setAttachmentsMeta((prev) => prev.map((p, idx) => idx === i ? { ...p, caption: e.target.value } : p))} placeholder="Caption" className="mt-2 w-full rounded border px-2 py-1 text-sm" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button onClick={handleSave} disabled={uploading} className="rounded-lg bg-brand-600 text-white px-3 py-2">Save</button>
+                <button onClick={() => { setShowForm(false); setSelectedFiles([]); setAttachmentsMeta([]); setExistingAttachments([]); setEditingSongId(null); setDeletingAttachmentIds(new Set()); }} className="rounded-lg border px-3 py-2">Cancel</button>
+              </div>
+            </div>
+          )}
 
       <div className="space-y-3">
         {loading ? (

@@ -18,6 +18,7 @@ import Footer from "./Footer";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 import BulkEditor from "./BulkEditor";
+import { ImmersiveButton } from "./ImmersiveButton";
 import LoadingSpinner, { CardSkeleton } from "./LoadingSpinner";
 
 // Lazy load heavy components for better initial load time
@@ -876,6 +877,9 @@ export default function Dashboard() {
                 <path d="M8.25 3.75H4.5A.75.75 0 0 0 3.75 4.5v3.75M15.75 3.75h3.75a.75.75 0 0 1 .75.75v3.75M20.25 15.75V19.5a.75.75 0 0 1-.75.75h-3.75M3.75 15.75V19.5a.75.75 0 0 0 .75.75h3.75" />
               </svg>
             </button>
+
+            {/* Immersive / fullscreen mode toggle for mobile */}
+            <ImmersiveButton />
 
             {/* Add Performance - icon only on mobile, button on desktop */}
             <button

@@ -46,7 +46,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  minimumScale: 1,
+  userScalable: false,
   themeColor: "#f59e0b",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -69,6 +72,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="GigsManager" />
         <meta name="msapplication-TileColor" content="#f59e0b" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
+        <meta name="theme-color" content="#f59e0b" />
+        <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+        <meta name="status-bar-hide" content="true" />
+        <meta name="fullscreen" content="yes" />
+        <meta name="web-app-user-scalable" content="no" />
+        <meta name="theme-color" content="#f59e0b" />
+        <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+        <meta name="status-bar-hide" content="true" />
+        <meta name="fullscreen" content="yes" />
+        <meta name="web-app-user-scalable" content="no" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

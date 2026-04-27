@@ -108,6 +108,124 @@ const insets = useSafeAreaInsets();
 </div>
 ```
 
+### 5. **Haptic Feedback & Vibration**
+
+#### Hook: `useHapticFeedback`
+Located in `src/lib/use-mobile-features.ts`
+
+**Features:**
+- Haptic feedback for user actions
+- Pre-defined vibration patterns:
+  - `short` (10ms) - Quick feedback
+  - `medium` (25ms) - Standard feedback
+  - `long` (50ms) - Emphasis
+  - `double` - Double tap pattern
+  - `triple` - Triple tap pattern
+  - `success` - Success pattern
+  - `error` - Error pattern
+  - `warning` - Warning pattern
+
+**Usage:**
+```typescript
+const { feedback, vibrate, vibratePattern } = useHapticFeedback();
+
+// Haptic feedback for actions
+<button onClick={() => feedback('success')}>Success Action</button>
+
+// Custom vibration
+<button onClick={() => vibrate([50, 100, 50])}>Custom Pattern</button>
+
+// Pre-defined patterns
+<button onClick={() => vibratePattern('success')}>Vibrate</button>
+```
+
+#### Component: `HapticButton`
+Located in `src/components/SwipeToRefresh.tsx`
+
+```typescript
+<HapticButton hapticType="success" onClick={handleClick}>
+  Click me
+</HapticButton>
+```
+
+### 6. **Pull-to-Refresh Gesture**
+
+#### Component: `SwipeToRefresh`
+Located in `src/components/SwipeToRefresh.tsx`
+
+**Features:**
+- Native pull-to-refresh gesture (Android style)
+- Customizable threshold (default: 60px)
+- Automatic haptic feedback
+- Loading spinner animation
+- Drag visual feedback
+- Smooth animations
+
+**Usage:**
+```typescript
+<SwipeToRefresh 
+  onRefresh={async () => {
+    await fetchGigs();
+  }}
+  threshold={60}
+  maxDrag={120}
+>
+  <GigsList />
+</SwipeToRefresh>
+```
+
+**Props:**
+- `onRefresh`: Async callback function when threshold is crossed
+- `threshold`: Pixels to drag before refresh triggers (default: 60)
+- `maxDrag`: Maximum drag distance (default: 120)
+- `disabled`: Disable gesture (default: false)
+- `children`: Content to wrap
+
+### 7. **Screen Orientation Control**
+
+#### Hook: `useScreenOrientation`
+Located in `src/lib/use-mobile-features.ts`
+
+**Features:**
+- Lock screen to specific orientation
+- Unlock orientation to auto-rotate
+- Get current orientation
+- Browser compatibility checks
+
+**Usage:**
+```typescript
+const { lock, unlock, getCurrentOrientation } = useScreenOrientation();
+
+// Lock to portrait
+<button onClick={() => lock('portrait')}>Lock Portrait</button>
+
+// Lock to landscape
+<button onClick={() => lock('landscape')}>Lock Landscape</button>
+
+// Allow auto-rotation
+<button onClick={() => unlock()}>Auto Rotate</button>
+```
+
+### 8. **Wake Lock (Keep Screen On)**
+
+#### Hook: `useWakeLock`
+Located in `src/lib/use-mobile-features.ts`
+
+**Features:**
+- Keep device screen on during gig performance
+- Prevent screen timeout
+- Request/release wake lock
+
+**Usage:**
+```typescript
+const { requestWakeLock } = useWakeLock();
+
+// Keep screen on during performance
+<button onClick={requestWakeLock}>
+  Start Performance (Keep Screen On)
+</button>
+```
+
 ## Browser Compatibility
 
 ### Fullscreen API
@@ -126,6 +244,27 @@ const insets = useSafeAreaInsets();
 - Android Chrome: ✅ Via theme-color meta tag
 - Android Samsung: ✅ Via theme-color meta tag
 - iOS Safari: ✅ Via apple-mobile-web-app-status-bar-style
+
+### Haptic Feedback / Vibration API
+- Chrome/Chromium: ✅ Full support (Android 5+)
+- Firefox: ✅ Full support (Android 25+)
+- Safari: ⚠️ Limited (iOS 13+, requires gesture)
+- Samsung Internet: ✅ Full support
+- Edge: ✅ Full support (Android)
+
+### Screen Orientation API
+- Chrome/Chromium: ✅ Full support (Android 4.4+)
+- Firefox: ✅ Full support (Android 20+)
+- Safari: ⚠️ Limited (iOS 10+, landscape only)
+- Samsung Internet: ✅ Full support
+- Edge: ✅ Full support
+
+### Wake Lock API
+- Chrome/Chromium: ✅ Full support (Android 4.1+)
+- Firefox: ⚠️ Experimental (flag required)
+- Safari: ❌ Not supported
+- Samsung Internet: ✅ Full support
+- Edge: ✅ Full support (Android)
 
 ## Implementation Details
 
@@ -153,6 +292,17 @@ const insets = useSafeAreaInsets();
 5. **`src/components/Dashboard.tsx`**
    - Integrated ImmersiveButton into header
    - Imported use-immersive-mode hook
+
+6. **`src/lib/use-mobile-features.ts`** (NEW)
+   - `useHapticFeedback()` hook for vibration API
+   - `useScreenOrientation()` hook for orientation control
+   - `useWakeLock()` hook for screen on functionality
+   - Pre-defined vibration patterns
+
+7. **`src/components/SwipeToRefresh.tsx`** (NEW)
+   - Pull-to-refresh component with gesture support
+   - `SwipeToRefresh` wrapper component
+   - `HapticButton` component for haptic feedback
 
 ### CSS Classes
 All buttons use consistent Tailwind styling:
@@ -204,25 +354,41 @@ All features gracefully degrade:
 
 ## Future Enhancements
 
-1. **Gesture Controls**
-   - Swipe gestures for navigation
-   - Double-tap for quick actions
+1. **Advanced Gesture Controls**
+   - Pinch-to-zoom for analytics charts
+   - Swipe for tab navigation
    - Long-press for context menus
+   - Double-tap for quick actions
 
-2. **Haptic Feedback**
-   - Vibration on successful actions
-   - Haptic click feedback on buttons
-   - Custom vibration patterns
+2. **Enhanced Haptic Patterns**
+   - Custom vibration per button type
+   - Success/error animations with haptics
+   - Haptic scroll feedback
+   - Haptic keyboard feedback
 
-3. **Camera Cutout Utilities**
-   - Helper classes for notch-aware padding
-   - Automatic component repositioning
-   - Screen metrics API integration
+3. **Immersive Performance Mode**
+   - Auto-fullscreen during performance start
+   - Hide UI on tap with auto-show timer
+   - Gesture-based controls in immersive mode
+   - Performance metrics overlay
 
-4. **Immersive Mode Features**
-   - Hide/show app UI on tap
-   - Gesture-based fullscreen toggle
-   - Auto-hide timeout for immersive mode
+4. **Camera/Recording Features**
+   - Quick video record for setlists
+   - Audio recording for gigs
+   - Camera access for band photos
+   - Image upload from camera
+
+5. **Notification Features**
+   - Push notifications for gig reminders
+   - Sound + haptic for notifications
+   - Custom notification sounds per gig type
+   - In-app notification badges
+
+6. **Accessibility Improvements**
+   - Haptic labels for screen readers
+   - Voice control support
+   - Gesture customization
+   - Dark mode optimizations for OLED
 
 ## Debugging
 

@@ -165,10 +165,6 @@ model Song {
   // Soft-delete timestamp (null = not deleted)
   deletedAt DateTime?
 
-  // Tags and band relations
-  tags SongTag[]
-  bands SongBand[]
-
   // Owner
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

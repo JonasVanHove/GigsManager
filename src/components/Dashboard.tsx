@@ -1459,10 +1459,10 @@ export default function Dashboard() {
                 )}
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className={isWideView ? "grid gap-6 xl:grid-cols-2 2xl:gap-8" : "space-y-6"}>
                 {/* Active Gigs Section */}
                 {activeGigs.length > 0 && (
-                  <div>
+                  <div className="min-w-0">
                           <div className="mb-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <button
@@ -1543,7 +1543,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           {isActiveSectionExpanded && (
-                            <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
+                            <div className={isWideView ? "grid gap-4 lg:grid-cols-1 2xl:grid-cols-2" : "grid gap-5 xl:grid-cols-2 2xl:grid-cols-3"}>
                               {activeGigs.map((gig) => (
                                 <GigCard
                                   key={gig.id}
@@ -1564,7 +1564,7 @@ export default function Dashboard() {
 
                 {/* Handled Gigs Section */}
                 {handledGigs.length > 0 && (
-                  <div>
+                  <div className="min-w-0">
                           <div className="mb-4 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <button
@@ -1613,7 +1613,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           {isHandledSectionExpanded && (
-                            <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-3">
+                            <div className={isWideView ? "grid gap-4 lg:grid-cols-1 2xl:grid-cols-2" : "grid gap-5 xl:grid-cols-2 2xl:grid-cols-3"}>
                               {handledGigs.map((gig) => (
                                 <GigCard
                                   key={gig.id}

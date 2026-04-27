@@ -29,12 +29,14 @@ const FinancialReports = lazy(() => import("./FinancialReports"));
 const CalendarView = lazy(() => import("./CalendarView"));
 const SetlistsTab = lazy(() => import("./SetlistsTab"));
 const SharedLinksTab = lazy(() => import("./SharedLinksTab"));
+const SongsTab = lazy(() => import("./SongsTab"));
 
 type DashboardTab =
   | "gigs"
   | "all-gigs"
   | "analytics"
   | "investments"
+  | "songs"
   | "band-members"
   | "calendar"
   | "setlists"
@@ -45,6 +47,7 @@ const DASHBOARD_TABS: DashboardTab[] = [
   "all-gigs",
   "analytics",
   "investments",
+  "songs",
   "band-members",
   "calendar",
   "setlists",
@@ -59,6 +62,7 @@ const TAB_PRELOADERS: Partial<Record<DashboardTab, () => Promise<unknown>>> = {
   "all-gigs": () => import("./AllGigsTab"),
   analytics: () => import("./AnalyticsPage"),
   investments: () => import("./InvestmentsTab"),
+  songs: () => import("./SongsTab"),
   "band-members": () => import("./BandMembers"),
   calendar: () => import("./CalendarView"),
   setlists: () => import("./SetlistsTab"),
@@ -985,6 +989,17 @@ export default function Dashboard() {
                   Setlists
                 </button>
                 <button
+                  onClick={() => handleTabChange("songs")}
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    activeTab === "songs" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10.5M19.5 8.25a3 3 0 11-3-3M6.75 6.75a3 3 0 11-3 3" />
+                  </svg>
+                  Songs
+                </button>
+                <button
                   onClick={() => handleTabChange("shared-links")}
                   className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                     activeTab === "shared-links" ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-300" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -1543,6 +1558,10 @@ export default function Dashboard() {
         ) : activeTab === "setlists" ? (
           <Suspense fallback={<TabLoader />}>
             <SetlistsTab />
+          </Suspense>
+        ) : activeTab === "songs" ? (
+          <Suspense fallback={<TabLoader />}>
+            <SongsTab />
           </Suspense>
         ) : activeTab === "shared-links" ? (
           <Suspense fallback={<TabLoader />}>

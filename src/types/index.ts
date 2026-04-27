@@ -244,3 +244,23 @@ export interface PublicSharedGig {
   clientPaymentStatus: "received" | "pending" | null;
   bandPaymentStatus: "paid" | "pending" | null;
 }
+
+// --- Songs / Notes ------------------------------------------------------
+export interface SongAttachment {
+  id: string;
+  storagePath: string;
+  publicUrl: string;
+  contentType: string;
+  caption?: string | null;
+}
+
+export interface Song {
+  id: string;
+  title: string;
+  notes: string | null;
+  date: string;
+  userId: string;
+  attachments?: SongAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}

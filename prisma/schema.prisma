@@ -138,6 +138,7 @@ model User {
   settings    UserSettings?
   investments Investment[]
   bandMembers BandMember[]
+  songs       Song[]
   setlists    Setlist[]
 
   // Notifications and webhooks
@@ -148,6 +149,51 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ── Songs / Notes (user-created songs with attachments like photos/drawings) ──
+model Song {
+  id String @id @default(cuid())
+
+  title String
+  notes String?
+  date  DateTime @default(now())
+
+  // Attachments (photos, drawings) stored in Supabase storage; saved as references
+  attachments SongAttachment[]
+
+  // Owner
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+}
+
+model SongAttachment {
+  id String @id @default(cuid())
+
+  songId String
+  song   Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  // Storage path in Supabase storage (bucket/path), e.g. "songs/<userId>/<filename>"
+  storagePath String
+
+  // Public URL (cached at upload time) for quick display
+  publicUrl String
+
+  // Mime type (image/png, image/jpeg, image/webp)
+  contentType String
+
+  // Optional caption or description
+  caption String?
+
+  createdAt DateTime @default(now())
+
+  @@index([songId])
 }
 
 model ShareLink {

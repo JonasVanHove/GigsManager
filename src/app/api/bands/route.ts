@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromHeader } from "@/lib/auth-helpers";
 
@@ -10,7 +11,9 @@ export async function GET(request: NextRequest) {
     const user = await prisma.user.findUnique({ where: { supabaseId: userId }, select: { id: true } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const bands = await prisma.$queryRaw<Array<any>>(`SELECT id, name FROM bands WHERE "userId" = $1 ORDER BY name ASC`, user.id);
+    const bands = await prisma.$queryRaw<Array<any>>(Prisma.sql`
+      SELECT id, name FROM bands WHERE "userId" = ${user.id} ORDER BY name ASC
+    `);
     return NextResponse.json(bands);
   } catch (err) {
     console.error("GET /api/bands error:", err);

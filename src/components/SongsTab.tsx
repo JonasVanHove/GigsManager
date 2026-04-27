@@ -16,6 +16,7 @@ type AttachmentMeta = {
 function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const historyRef = useRef<string[]>([]);
   const drawing = useRef(false);
 
   useEffect(() => {
@@ -32,7 +33,6 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
     ctxRef.current = ctx;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const historyRef = useRef<string[]>([]);
     // Save initial state
     try {
       historyRef.current.push(canvas.toDataURL("image/webp", 0.9));
@@ -346,6 +346,75 @@ export default function SongsTab() {
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={language === 'nl' ? 'Titel' : 'Title'} className="w-full rounded-lg border px-3 py-2" />
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={language === 'nl' ? 'Notities' : 'Notes'} className="w-full rounded-lg border px-3 py-2 h-28" />
 
+          <div className="space-y-2 rounded-lg border p-3">
+            <label className="block text-sm font-medium">Tags</label>
+            <div className="flex gap-2">
+              <input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const value = tagInput.trim();
+                    if (value && !tags.includes(value)) {
+                      setTags((prev) => [...prev, value]);
+                    }
+                    setTagInput('');
+                  }
+                }}
+                placeholder="Add tag and press Enter"
+                className="flex-1 rounded-lg border px-3 py-2"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const value = tagInput.trim();
+                  if (value && !tags.includes(value)) setTags((prev) => [...prev, value]);
+                  setTagInput('');
+                }}
+                className="rounded-lg border px-3 py-2"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setTags((prev) => prev.filter((item) => item !== tag))}
+                  className="rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800"
+                >
+                  {tag} ×
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border p-3">
+            <label className="block text-sm font-medium">Bands</label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {availableBands.length === 0 ? (
+                <div className="text-sm text-slate-500">No bands yet</div>
+              ) : (
+                availableBands.map((band) => (
+                  <label key={band.id} className="flex items-center gap-2 rounded border px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedBandIds.includes(band.id)}
+                      onChange={(e) => {
+                        setSelectedBandIds((prev) =>
+                          e.target.checked ? [...prev, band.id] : prev.filter((id) => id !== band.id)
+                        );
+                      }}
+                    />
+                    <span>{band.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="flex gap-2 items-center">
             <label className="rounded-lg border px-3 py-2 cursor-pointer">Attach Photo
               <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" multiple />
@@ -385,7 +454,7 @@ export default function SongsTab() {
                     {selectedFiles.map((f, i) => (
                       <div key={f.name + i} className="rounded overflow-hidden border p-2">
                         <div className="h-24 w-full bg-slate-100 flex items-center justify-center text-sm">{f.name}</div>
-                        <div className="mt-2 text-xs text-slate-500">{Math.round((uploadProgress[`${session?.user?.id}-${Date.now()}-${i}`] || 0)}%</div>
+                        <div className="mt-2 text-xs text-slate-500">{Math.round(uploadProgress[`${session?.user?.id}-${Date.now()}-${i}`] || 0)}%</div>
                       </div>
                     ))}
                     {attachmentsMeta.map((a, i) => (

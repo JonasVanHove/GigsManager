@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const songs = await prisma.$queryRaw<Array<any>>(Prisma.sql`
       SELECT id, title, notes, date, "userId", "createdAt", "updatedAt"
-      FROM "Song"
+      FROM songs
       WHERE "userId" = ${user.id} AND "deletedAt" IS NULL
       ORDER BY date DESC
     `);
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const inserted = await prisma.$queryRaw<Array<any>>(Prisma.sql`
-      INSERT INTO "Song" (id, title, notes, date, "userId", "createdAt", "updatedAt")
+      INSERT INTO songs (id, title, notes, date, "userId", "createdAt", "updatedAt")
       VALUES (${crypto.randomUUID()}, ${title}, ${notes || null}, ${date ? new Date(date) : new Date()}, ${user.id}, NOW(), NOW())
       RETURNING id, title, notes, date, "userId", "createdAt", "updatedAt"
     `);
@@ -160,12 +160,12 @@ export async function PATCH(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const existing = await prisma.$queryRaw<Array<any>>(Prisma.sql`
-      SELECT id FROM "Song" WHERE id = ${songId} AND "userId" = ${user.id} LIMIT 1
+      SELECT id FROM songs WHERE id = ${songId} AND "userId" = ${user.id} LIMIT 1
     `);
     if (existing.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const updated = await prisma.$queryRaw<Array<any>>(Prisma.sql`
-      UPDATE "Song"
+      UPDATE songs
       SET title = ${title || existing[0].title}, notes = ${notes || null}, date = ${date ? new Date(date) : new Date()}, "updatedAt" = NOW()
       WHERE id = ${songId} AND "userId" = ${user.id}
       RETURNING id, title, notes, date, "userId", "createdAt", "updatedAt"
@@ -233,12 +233,12 @@ export async function DELETE(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const existing = await prisma.$queryRaw<Array<any>>(Prisma.sql`
-      SELECT id FROM "Song" WHERE id = ${songId} AND "userId" = ${user.id} LIMIT 1
+      SELECT id FROM songs WHERE id = ${songId} AND "userId" = ${user.id} LIMIT 1
     `);
     if (existing.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // Soft-delete song and attachments (can be restored later)
-    await prisma.$executeRaw(Prisma.sql`UPDATE "Song" SET "deletedAt" = NOW() WHERE id = ${songId} AND "userId" = ${user.id}`);
+    await prisma.$executeRaw(Prisma.sql`UPDATE songs SET "deletedAt" = NOW() WHERE id = ${songId} AND "userId" = ${user.id}`);
     await prisma.$executeRaw(Prisma.sql`UPDATE song_attachments SET "deletedAt" = NOW() WHERE "songId" = ${songId}`);
 
     return NextResponse.json({ success: true });

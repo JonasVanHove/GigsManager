@@ -34,11 +34,11 @@ CREATE TABLE IF NOT EXISTS song_bands (
   "createdAt" timestamp with time zone DEFAULT now()
 );
 
--- Add deletedAt to Song and SongAttachment if missing
+-- Add deletedAt to songs and song_attachments if missing
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='songs' AND column_name='deletedAt') THEN
-    ALTER TABLE "Song" ADD COLUMN "deletedAt" timestamptz;
+    ALTER TABLE songs ADD COLUMN "deletedAt" timestamptz;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='song_attachments' AND column_name='deletedAt') THEN
     ALTER TABLE song_attachments ADD COLUMN "deletedAt" timestamptz;

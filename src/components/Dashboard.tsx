@@ -794,6 +794,35 @@ export default function Dashboard() {
 
           {/* Right: Add + Profile (always visible) */}
           <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Quick access to notes/songs */}
+            <button
+              onClick={() => handleTabChange("songs")}
+              className={`hidden sm:inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                activeTab === "songs"
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+              title="Open notities"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375H9.75A3.75 3.75 0 0 1 6 4.5v0A2.25 2.25 0 0 1 8.25 2.25h7.5A2.25 2.25 0 0 1 18 4.5v9.75M6 19.5h12a2.25 2.25 0 0 0 2.25-2.25V15" />
+              </svg>
+              Notities
+            </button>
+            <button
+              onClick={() => handleTabChange("songs")}
+              className={`sm:hidden p-1.5 rounded-lg border transition flex-shrink-0 ${
+                activeTab === "songs"
+                  ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+              title="Notities"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375H9.75A3.75 3.75 0 0 1 6 4.5v0A2.25 2.25 0 0 1 8.25 2.25h7.5A2.25 2.25 0 0 1 18 4.5v9.75M6 19.5h12a2.25 2.25 0 0 0 2.25-2.25V15" />
+              </svg>
+            </button>
+
             {/* Add Performance - icon only on mobile, button on desktop */}
             <button
               onClick={() => {
@@ -898,6 +927,34 @@ export default function Dashboard() {
                   </svg>
                 </button>
               </div>
+
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false);
+                    setEditGig(null);
+                    setShowForm(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add gig
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMobileMenu(false);
+                    handleTabChange("songs");
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375H9.75A3.75 3.75 0 0 1 6 4.5v0A2.25 2.25 0 0 1 8.25 2.25h7.5A2.25 2.25 0 0 1 18 4.5v9.75M6 19.5h12a2.25 2.25 0 0 0 2.25-2.25V15" />
+                  </svg>
+                  Notities
+                </button>
+              </div>
               
               {/* Mobile search */}
               <div className="mb-3 md:hidden">
@@ -997,7 +1054,7 @@ export default function Dashboard() {
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v10.5M19.5 8.25a3 3 0 11-3-3M6.75 6.75a3 3 0 11-3 3" />
                   </svg>
-                  Songs
+                  Notities
                 </button>
                 <button
                   onClick={() => handleTabChange("shared-links")}

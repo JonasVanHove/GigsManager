@@ -335,9 +335,9 @@ export default function SongsTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{language === 'nl' ? 'Nummers & Notities' : 'Songs & Notes'}</h2>
+        <h2 className="text-lg font-semibold">{language === 'nl' ? 'Notities' : 'Notes'}</h2>
         <div className="flex gap-2">
-          <button onClick={() => setShowForm((s) => !s)} className="rounded-lg bg-brand-600 text-white px-3 py-2">{showForm ? 'Close' : 'Add'}</button>
+          <button onClick={() => setShowForm((s) => !s)} className="rounded-lg bg-brand-600 text-white px-3 py-2">{showForm ? 'Close' : language === 'nl' ? 'Nieuw' : 'New'}</button>
         </div>
       </div>
 

@@ -162,6 +162,13 @@ model Song {
   // Attachments (photos, drawings) stored in Supabase storage; saved as references
   attachments SongAttachment[]
 
+  // Soft-delete timestamp (null = not deleted)
+  deletedAt DateTime?
+
+  // Tags and band relations
+  tags SongTag[]
+  bands SongBand[]
+
   // Owner
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -192,6 +199,8 @@ model SongAttachment {
   caption String?
 
   createdAt DateTime @default(now())
+
+  deletedAt DateTime?
 
   @@index([songId])
 }

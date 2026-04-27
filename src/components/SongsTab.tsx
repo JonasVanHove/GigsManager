@@ -141,6 +141,10 @@ export default function SongsTab() {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [availableBands, setAvailableBands] = useState<Array<{id:string,name:string}>>([]);
+  const [selectedBandIds, setSelectedBandIds] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [attachmentsMeta, setAttachmentsMeta] = useState<AttachmentMeta[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
@@ -151,6 +155,19 @@ export default function SongsTab() {
 
   useEffect(() => {
     fetchSongs();
+    // load bands for selection
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await fetch("/api/bands", { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const b = await res.json();
+          setAvailableBands(b || []);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
   }, []);
 
   const fetchSongs = async () => {
@@ -221,14 +238,28 @@ export default function SongsTab() {
       // attachmentsMeta may include drawings saved via CanvasEditor (client will push using onExport -> handleDrawingExport)
       const allAttachments = [...attachmentsMeta, ...uploaded];
 
-      const res = await fetch("/api/songs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: title.trim(), notes: notes.trim() || null, attachments: allAttachments }),
-      });
+      const bodyPayload: any = { title: title.trim(), notes: notes.trim() || null, attachments: allAttachments, tags, bandIds: selectedBandIds };
+
+      let res;
+      if (editingSongId) {
+        res = await fetch(`/api/songs?id=${editingSongId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(bodyPayload),
+        });
+      } else {
+        res = await fetch("/api/songs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(bodyPayload),
+        });
+      }
 
       if (!res.ok) {
         const err = await res.json();
@@ -237,6 +268,8 @@ export default function SongsTab() {
 
       setTitle("");
       setNotes("");
+      setTags([]);
+      setSelectedBandIds([]);
       setSelectedFiles([]);
       setAttachmentsMeta([]);
       setShowForm(false);
@@ -271,6 +304,8 @@ export default function SongsTab() {
     setSelectedFiles([]);
     setShowForm(true);
     setDeletingAttachmentIds(new Set());
+    setTags((song.tags || []).map((t: any) => t.name));
+    setSelectedBandIds((song.bands || []).map((b: any) => b.id));
   };
 
   const toggleDeleteExistingAttachment = (id: string) => {

@@ -242,6 +242,10 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5h10.5a4.5 4.5 0 0 0 4.5-4.5V9a4.5 4.5 0 0 0-4.5-4.5h-1.19a2.25 2.25 0 0 1-1.6-.66l-.84-.84A2.25 2.25 0 0 0 12 2.25H9.19a2.25 2.25 0 0 0-1.6.66l-.84.84a2.25 2.25 0 0 1-1.6.66H4.5A2.25 2.25 0 0 0 2.25 6.75V15Z" />
+              <path d="M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Z" />
+            </svg>
             <span>Foto kiezen</span>
             <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhotoFile(e.target.files?.[0] ?? null)} />
           </label>
@@ -251,6 +255,9 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
             disabled={!photoUrl}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
+            <svg className="mr-2 inline-block h-4 w-4 align-[-2px] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Notitie toevoegen
           </button>
           <button
@@ -258,6 +265,9 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
             onClick={clearAll}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
+            <svg className="mr-2 inline-block h-4 w-4 align-[-2px] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4.5 6h15M9 6V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6m-7.5 0 .75 12A1.5 1.5 0 0 0 9.74 19.5h4.52a1.5 1.5 0 0 0 1.49-1.5L16.5 6M10 10.5v6M14 10.5v6" />
+            </svg>
             Wissen
           </button>
         </div>
@@ -379,6 +389,9 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
           disabled={!photoUrl}
           className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
+          <svg className="mr-2 inline-block h-4 w-4 align-[-2px] shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 16.5V18a2.25 2.25 0 0 0 2.25 2.25h13.5A2.25 2.25 0 0 0 21 18v-1.5M12 3v12m0 0-3.75-3.75M12 15l3.75-3.75" />
+          </svg>
           Export annotatie
         </button>
       </div>

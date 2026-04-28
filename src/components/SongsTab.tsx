@@ -404,6 +404,7 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const historyRef = useRef<string[]>([]);
   const drawing = useRef(false);
+  const [stylusOnly, setStylusOnly] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -428,7 +429,9 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
   }, []);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (stylusOnly && e.pointerType !== "pen") return;
     drawing.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -437,6 +440,7 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
   };
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!drawing.current) return;
+    if (stylusOnly && e.pointerType !== "pen") return;
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -498,20 +502,39 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="border rounded-lg overflow-hidden">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tablet & Stylus Modus</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">Negeer vingers & handpalm om nauwkeuriger te tekenen.</div>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <div className="relative">
+            <input type="checkbox" checked={stylusOnly} onChange={(e) => setStylusOnly(e.target.checked)} className="sr-only peer" />
+            <div className="block h-6 w-10 min-w-10 rounded-full bg-slate-200 transition-colors peer-checked:bg-brand-500 dark:bg-slate-700"></div>
+            <div className="dot absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4"></div>
+          </div>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Actief</span>
+        </label>
+      </div>
+
+      <div className="border border-slate-200 shadow-sm rounded-lg overflow-hidden dark:border-slate-700">
         <canvas
           ref={canvasRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
-          className="w-full touch-none"
+          onPointerCancel={handlePointerUp}
+          className={`w-full ${!stylusOnly ? 'touch-none' : ''}`}
         />
       </div>
-      <div className="flex gap-2">
-        <button onClick={clear} className="rounded-lg px-3 py-2 bg-slate-100 dark:bg-slate-800">Clear</button>
-        <button onClick={exportImage} className="rounded-lg px-3 py-2 bg-brand-600 text-white">Save Drawing</button>
+      <div className="flex gap-2 justify-between">
+        <div className="flex gap-2">
+          <button type="button" onClick={clear} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Wissen</button>
+          <button type="button" onClick={undo} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Undo</button>
+        </div>
+        <button type="button" onClick={exportImage} className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-700">Notitie Opslaan</button>
       </div>
     </div>
   );

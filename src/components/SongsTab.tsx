@@ -494,7 +494,7 @@ function CanvasEditor({ onExport }: { onExport: (blob: Blob) => void }) {
     if (historyRef.current.length <= 1) return;
     historyRef.current.pop();
     const prev = historyRef.current[historyRef.current.length - 1];
-    const img = new Image();
+    const img = document.createElement("img") as HTMLImageElement;
     img.onload = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);

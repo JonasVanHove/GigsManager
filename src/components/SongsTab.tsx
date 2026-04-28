@@ -63,7 +63,7 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
       return;
     }
 
-    const img = new Image();
+    const img = document.createElement("img") as HTMLImageElement;
     img.onload = () => {
       photoImageRef.current = img;
       setPhotoNatural({ width: img.naturalWidth, height: img.naturalHeight });

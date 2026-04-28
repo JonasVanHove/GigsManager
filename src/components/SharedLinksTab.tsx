@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { Gig, ShareLinkItem, ShareLinkVisibility } from "@/types";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastContainer";
@@ -126,7 +126,7 @@ export default function SharedLinksTab() {
 
   const selectedCount = effectiveSelectedGigIds.size;
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const token = await getAccessToken();
@@ -159,11 +159,11 @@ export default function SharedLinksTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAccessToken, toast]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const resetForm = () => {
     setTitle("");

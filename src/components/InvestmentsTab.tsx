@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthProvider";
 import type { Investment, InvestmentFormData } from "@/types";
 import LoadingSpinner from "./LoadingSpinner";
@@ -33,7 +33,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const fetchInvestments = async () => {
+  const fetchInvestments = useCallback(async () => {
     if (!session?.user) {
       setInvestments([]);
       setLoading(false);
@@ -66,9 +66,9 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.user, getAccessToken]);
 
-  const fetchBandMembers = async () => {
+  const fetchBandMembers = useCallback(async () => {
     if (!session?.user) {
       setBandMembers([]);
       return;
@@ -93,12 +93,12 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
     } catch (error) {
       console.error("Fetch band members error:", error);
     }
-  };
+  }, [session?.user, getAccessToken]);
 
   useEffect(() => {
     fetchInvestments();
     fetchBandMembers();
-  }, [session?.user]);
+  }, [session?.user, fetchInvestments, fetchBandMembers]);
 
   const resetForm = () => {
     setForm(defaultForm());

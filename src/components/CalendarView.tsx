@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Calendar as BigCalendar, momentLocalizer, View } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -51,7 +51,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
   const [date, setDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
-  const mapToCalendarGigs = (source: AppGig[]): Gig[] => {
+  const mapToCalendarGigs = useCallback((source: AppGig[]): Gig[] => {
     return source.map((gig) => {
       const calc = calculateGigFinancials(
         gig.performanceFee,
@@ -80,9 +80,9 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
         myPayAmount: calc.myEarnings,
       };
     });
-  };
+  }, []);
 
-  const fetchGigs = async () => {
+  const fetchGigs = useCallback(async () => {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("No auth token");
@@ -99,7 +99,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAccessToken]);
 
   useEffect(() => {
     if (preloadedGigs !== undefined) {
@@ -108,7 +108,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
       return;
     }
     fetchGigs();
-  }, [preloadedGigs]);
+  }, [preloadedGigs, fetchGigs, mapToCalendarGigs]);
 
   const events: CalendarEvent[] = useMemo(() => {
     return gigs.map((gig) => {

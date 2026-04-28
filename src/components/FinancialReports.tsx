@@ -53,13 +53,13 @@ export default function FinancialReports({ fmtCurrency }: FinancialReportsProps)
     endDate: "",
   });
 
-  const fetchReport = async () => {
+  const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("No auth token");
       let url = "/api/reports/financial";
-      
+
       if (period === "custom") {
         if (customDates.startDate && customDates.endDate) {
           url += `?startDate=${customDates.startDate}&endDate=${customDates.endDate}`;
@@ -79,11 +79,11 @@ export default function FinancialReports({ fmtCurrency }: FinancialReportsProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAccessToken, period, customDates, toast]);
 
   useEffect(() => {
     fetchReport();
-  }, [period]);
+  }, [fetchReport]);
 
   const handleCustomDateApply = () => {
     if (!customDates.startDate || !customDates.endDate) {

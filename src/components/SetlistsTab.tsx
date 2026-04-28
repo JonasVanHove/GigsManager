@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { Gig, Setlist } from "@/types";
 import { useAuth } from "./AuthProvider";
 
@@ -49,7 +49,7 @@ export default function SetlistsTab() {
     [setlists, selectedId]
   );
 
-  const loadSetlists = async () => {
+  const loadSetlists = useCallback(async () => {
     try {
       setLoading(true);
       const token = await getAccessToken();
@@ -68,9 +68,9 @@ export default function SetlistsTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAccessToken]);
 
-  const loadGigs = async () => {
+  const loadGigs = useCallback(async () => {
     try {
       const token = await getAccessToken();
       if (!token) return;
@@ -87,12 +87,12 @@ export default function SetlistsTab() {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
     }
-  };
+  }, [getAccessToken]);
 
   useEffect(() => {
     loadSetlists();
     loadGigs();
-  }, []);
+  }, [loadSetlists, loadGigs]);
 
   const hydrateDraft = (setlist: Setlist | null) => {
     if (!setlist) {

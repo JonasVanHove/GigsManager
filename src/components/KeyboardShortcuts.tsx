@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Shortcut {
   keys: string[];
@@ -29,10 +29,10 @@ export default function KeyboardShortcuts({
     setShowHelp(isOpen);
   }, [isOpen]);
 
-  const handleCloseHelp = () => {
+  const handleCloseHelp = useCallback(() => {
     setShowHelp(false);
     onClose?.();
-  };
+  }, [onClose]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -76,7 +76,7 @@ export default function KeyboardShortcuts({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [shortcuts, showHelp]);
+  }, [shortcuts, showHelp, handleCloseHelp]);
 
   if (!showHelp) {
     return null;

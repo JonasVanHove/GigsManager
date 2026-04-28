@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import type { Gig, GigFormData } from "@/types";
 import { calculateGigFinancials, formatCurrency } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
@@ -192,7 +192,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     if (form.isCharity && form.performanceFee > 0) {
       setForm((prev) => ({ ...prev, performanceFee: 0, performanceFeeUnknown: false }));
     }
-  }, [form.isCharity]);
+  }, [form.isCharity, form.performanceFee]);
 
   useEffect(() => {
     if (form.performanceFeeUnknown && form.performanceFee !== 0) {
@@ -226,7 +226,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onCancel]);
-  const fetchBandMembers = async () => {
+  const fetchBandMembers = useCallback(async () => {
     try {
       setBandMembersLoading(true);
       const token = await getAccessToken();
@@ -247,9 +247,9 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     } finally {
       setBandMembersLoading(false);
     }
-  };
+  }, [getAccessToken]);
 
-  const fetchAllGigs = async () => {
+  const fetchAllGigs = useCallback(async () => {
     const token = await getAccessToken();
     if (!token) return;
     const response = await fetch("/api/gigs?take=200&skip=0", {
@@ -259,12 +259,12 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     const data = await response.json();
     const gigsArray = Array.isArray(data) ? data : (data.data ?? []);
     setAllGigs(gigsArray);
-  };
+  }, [getAccessToken]);
 
   useEffect(() => {
     fetchBandMembers();
     fetchAllGigs();
-  }, []);
+  }, [fetchBandMembers, fetchAllGigs]);
 
   useEffect(() => {
     if (!bandMembers.length || selectedMemberIds.length > 0) return;
@@ -300,7 +300,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     if (totalMusicians !== form.numberOfMusicians) {
       set("numberOfMusicians", totalMusicians);
     }
-  }, [syncFromMembers, selectedMemberIds, bandMembers, form.performanceLineup, form.managerPerforms]);
+  }, [syncFromMembers, selectedMemberIds, bandMembers, form.performanceLineup, form.managerPerforms, form.numberOfMusicians]);
 
   const filteredMembers = useMemo(() => {
     const search = memberSearch.trim().toLowerCase();
@@ -323,14 +323,14 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [bandMembers, allGigs, customBands]);
 
-  const getDefaultMemberIds = (band: string) => {
+  const getDefaultMemberIds = useCallback((band: string) => {
     const normalized = band.trim().toLowerCase();
     return bandMembers
       .filter((member) =>
         (member.bands || []).some((b) => b.trim().toLowerCase() === normalized)
       )
       .map((member) => member.id);
-  };
+  }, [bandMembers]);
 
   useEffect(() => {
     if (!form.performers) {
@@ -352,7 +352,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
       setSelectedMemberIds(defaults);
       setSyncFromMembers(true);
     }
-  }, [selectedBandName, bandMembers, selectedMemberIds.length]);
+  }, [selectedBandName, bandMembers, selectedMemberIds.length, getDefaultMemberIds]);
 
   const toggleMember = (id: string) => {
     setSelectedMemberIds((prev) =>

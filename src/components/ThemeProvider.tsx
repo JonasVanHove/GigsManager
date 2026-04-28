@@ -65,7 +65,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         return () => mediaQuery.removeListener(handleChange);
       }
     }
-  }, [settings.theme]);
+  }, [settings]);
 
   return <>{children}</>;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Gig } from "@/types";
 import { calculateGigFinancials, formatDate } from "@/lib/calculations";
 import { useAuth } from "./AuthProvider";
@@ -109,7 +109,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
       };
 
   // Fetch band members
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("No auth token");
@@ -124,28 +124,13 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAccessToken, toast]);
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [fetchMembers]);
 
-  useEffect(() => {
-    if (preloadedGigs && preloadedGigs.length > 0 && allGigs.length === 0) {
-      const sorted = [...preloadedGigs].sort(
-        (a: Gig, b: Gig) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setAllGigs(sorted);
-      return;
-    }
-
-    if (showForm && allGigs.length === 0 && !gigsLoading) {
-      fetchAllGigs();
-    }
-  }, [showForm, allGigs.length, gigsLoading, preloadedGigs]);
-
-
-  const fetchAllGigs = async () => {
+  const fetchAllGigs = useCallback(async () => {
     try {
       setGigsLoading(true);
       const token = await getAccessToken();
@@ -165,7 +150,21 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
     } finally {
       setGigsLoading(false);
     }
-  };
+  }, [getAccessToken, toast]);
+
+  useEffect(() => {
+    if (preloadedGigs && preloadedGigs.length > 0 && allGigs.length === 0) {
+      const sorted = [...preloadedGigs].sort(
+        (a: Gig, b: Gig) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setAllGigs(sorted);
+      return;
+    }
+
+    if (showForm && allGigs.length === 0 && !gigsLoading) {
+      fetchAllGigs();
+    }
+  }, [showForm, allGigs.length, gigsLoading, preloadedGigs, fetchAllGigs]);
 
   const openGigPicker = async (member: BandMember) => {
     setActiveMember(member);

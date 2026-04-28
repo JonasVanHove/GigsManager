@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
@@ -563,6 +563,22 @@ export default function SongsTab() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
+  const fetchSongs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch("/api/songs", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error("Failed to load songs");
+      const data = await res.json();
+      setSongs(data);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Failed to fetch songs");
+    } finally {
+      setLoading(false);
+    }
+  }, [getAccessToken, toast]);
+
   useEffect(() => {
     fetchSongs();
     // load bands for selection
@@ -578,23 +594,7 @@ export default function SongsTab() {
         // ignore
       }
     })();
-  }, []);
-
-  const fetchSongs = async () => {
-    setLoading(true);
-    try {
-      const token = await getAccessToken();
-      const res = await fetch("/api/songs", { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error("Failed to load songs");
-      const data = await res.json();
-      setSongs(data);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || "Failed to fetch songs");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchSongs, getAccessToken]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

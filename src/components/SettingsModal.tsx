@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useAuth } from "./AuthProvider";
@@ -178,9 +179,11 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-200 text-slate-600 shadow-sm dark:bg-slate-700 dark:text-slate-100">
                 {avatarUrl ? (
-                  <img
+                  <Image
                     src={avatarUrl}
                     alt="Profile avatar"
+                    width={48}
+                    height={48}
                     className="h-full w-full object-cover"
                   />
                 ) : (

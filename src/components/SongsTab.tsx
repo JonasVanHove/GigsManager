@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useAuth } from "./AuthProvider";
@@ -326,7 +327,7 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
                 className="absolute cursor-move select-none"
                 style={{ left: photoBox.x, top: photoBox.y, width: photoBox.width, height: photoBox.height }}
               >
-                <img src={photoUrl} alt="Annotated photo" className="h-full w-full rounded-lg object-contain shadow-lg" draggable={false} />
+                <Image src={photoUrl} width={600} height={400} alt="Annotated photo" className="h-full w-full rounded-lg object-contain shadow-lg" draggable={false} />
               </div>
             )}
 
@@ -843,7 +844,7 @@ export default function SongsTab() {
                   <div className="grid grid-cols-3 gap-2">
                     {existingAttachments.map((a, idx) => (
                       <div key={a.id} className={`rounded overflow-hidden border p-2 ${deletingAttachmentIds.has(a.id) ? 'opacity-50' : ''}`}>
-                        <img src={a.publicUrl} className="h-24 w-full object-cover rounded" alt="attachment" />
+                        <Image src={a.publicUrl} width={150} height={100} className="h-24 w-full object-cover rounded" alt="attachment" />
                         <div className="mt-2 flex gap-2 items-center">
                           <button onClick={() => moveExistingAttachment(idx, -1)} className="px-2 py-1 border rounded">◀</button>
                           <button onClick={() => moveExistingAttachment(idx, 1)} className="px-2 py-1 border rounded">▶</button>
@@ -869,7 +870,7 @@ export default function SongsTab() {
                     ))}
                     {attachmentsMeta.map((a, i) => (
                       <div key={a.storagePath} className="rounded overflow-hidden border p-2">
-                        <img src={a.publicUrl} className="h-24 w-full object-cover rounded" alt="attachment" />
+                        <Image src={a.publicUrl} width={150} height={100} className="h-24 w-full object-cover rounded" alt="attachment" />
                         <input value={a.caption || ''} onChange={(e) => setAttachmentsMeta((prev) => prev.map((p, idx) => idx === i ? { ...p, caption: e.target.value } : p))} placeholder="Caption" className="mt-2 w-full rounded border px-2 py-1 text-sm" />
                       </div>
                     ))}
@@ -902,7 +903,7 @@ export default function SongsTab() {
                 {s.attachments && s.attachments.length > 0 && (
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {s.attachments.map((a: any) => (
-                      <img key={a.id} src={a.publicUrl} className="h-24 w-full object-cover rounded" alt="attachment" />
+                      <Image key={a.id} src={a.publicUrl} width={150} height={100} className="h-24 w-full object-cover rounded" alt="attachment" />
                     ))}
                   </div>
                 )}

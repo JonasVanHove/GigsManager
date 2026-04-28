@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { recordWebVital } from "@/lib/web-vitals-logger";
 import { recordMetric } from "@/lib/performance-metrics";
 import type { Gig, GigFormData, DashboardSummary } from "@/types";
@@ -780,9 +781,11 @@ export default function Dashboard() {
               </svg>
             </button>
             
-            <img
+            <Image
               src="/favicon.png"
               alt="GigsManager"
+              width={36}
+              height={36}
               className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 rounded-lg"
             />
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">
@@ -909,9 +912,11 @@ export default function Dashboard() {
                 className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 flex-shrink-0"
               >
                 {session.user?.user_metadata?.avatar_url ? (
-                  <img
+                  <Image
                     src={session.user.user_metadata.avatar_url}
                     alt="Profile avatar"
+                    width={32}
+                    height={32}
                     className="h-full w-full object-cover"
                   />
                 ) : (

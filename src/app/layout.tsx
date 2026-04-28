@@ -48,7 +48,10 @@ export const viewport: Viewport = {
   maximumScale: 1,
   minimumScale: 1,
   userScalable: false,
-  themeColor: "#f59e0b",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+  ],
   viewportFit: "cover",
 };
 
@@ -65,23 +68,12 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://supabase.co" />
         <link rel="preload" href="/favicon.png" as="image" type="image/png" />
-        <link rel="preload" as="font" href="https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHAPMtMepHY4ICH5d-ekw.woff2" type="font/woff2" crossOrigin="anonymous" />
-        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="GigsManager" />
-        <meta name="msapplication-TileColor" content="#f59e0b" />
+        <meta name="msapplication-TileColor" content="#0f172a" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
-        <meta name="theme-color" content="#f59e0b" />
         <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
-        <meta name="status-bar-hide" content="true" />
-        <meta name="fullscreen" content="yes" />
-        <meta name="web-app-user-scalable" content="no" />
-        <meta name="theme-color" content="#f59e0b" />
-        <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
-        <meta name="status-bar-hide" content="true" />
-        <meta name="fullscreen" content="yes" />
-        <meta name="web-app-user-scalable" content="no" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

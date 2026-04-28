@@ -2,63 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Mobile notch/camera island support ───────────────────────────────── */
-
-html {
-  /* Support for devices with notches and camera islands */
-  padding-top: max(env(safe-area-inset-top), 0px);
-  padding-left: max(env(safe-area-inset-left), 0px);
-  padding-right: max(env(safe-area-inset-right), 0px);
-  padding-bottom: max(env(safe-area-inset-bottom), 0px);
-}
-
-body {
-  /* Full viewport coverage including notch areas */
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  position: fixed;
-}
-
 /* ── Base styles ─────────────────────────────────────────────────────────── */
 
 :root {
   --foreground: 15 23 42;    /* slate-900 */
   --background: 248 250 252; /* slate-50  */
-  
-  /* Safe area variables for easy access */
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
 }
 
+html {
+  padding-top: max(var(--safe-area-inset-top), 0px);
+  padding-right: max(var(--safe-area-inset-right), 0px);
+  padding-bottom: max(var(--safe-area-inset-bottom), 0px);
+  padding-left: max(var(--safe-area-inset-left), 0px);
+  color-scheme: light;
+}
+
 html.dark {
-  --foreground: 240 240 255; /* bright white/near-white */
-  --background: 10 10 15;    /* deep black */
+  --foreground: 240 240 255;
+  --background: 10 10 15;
+  color-scheme: dark;
 }
 
 body {
   color: rgb(var(--foreground));
   background: rgb(var(--background));
+  min-height: 100dvh;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s, color 0.2s;
-  /* Hide scrollbars to maximize screen space */
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-
-/* ── Dark mode specific ────────────────────────────────────────────────── */
-
-html.dark {
-  color-scheme: dark;
-}
-
-html.dark body {
-  background-color: #0a0a0f;
 }
 
 /* ── Scrollbar polish ──────────────────────────────────────────────────── */

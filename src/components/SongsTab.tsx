@@ -2,6 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { saveLocalNotes, getLocalNotes } from "@/lib/notes-store";
+import { syncPendingNotes } from "@/lib/notes-sync";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
@@ -26,7 +28,7 @@ type PhotoNote = {
 const PHOTO_EXPORT_WIDTH = 1400;
 const PHOTO_EXPORT_HEIGHT = 933;
 
-function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void }) {
+function PhotoAnnotationEditor({ onExport, persistId }: { onExport: (blob: Blob) => void; persistId?: string | null }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const photoImageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<{
@@ -44,6 +46,9 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
   const [photoScale, setPhotoScale] = useState(1);
   const [notes, setNotes] = useState<PhotoNote[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const { getAccessToken } = useAuth();
+  const toast = useToast();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const updateSize = () => {
@@ -76,6 +81,28 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
       photoImageRef.current = null;
     };
   }, [photoUrl]);
+
+  // Load persisted notes if provided
+  useEffect(() => {
+    if (!persistId) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const rec = await getLocalNotes(persistId);
+        if (!rec || !mounted) return;
+        const data = JSON.parse(rec.notesJson);
+        if (data.photoUrl) setPhotoUrl(data.photoUrl);
+        if (data.photoName) setPhotoName(data.photoName);
+        if (data.photoNatural) setPhotoNatural(data.photoNatural);
+        if (data.photoPos) setPhotoPos(data.photoPos);
+        if (data.photoScale) setPhotoScale(data.photoScale);
+        if (Array.isArray(data.notes)) setNotes(data.notes);
+      } catch (e) {
+        console.debug("loadLocalNotes failed", e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [persistId]);
 
   useEffect(() => {
     return () => {
@@ -154,6 +181,40 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
     setNotes([]);
     setSelectedNoteId(null);
   };
+
+  // Persist whenever notes or photo state changes
+  useEffect(() => {
+    if (!persistId) return;
+    const payload = {
+      photoUrl,
+      photoName,
+      photoNatural,
+      photoPos,
+      photoScale,
+      notes,
+    };
+    try {
+      saveLocalNotes(persistId, JSON.stringify(payload)).catch((e) => console.debug(e));
+    } catch (e) {
+      console.debug(e);
+    }
+  }, [persistId, photoUrl, photoName, photoNatural, photoPos, photoScale, notes]);
+
+  // Auto sync when back online
+  useEffect(() => {
+    if (!persistId) return;
+    const onOnline = async () => {
+      setIsSyncing(true);
+      try {
+        const result = await syncPendingNotes(getAccessToken);
+        if (result && result.synced) toast?.success?.(`${result.synced} notes synced`);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [persistId, getAccessToken, toast]);
 
   const exportAnnotatedPhoto = async () => {
     if (!photoImageRef.current || !photoBox) return;
@@ -261,6 +322,25 @@ function PhotoAnnotationEditor({ onExport }: { onExport: (blob: Blob) => void })
             </svg>
             Notitie toevoegen
           </button>
+          {persistId && (
+            <button
+              type="button"
+              onClick={async () => {
+                setIsSyncing(true);
+                try {
+                  const res = await syncPendingNotes(getAccessToken);
+                  toast?.success?.(`${res.synced} notes synced`);
+                } catch (e) {
+                  toast?.error?.("Sync failed");
+                } finally {
+                  setIsSyncing(false);
+                }
+              }}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {isSyncing ? "Syncing…" : "Sync"}
+            </button>
+          )}
           <button
             type="button"
             onClick={clearAll}

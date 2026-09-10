@@ -434,12 +434,29 @@ export async function PUT(request: NextRequest) {
     const pdfMarginSize = typeof body.pdfMarginSize === "string" && VALID_PDF_MARGINS.includes(body.pdfMarginSize) ? body.pdfMarginSize : undefined;
     const excludeSelfFromMemberCount = typeof body.excludeSelfFromMemberCount === "boolean" ? body.excludeSelfFromMemberCount : undefined;
 
-    // Custom Navigation Tabs validation
-    const customTab1 = typeof body.customTab1 === "string" && VALID_CUSTOM_TABS.includes(body.customTab1) ? body.customTab1 : undefined;
-    const customTab2 = typeof body.customTab2 === "string" && VALID_CUSTOM_TABS.includes(body.customTab2) ? body.customTab2 : undefined;
+    // Custom Navigation Tabs validation — an explicitly provided but invalid
+    // value is a 400 (with a message the UI can toast) rather than a silent
+    // drop, which previously left client/server out of sync with no feedback.
+    const customTab1Raw = typeof body.customTab1 === "string" ? body.customTab1 : undefined;
+    const customTab2Raw = typeof body.customTab2 === "string" ? body.customTab2 : undefined;
+    if (customTab1Raw !== undefined && !VALID_CUSTOM_TABS.includes(customTab1Raw)) {
+      return NextResponse.json({ error: `Invalid customTab1 value: "${customTab1Raw}"` }, { status: 400 });
+    }
+    if (customTab2Raw !== undefined && !VALID_CUSTOM_TABS.includes(customTab2Raw)) {
+      return NextResponse.json({ error: `Invalid customTab2 value: "${customTab2Raw}"` }, { status: 400 });
+    }
+    const customTab1 = customTab1Raw;
+    const customTab2 = customTab2Raw;
+    if (customTab1 !== undefined && customTab1 === customTab2) {
+      return NextResponse.json({ error: "customTab1 and customTab2 must be different" }, { status: 400 });
+    }
 
     // Overview view-mode validation
-    const overviewViewMode = typeof body.overviewViewMode === "string" && VALID_OVERVIEW_VIEW_MODES.includes(body.overviewViewMode) ? body.overviewViewMode : undefined;
+    const overviewViewModeRaw = typeof body.overviewViewMode === "string" ? body.overviewViewMode : undefined;
+    if (overviewViewModeRaw !== undefined && !VALID_OVERVIEW_VIEW_MODES.includes(overviewViewModeRaw)) {
+      return NextResponse.json({ error: `Invalid overviewViewMode value: "${overviewViewModeRaw}"` }, { status: 400 });
+    }
+    const overviewViewMode = overviewViewModeRaw;
 
     // 5. Authenticate
     console.log("[PUT /api/settings] Authenticating...");
@@ -472,15 +489,25 @@ export async function PUT(request: NextRequest) {
     if (pdfShowPageNumbers !== undefined) updateData.pdfShowPageNumbers = pdfShowPageNumbers;
     if (pdfMarginSize !== undefined) updateData.pdfMarginSize = pdfMarginSize;
     if (excludeSelfFromMemberCount !== undefined) updateData.excludeSelfFromMemberCount = excludeSelfFromMemberCount;
-    // Guard: never persist Tab 1 === Tab 2 — the client swaps on collision,
-    // but if only one field arrives in the patch, apply the swap server-side
-    // against the existing stored value so the DB can never hold duplicates
-    // (which would render two identical primary nav buttons).
+    // Guard: never persist Tab 1 === Tab 2 — the client swaps on collision
+    // and the simultaneous-duplicate case is already rejected with a 400
+    // above. If only one field arrives in the patch, apply the swap
+    // server-side against the existing stored value so the DB can never hold
+    // duplicates (which would render two identical primary nav buttons).
     if (customTab1 !== undefined || customTab2 !== undefined) {
-      const existing = await prisma.userSettings.findUnique({
-        where: { userId: authResult.userId },
-        select: { customTab1: true, customTab2: true },
-      });
+      let existing: { customTab1: string | null; customTab2: string | null } | null = null;
+      try {
+        existing = await prisma.userSettings.findUnique({
+          where: { userId: authResult.userId },
+          select: { customTab1: true, customTab2: true },
+        });
+      } catch (readErr) {
+        // The pre-read is only needed for the swap guard; if it fails (e.g.
+        // table created before the custom-tab migration), fall through and
+        // persist the validated patch directly — the outer upsert either
+        // succeeds or returns its own degraded error, never an unhandled 500.
+        console.warn("[PUT /api/settings] Settings pre-read failed, skipping duplicate guard:", readErr instanceof Error ? readErr.message : String(readErr));
+      }
       if (existing) {
         if (customTab1 === undefined && customTab2 !== undefined && existing.customTab1 === customTab2) {
           updateData.customTab1 = existing.customTab2;
@@ -493,6 +520,37 @@ export async function PUT(request: NextRequest) {
     if (customTab1 !== undefined) updateData.customTab1 = customTab1;
     if (customTab2 !== undefined) updateData.customTab2 = customTab2;
     if (overviewViewMode !== undefined) updateData.overviewViewMode = overviewViewMode;
+
+    // 6b. Empty-but-valid patch guard: Prisma rejects `upsert({ update: {} })`
+    // ("update must not be empty"), which surfaced to the UI as a generic
+    // "Failed to save settings". Short-circuit by returning the stored (or
+    // default) settings row instead of hitting the DB.
+    if (Object.keys(updateData).length === 0) {
+      const existing = await prisma.userSettings.findUnique({
+        where: { userId: authResult.userId },
+      });
+      const existingData: any = existing ?? {};
+      return NextResponse.json({
+        currency: existingData.currency ?? DEFAULT_SETTINGS.currency,
+        claimPerformanceFee: existingData.claimPerformanceFee ?? DEFAULT_SETTINGS.claimPerformanceFee,
+        claimTechnicalFee: existingData.claimTechnicalFee ?? DEFAULT_SETTINGS.claimTechnicalFee,
+        theme: existingData.theme ?? DEFAULT_SETTINGS.theme,
+        customTab1: existingData.customTab1 || DEFAULT_SETTINGS.customTab1,
+        customTab2: existingData.customTab2 || DEFAULT_SETTINGS.customTab2,
+        overviewViewMode: (existingData.overviewViewMode === "compact" ? "compact" : "grid"),
+        pdfIncludeLogo: existingData.pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
+        pdfFont: existingData.pdfFont ?? DEFAULT_SETTINGS.pdfFont,
+        pdfPageSize: existingData.pdfPageSize ?? DEFAULT_SETTINGS.pdfPageSize,
+        pdfPageBreakMode: existingData.pdfPageBreakMode ?? DEFAULT_SETTINGS.pdfPageBreakMode,
+        pdfDarkMode: existingData.pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
+        pdfShowHeaders: existingData.pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
+        pdfShowMetadata: existingData.pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
+        pdfImagesOnly: existingData.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
+        pdfShowPageNumbers: existingData.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
+        pdfMarginSize: existingData.pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
+        excludeSelfFromMemberCount: existingData.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
+      });
+    }
 
     // 7. Upsert to database
     try {

@@ -40,6 +40,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const blockedSettingsUserIdRef = useRef<string | null>(null);
   const lastSettingsFetchTimeRef = useRef(0); // Minimum 500ms between fetches
   const SETTINGS_FETCH_THROTTLE_MS = 500;
+  // Keys the user changed locally while a save is in flight. A slower PUT
+  // response is merged *under* these keys so a rapid second toggle can't be
+  // rolled back to the first toggle's stale echo (race-safe persistence).
+  const pendingPatchRef = useRef<Partial<UserSettingsData>>({});
 
   const locale = resolveLocale(language);
 
@@ -137,6 +141,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     async (patch: Partial<UserSettingsData>) => {
       // Optimistic update
       setSettings((prev) => ({ ...prev, ...patch }));
+      // Track in-flight keys so stale PUT echoes can't clobber newer edits.
+      pendingPatchRef.current = { ...pendingPatchRef.current, ...patch };
 
       try {
         const token = await getAccessToken();
@@ -151,13 +157,30 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify(patch),
         });
 
-        if (!res.ok) throw new Error("Save failed");
+        if (!res.ok) {
+          // Surface the server's message (e.g. the 400 for a bad customTab)
+          // instead of a generic "Save failed" so the UI toast says why.
+          let serverMsg = "Save failed";
+          try {
+            const errJson: unknown = await res.json();
+            if (errJson && typeof errJson === "object" && "error" in errJson && typeof (errJson as { error: unknown }).error === "string") {
+              serverMsg = (errJson as { error: string }).error;
+            }
+          } catch { /* keep generic message */ }
+          throw new Error(`${serverMsg} (status ${res.status})`);
+        }
 
         const saved: UserSettingsData = await res.json();
         // Merge instead of replace: partial API responses (e.g. an older
         // deploy missing newer keys) must never wipe existing keys, and a
-        // racing response must not discard the optimistic local update.
-        setSettings((prev) => ({ ...prev, ...saved }));
+        // racing response is applied *under* newer optimistic edits.
+        for (const k of Object.keys(patch) as (keyof UserSettingsData)[]) {
+          if (pendingPatchRef.current[k] !== undefined && (saved as Partial<UserSettingsData>)[k] === (patch as Partial<UserSettingsData>)[k]) {
+            delete pendingPatchRef.current[k];
+          }
+        }
+        const pending = pendingPatchRef.current;
+        setSettings((prev) => ({ ...prev, ...saved, ...pending }));
       } catch (err) {
         console.error("Failed to save settings:", err);
         // Revert — re-fetch from server
@@ -171,7 +194,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
                 Accept: "application/json",
               },
             });
-            if (res.ok) { const fresh: UserSettingsData = await res.json(); setSettings((prev) => ({ ...prev, ...fresh })); }
+            if (res.ok) { const fresh: UserSettingsData = await res.json(); const pending = pendingPatchRef.current; setSettings((prev) => ({ ...prev, ...fresh, ...pending })); }
           }
         } catch { /* silent */ }
         throw err; // propagate so caller can show a toast

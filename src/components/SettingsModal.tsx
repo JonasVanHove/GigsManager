@@ -147,7 +147,10 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
         toast.success(`${label}: ${t("common.saved", "Saved")}`);
       } catch (err) {
         console.error("Failed to save custom tab to account:", err);
-        toast.error(t("settings.errorSaveFailed"));
+        // Surface the server's reason (e.g. a 400 for an invalid tab value)
+        // instead of a bare generic message — no swallowed promise, no silent 400.
+        const msg = err instanceof Error && err.message ? err.message : t("settings.errorSaveFailed");
+        toast.error(msg.startsWith("Save failed") || msg.startsWith("Invalid") || msg.includes("must be different") ? msg : t("settings.errorSaveFailed"));
       }
     },
     [updateSettings, t, toast]

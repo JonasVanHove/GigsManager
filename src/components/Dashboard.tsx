@@ -320,19 +320,20 @@ export default function Dashboard() {
   // Overview view mode: 'grid' (cards) or 'compact' (dense list).
   // Account-bound via settings (overviewViewMode) with a localStorage mirror
   // so the choice survives instant refresh and syncs across devices.
-  // Guarded for SSR: localStorage only exists on the client.
-  let overviewLocalFallback: "grid" | "compact" = "grid";
-  if (typeof localStorage !== "undefined") {
-    try {
-      const stored = localStorage.getItem("gig-manager-overview-view-mode");
-      overviewLocalFallback = stored === "compact" ? "compact" : "grid";
-    } catch {
-      overviewLocalFallback = "grid";
+  // Guarded for SSR (localStorage only exists on the client via window) and
+  // computed lazily so the render never touches window/localStorage during
+  // server rendering or hydration.
+  const [overviewViewMode, setOverviewViewMode] = useState<"grid" | "compact">(() => {
+    if (settings.overviewViewMode === "compact") return "compact";
+    if (typeof window !== "undefined") {
+      try {
+        return window.localStorage.getItem("gig-manager-overview-view-mode") === "compact" ? "compact" : "grid";
+      } catch {
+        return "grid";
+      }
     }
-  }
-  const [overviewViewMode, setOverviewViewMode] = useState<"grid" | "compact">(
-    settings.overviewViewMode === "compact" ? "compact" : overviewLocalFallback
-  );
+    return "grid";
+  });
   // Keep in sync if the account settings load in later (e.g. first fetch, or a
   // different device updated the preference).
   // Latest view-mode value we wrote ourselves (optimistic update). The sync
@@ -367,7 +368,13 @@ export default function Dashboard() {
         console.error("Failed to save overview view mode:", e);
       }
       // Optimistic local update + persist to the account (PUT /api/settings).
-      void updateSettings({ overviewViewMode: mode });
+      // updateSettings rethrows on failure (as a floating promise this would
+      // be an unhandled rejection); clear the stale-echo guard so the
+      // provider's revert refetch flows back through to this view.
+      updateSettings({ overviewViewMode: mode }).catch((e) => {
+        console.error("Failed to persist overview view mode:", e);
+        localOverviewModeRef.current = null;
+      });
     },
     [updateSettings]
   );

@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import LoadingSpinner from "./LoadingSpinner";
 import XAIConfirmationModal from "./XAIConfirmationModal";
 import OptimizeFlowModal from "./OptimizeFlowModal";
+import FullscreenMediaViewer from "./FullscreenMediaViewer";
 import {
   getSpecialBlockTranslationKey,
   isKnownSpecialBlock,
@@ -344,6 +345,8 @@ export default function SetlistsTab() {
   const [showPerformanceMode, setShowPerformanceMode] = useState(false);
   const [performanceAttachmentsOpen, setPerformanceAttachmentsOpen] = useState(false);
   const [performanceActiveSong, setPerformanceActiveSong] = useState<DraftItem | null>(null);
+  /** Fullscreen zoom/pan lightbox: { index } into currentSongAttachments. */
+  const [zoomViewerState, setZoomViewerState] = useState<{ index: number } | null>(null);
   const [showGeneralNotes, setShowGeneralNotes] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('setlists_showGeneralNotes');
@@ -1941,13 +1944,14 @@ export default function SetlistsTab() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {currentSongAttachments.map((att) => (
+                    {currentSongAttachments.map((att, attIndex) => (
                       <div key={att.id} className="rounded-xl border border-white/10 bg-slate-800 overflow-hidden">
                         {att.type.startsWith('image/') ? (
                           <img 
                             src={att.url} 
                             alt={att.title || 'Attachment'} 
-                            className="w-full h-auto max-h-[60vh] object-contain"
+                            onClick={() => setZoomViewerState({ index: attIndex })}
+                            className="w-full h-auto max-h-[60vh] object-contain cursor-zoom-in"
                             loading="eager"
                           />
                         ) : att.type.startsWith('audio/') ? (
@@ -2007,6 +2011,20 @@ export default function SetlistsTab() {
             </aside>
           )}
         </div>
+
+        {/* Fullscreen zoom/pan lightbox for sheet music & chord charts */}
+        {zoomViewerState && currentSong && currentSongAttachments.length > 0 && (
+          <FullscreenMediaViewer
+            isOpen
+            attachments={currentSongAttachments}
+            index={Math.min(zoomViewerState.index, currentSongAttachments.length - 1)}
+            title={currentSong.label}
+            tuning={currentSong.tuning}
+            onClose={() => setZoomViewerState(null)}
+            onPrev={() => setZoomViewerState((s) => (s ? { ...s, index: (s.index - 1 + currentSongAttachments.length) % currentSongAttachments.length } : s))}
+            onNext={() => setZoomViewerState((s) => (s ? { ...s, index: (s.index + 1) % currentSongAttachments.length } : s))}
+          />
+        )}
 
         {/* Footer - navigation with large touch targets */}
         <footer className="sticky bottom-0 border-t border-white/10 bg-slate-950/95 px-3 py-2 sm:px-4 sm:py-3 backdrop-blur shrink-0">

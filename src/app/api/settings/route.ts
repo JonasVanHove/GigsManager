@@ -341,6 +341,7 @@ export async function GET(request: NextRequest) {
         pdfImagesOnly: settingsData.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
         pdfShowPageNumbers: settingsData.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
         pdfMarginSize: settingsData.pdfMarginSize || DEFAULT_SETTINGS.pdfMarginSize,
+        excludeSelfFromMemberCount: settingsData.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
       });
     } catch (dbErr) {
       const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
@@ -542,6 +543,7 @@ export async function PUT(request: NextRequest) {
         pdfImagesOnly: settingsData.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
         pdfShowPageNumbers: settingsData.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
         pdfMarginSize: settingsData.pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
+        excludeSelfFromMemberCount: settingsData.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
       });
     } catch (dbErr) {
       const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);

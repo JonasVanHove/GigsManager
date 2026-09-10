@@ -335,13 +335,31 @@ export default function Dashboard() {
   );
   // Keep in sync if the account settings load in later (e.g. first fetch, or a
   // different device updated the preference).
+  // Latest view-mode value we wrote ourselves (optimistic update). The sync
+  // effect below ignores a server emission that still carries that value's
+  // predecessor (stale echo of a GET that started before our PUT completed),
+  // so a delayed refetch can no longer flip a freshly toggled view back.
+  const localOverviewModeRef = useRef<"grid" | "compact" | null>(null);
+  const prevAccountOverviewModeRef = useRef<"grid" | "compact" | null>(null);
   useEffect(() => {
-    if (settings.overviewViewMode === "compact" || settings.overviewViewMode === "grid") {
-      setOverviewViewMode(settings.overviewViewMode);
+    const accountMode = settings.overviewViewMode === "compact" ? "compact" : "grid";
+    if (accountMode === prevAccountOverviewModeRef.current) return;
+    prevAccountOverviewModeRef.current = accountMode;
+    if (localOverviewModeRef.current && accountMode !== localOverviewModeRef.current) {
+      // Stale server echo: keep the user's local choice. The in-flight PUT
+      // will make the account agree with it; the echo above is outdated.
+      return;
     }
+    if (accountMode === localOverviewModeRef.current) {
+      // Server confirmed our own write — clear the guard so future
+      // cross-device updates flow through again.
+      localOverviewModeRef.current = null;
+    }
+    setOverviewViewMode(accountMode);
   }, [settings.overviewViewMode]);
   const handleSetOverviewViewMode = useCallback(
     (mode: "grid" | "compact") => {
+      localOverviewModeRef.current = mode;
       setOverviewViewMode(mode);
       try {
         localStorage.setItem("gig-manager-overview-view-mode", mode);

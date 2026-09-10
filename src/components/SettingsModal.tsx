@@ -137,9 +137,13 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
    * @param which "Tab 1"|"Tab 2" (for the toast)
    */
   const persistCustomTab = useCallback(
-    async (patch: Pick<UserSettingsData, "customTab1"> | Pick<UserSettingsData, "customTab2">, label: string) => {
+    async (patch: Partial<Pick<UserSettingsData, "customTab1" | "customTab2">>, label: string) => {
       try {
-        await updateSettings(patch); // optimistic local update + PUT to /api/settings
+        // The API accepts well-formed strings only; never forward undefined.
+        const safePatch: Partial<UserSettingsData> = {};
+        if (patch.customTab1 !== undefined) safePatch.customTab1 = patch.customTab1;
+        if (patch.customTab2 !== undefined) safePatch.customTab2 = patch.customTab2;
+        await updateSettings(safePatch); // optimistic local update + PUT to /api/settings
         toast.success(`${label}: ${t("common.saved", "Saved")}`);
       } catch (err) {
         console.error("Failed to save custom tab to account:", err);
@@ -459,7 +463,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 <select
                   value={customTab1}
                   onChange={(e) => handleChangeCustomTab1(e.target.value)}
-                  className="w-full rounded-lg border-2 border-emerald-500/40 bg-emerald-50/30 px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-emerald-500/30 dark:bg-emerald-950/20 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
                 >
                   <option value="setlists">{t('dashboard.setlists')}</option>
                   <option value="songs">{t('dashboard.songs')}</option>
@@ -479,7 +483,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 <select
                   value={customTab2}
                   onChange={(e) => handleChangeCustomTab2(e.target.value)}
-                  className="w-full rounded-lg border-2 border-emerald-500/40 bg-emerald-50/30 px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-emerald-500/30 dark:bg-emerald-950/20 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
                 >
                   <option value="setlists">{t('dashboard.setlists')}</option>
                   <option value="songs">{t('dashboard.songs')}</option>

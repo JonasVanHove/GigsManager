@@ -154,7 +154,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error("Save failed");
 
         const saved: UserSettingsData = await res.json();
-        setSettings(saved);
+        // Merge instead of replace: partial API responses (e.g. an older
+        // deploy missing newer keys) must never wipe existing keys, and a
+        // racing response must not discard the optimistic local update.
+        setSettings((prev) => ({ ...prev, ...saved }));
       } catch (err) {
         console.error("Failed to save settings:", err);
         // Revert — re-fetch from server
@@ -168,7 +171,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
                 Accept: "application/json",
               },
             });
-            if (res.ok) setSettings(await res.json());
+            if (res.ok) { const fresh: UserSettingsData = await res.json(); setSettings((prev) => ({ ...prev, ...fresh })); }
           }
         } catch { /* silent */ }
         throw err; // propagate so caller can show a toast

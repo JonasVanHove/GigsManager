@@ -471,6 +471,24 @@ export async function PUT(request: NextRequest) {
     if (pdfShowPageNumbers !== undefined) updateData.pdfShowPageNumbers = pdfShowPageNumbers;
     if (pdfMarginSize !== undefined) updateData.pdfMarginSize = pdfMarginSize;
     if (excludeSelfFromMemberCount !== undefined) updateData.excludeSelfFromMemberCount = excludeSelfFromMemberCount;
+    // Guard: never persist Tab 1 === Tab 2 — the client swaps on collision,
+    // but if only one field arrives in the patch, apply the swap server-side
+    // against the existing stored value so the DB can never hold duplicates
+    // (which would render two identical primary nav buttons).
+    if (customTab1 !== undefined || customTab2 !== undefined) {
+      const existing = await prisma.userSettings.findUnique({
+        where: { userId: authResult.userId },
+        select: { customTab1: true, customTab2: true },
+      });
+      if (existing) {
+        if (customTab1 === undefined && customTab2 !== undefined && existing.customTab1 === customTab2) {
+          updateData.customTab1 = existing.customTab2;
+        }
+        if (customTab2 === undefined && customTab1 !== undefined && existing.customTab2 === customTab1) {
+          updateData.customTab2 = existing.customTab1;
+        }
+      }
+    }
     if (customTab1 !== undefined) updateData.customTab1 = customTab1;
     if (customTab2 !== undefined) updateData.customTab2 = customTab2;
     if (overviewViewMode !== undefined) updateData.overviewViewMode = overviewViewMode;

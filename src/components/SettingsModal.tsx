@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Avatar from "./Avatar";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Icons } from "./Icons";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useAuth } from "./AuthProvider";
@@ -69,6 +69,66 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   // Custom Navigation Tabs
   const [customTab1, setCustomTab1] = useState(settings.customTab1 ?? "setlists");
   const [customTab2, setCustomTab2] = useState(settings.customTab2 ?? "songs");
+  // Track the values we last saw from the account so we can (a) adopt
+  // late-loading / cross-device updates without clobbering local edits and
+  // (b) know when the user has an unsaved local change.
+  const seenCustomTab1Ref = useRef(settings.customTab1 ?? "setlists");
+  const seenCustomTab2Ref = useRef(settings.customTab2 ?? "songs");
+
+  useEffect(() => {
+    const next1 = settings.customTab1 ?? "setlists";
+    const next2 = settings.customTab2 ?? "songs";
+    const prev1 = seenCustomTab1Ref.current;
+    const prev2 = seenCustomTab2Ref.current;
+    // Adopt an account value only when local state still mirrors the
+    // previously seen account value (i.e. the user hasn't edited locally
+    // since). This keeps late-loading / cross-device updates in sync
+    // without clobbering an unsaved local change.
+    if (next1 !== prev1) {
+      seenCustomTab1Ref.current = next1;
+      setCustomTab1((local) => (local === prev1 ? next1 : local));
+    }
+    if (next2 !== prev2) {
+      seenCustomTab2Ref.current = next2;
+      setCustomTab2((local) => (local === prev2 ? next2 : local));
+    }
+  }, [settings.customTab1, settings.customTab2]);
+
+  /**
+   * Change handlers that guarantee Tab 1 and Tab 2 are always distinct:
+   * picking the other tab's value swaps the two selections instead of
+   * creating a duplicate, which would render two identical primary nav
+   * buttons (React duplicate keys) and break the active-tab highlight.
+   * The swap is persisted as a single atomic patch to avoid a transient
+   * race between two PUT responses replacing the settings object.
+   */
+  const handleChangeCustomTab1 = (next: string) => {
+    if (next === customTab2) {
+      setCustomTab1(next);
+      setCustomTab2(customTab1);
+      persistCustomTab(
+        { customTab1: next, customTab2: customTab1 },
+        t("settings.customTab1")
+      );
+      return;
+    }
+    setCustomTab1(next);
+    persistCustomTab({ customTab1: next }, t("settings.customTab1"));
+  };
+
+  const handleChangeCustomTab2 = (next: string) => {
+    if (next === customTab1) {
+      setCustomTab2(next);
+      setCustomTab1(customTab2);
+      persistCustomTab(
+        { customTab1: customTab2, customTab2: next },
+        t("settings.customTab2")
+      );
+      return;
+    }
+    setCustomTab2(next);
+    persistCustomTab({ customTab2: next }, t("settings.customTab2"));
+  };
 
   /**
    * Account-bound persistence: persist a custom-tab change to Supabase
@@ -398,7 +458,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 </label>
                 <select
                   value={customTab1}
-                  onChange={(e) => { setCustomTab1(e.target.value); persistCustomTab({ customTab1: e.target.value }, t('settings.customTab1')); }}
+                  onChange={(e) => handleChangeCustomTab1(e.target.value)}
                   className="w-full rounded-lg border-2 border-emerald-500/40 bg-emerald-50/30 px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-emerald-500/30 dark:bg-emerald-950/20 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
                 >
                   <option value="setlists">{t('dashboard.setlists')}</option>
@@ -418,7 +478,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                 </label>
                 <select
                   value={customTab2}
-                  onChange={(e) => { setCustomTab2(e.target.value); persistCustomTab({ customTab2: e.target.value }, t('settings.customTab2')); }}
+                  onChange={(e) => handleChangeCustomTab2(e.target.value)}
                   className="w-full rounded-lg border-2 border-emerald-500/40 bg-emerald-50/30 px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-emerald-500/30 dark:bg-emerald-950/20 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
                 >
                   <option value="setlists">{t('dashboard.setlists')}</option>

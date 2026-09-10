@@ -102,9 +102,22 @@ const getTabLabels = (t: (key: string) => string): Record<DashboardTab, string> 
 });
 
 const getPrimaryNavTabs = (settings: UserSettingsData): DashboardTab[] => {
-  const custom1 = settings.customTab1 || "setlists";
-  const custom2 = settings.customTab2 || "songs";
-  return ["gigs", custom1 as DashboardTab, custom2 as DashboardTab];
+  // Hardened: validate against the known tab list, drop invalid values and
+  // de-duplicate, so a corrupt / foreign customTab1 or customTab2 in the DB
+  // can never render an unknown tab (undefined label, blank main area) or
+  // two identical primary nav buttons (React duplicate keys).
+  const isValidTab = (value: string | undefined): value is DashboardTab =>
+    typeof value === "string" && DASHBOARD_TABS.includes(value as DashboardTab) && value !== "gigs";
+  const custom1 = isValidTab(settings.customTab1) ? settings.customTab1 : "setlists";
+  const custom2 = isValidTab(settings.customTab2) ? settings.customTab2 : "songs";
+  const nav: DashboardTab[] = ["gigs", custom1];
+  if (custom2 !== custom1) {
+    nav.push(custom2);
+  } else {
+    // Collision fallback: keep three unique tabs in the primary nav.
+    nav.push(custom1 === "setlists" ? "songs" : "setlists");
+  }
+  return nav;
 };
 
 const WORKSPACE_NAV_TABS: DashboardTab[] = ["bands", "band-members", "shared-links", "analytics", "investments", "superadmin", "calendar", "setlists", "songs", "all-gigs"];

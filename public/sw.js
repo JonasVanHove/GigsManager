@@ -1,7 +1,7 @@
 // Service Worker for GigsManager
 // Provides offline support and intelligent caching strategies
 
-const CACHE_NAME = 'gigs-manager-v1.28.25';
+const CACHE_NAME = 'gigs-manager-v1.28.27';
 const STATIC_CACHE = 'gigs-manager-static-v3';
 const DYNAMIC_CACHE = 'gigs-manager-dynamic-v3';
 const LONG_TERM_CACHE = 'gigs-manager-longterm-v3';
@@ -295,6 +295,46 @@ self.addEventListener('fetch', (event) => {
             );
           });
         })
+    );
+    return;
+  }
+
+  // Strategy 3b: Media (audio backing tracks / demos) - cache first.
+  // Backing-track files are immutable uploads, so once a setlist is pinned
+  // ("Offline Opslaan") the cached copy in gigs-manager-offline-v1 serves
+  // instantly — even mid-gig with zero connectivity — and only falls back
+  // to the network when never cached before.
+  if (destination === 'audio' || destination === 'video') {
+    event.respondWith(
+      (async () => {
+        try {
+          const offlineCache = await caches.open(OFFLINE_CACHE);
+          const pinned = await offlineCache.match(request, { ignoreVary: true }).catch(() => undefined);
+          if (pinned) return pinned;
+        } catch (err) {
+          console.warn('SW: offline cache lookup failed:', err);
+        }
+        try {
+          const network = await fetch(request);
+          if (network && (network.ok || network.type === 'opaque')) {
+            const cache = await caches.open(OFFLINE_CACHE).catch(() => null);
+            if (cache) await cache.put(request, network.clone()).catch(() => {});
+          }
+          return network;
+        } catch (err) {
+          // Offline and not pinned: try the runtime cache, then fail softly.
+          const anyCached =
+            (await caches.match(request, { ignoreVary: true }).catch(() => undefined)) ||
+            (await caches.match(request, { ignoreVary: true, cacheName: OFFLINE_CACHE }).catch(() => undefined));
+          return (
+            anyCached ||
+            new Response('Offline - audio not available', {
+              status: 503,
+              statusText: 'Service Unavailable',
+            })
+          );
+        }
+      })()
     );
     return;
   }

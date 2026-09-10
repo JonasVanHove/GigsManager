@@ -171,11 +171,19 @@ export function createPrintDocument(title: string, content: string, options?: {
       
       @media print {
         .print-document { max-width: none; }
+        body, .print-document { background: #fff !important; color: #000 !important; }
         .document-footer { position: fixed; bottom: 0; left: 0; right: 0; }
         .section { break-after: ${pageBreakMode === 'auto' ? 'auto' : pageBreakMode === 'none' ? 'avoid' : 'always'}; }
         @page { margin: ${cssMargin}; }
         body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        /* Stage-ready high-contrast output: strip ambient/dark backgrounds,
+           shadows and gradients so chords & lyrics stay readable on paper. */
+        .note-content { background: none !important; border-left: none !important; box-shadow: none !important; }
+        .metadata-item, .band-logo, .attachment img, .document-header { box-shadow: none !important; background: none !important; }
+        .section-heading::before { background: #000 !important; }
+        .setlist-item { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; }
+        .attachment img { opacity: 1 !important; }
       }
     </style>
     <script>

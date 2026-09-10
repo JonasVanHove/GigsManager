@@ -833,6 +833,117 @@ export default function SetlistsTab() {
     }
   }, [draft?.id, selectedId]);
 
+  /**
+   * Stage-ready setlist & chord sheet PDF export / print view.
+   * Opens a print-optimized document (high-contrast black-and-white styling
+   * via the @media print stylesheet in print-document.ts, with
+   * break-inside: avoid so songs never split across pages) and triggers the
+   * browser print dialog. Shared by the Setlist header button / Export modal.
+   */
+  const handlePrintPdf = useCallback(() => {
+    if (!draft) return;
+    const win = window.open('', '_blank', 'toolbar=0,location=0,menubar=0');
+    if (!win) return;
+
+    // Generate pastel colors for unique tunings (note: print stylesheet
+    // forces high-contrast black-on-white, so these only matter on screen).
+    const tuningColors = new Map<string, { pastel: string; dark: string }>();
+    const pastelColors = [
+      '#e3f2fd', '#e8f5e9', '#fff3e0', '#f3e5f5', '#fce4ec', '#e0f7fa', '#fff9c4', '#efebe9',
+    ];
+    const darkColors = [
+      '#1976d2', '#2e7d32', '#f57c00', '#7b1fa2', '#c2185b', '#0097a7', '#fbc02d', '#5d4037',
+    ];
+    let colorIndex = 0;
+
+    const getTuningColor = (tuning: string): { pastel: string; dark: string } => {
+      if (!tuningColors.has(tuning)) {
+        tuningColors.set(tuning, { pastel: pastelColors[colorIndex % pastelColors.length], dark: darkColors[colorIndex % darkColors.length] });
+        colorIndex++;
+      }
+      return tuningColors.get(tuning)!;
+    };
+
+    const htmlParts: string[] = [];
+
+    // Metadata badges (title itself is handled by createPrintDocument)
+    const metaBadges: string[] = [];
+    const selectedBand = draft.bandId ? bandsList.find((b) => b.id === draft.bandId) : null;
+    if (selectedBand) metaBadges.push(`<span class="metadata-item">Band: ${escapeHtml(selectedBand.name)}</span>`);
+    if (draft.status) metaBadges.push(`<span class="metadata-item">Status: ${escapeHtml(draft.status)}</span>`);
+    if (draft.datum) metaBadges.push(`<span class="metadata-item">Date: ${escapeHtml(draft.datum)}</span>`);
+    if (draft.locatie) metaBadges.push(`<span class="metadata-item">Location: ${escapeHtml(draft.locatie)}</span>`);
+    if (metaBadges.length > 0) htmlParts.push(`<div class="metadata">${metaBadges.join('')}</div>`);
+    htmlParts.push('<section class="section">');
+
+    // Track song numbers separately (only for actual songs)
+    let songNumber = 0;
+
+    draft.items.forEach((item) => {
+      if (item.kind === 'special') {
+        htmlParts.push(`<div class="setlist-item" style="text-align:center;color:#64748b;font-size:11pt;font-weight:600;letter-spacing:0.1em;padding:4mm 0;border-top:1px dashed #e2e8f0;border-bottom:1px dashed #e2e8f0;text-transform:uppercase;">--- ${escapeHtml(resolveSpecialBlockLabel(item.specialLabel, t))} ---</div>`);
+        return;
+      }
+
+      songNumber++;
+      const song = songs.find((s) => s.id === item.songId || (s.title && s.title.toLowerCase() === item.label.toLowerCase()));
+      const title = song ? song.title : item.label;
+
+      const badges: string[] = [];
+      if (item.tuning) {
+        const colors = getTuningColor(item.tuning);
+        badges.push(`<span class="metadata-item" style="border: 2px solid ${colors.pastel} !important; color: ${colors.dark} !important; font-weight: 800 !important;">${escapeHtml(item.tuning)}</span>`);
+      }
+      if (item.key) {
+        const colors = getTuningColor(item.key);
+        badges.push(`<span class="metadata-item" style="border: 2px solid ${colors.pastel} !important; color: ${colors.dark} !important; font-weight: 800 !important;">Key: ${escapeHtml(item.key)}</span>`);
+      }
+      if (item.tempo) {
+        const colors = getTuningColor(item.tempo + ' bpm');
+        badges.push(`<span class="metadata-item" style="border: 2px solid ${colors.pastel} !important; color: ${colors.dark} !important; font-weight: 800 !important;">${escapeHtml(item.tempo)} BPM</span>`);
+      }
+      const metaStr = badges.length > 0 ? ` ${badges.join('')}` : '';
+
+      htmlParts.push(`<article class="setlist-item">`);
+      htmlParts.push(`<h3 class="setlist-item-title"><span class="setlist-item-number">${songNumber}.</span>${escapeHtml(title)}${metaStr}</h3>`);
+
+      if (exportIncludeAttachments && song?.attachments && song.attachments.length > 0) {
+        const imageAttachments = song.attachments.filter(isImageAttachment);
+        if (imageAttachments.length > 0) {
+          imageAttachments.forEach((att) => {
+            htmlParts.push(`<figure class="attachment"><img src="${escapeHtml(att.publicUrl)}" alt="" loading="eager" /></figure>`);
+          });
+        }
+      }
+
+      if (item.notitie) htmlParts.push(`<div class="note-content" style="margin-top:3mm;">${escapeHtml(item.notitie)}</div>`);
+      htmlParts.push('</article>');
+    });
+
+    htmlParts.push('</section>');
+    if (draft.notities.trim()) htmlParts.push(`<section class="section"><h2 class="section-heading">General Notes</h2><div class="note-content">${escapeHtml(draft.notities)}</div></section>`);
+
+    const band = draft.bandId ? bandsList.find((b) => b.id === draft.bandId) : null;
+    const logoUrl = band?.logoUrl || undefined;
+
+    win.document.open();
+    win.document.write(createPrintDocument(escapeHtml(draft.naam), htmlParts.join('\n'), {
+      includeLogo: settings.pdfIncludeLogo ?? true,
+      logoUrl,
+      font: settings.pdfFont ?? "inter",
+      pageSize: settings.pdfPageSize ?? "a4",
+      pageBreakMode: settings.pdfPageBreakMode ?? "auto",
+      darkMode: settings.pdfDarkMode ?? false,
+      showHeaders: settings.pdfShowHeaders ?? true,
+      showMetadata: settings.pdfShowMetadata ?? true,
+      imagesOnly: settings.pdfImagesOnly ?? false,
+      showPageNumbers: settings.pdfShowPageNumbers ?? true,
+      marginSize: settings.pdfMarginSize ?? "medium",
+    }));
+    win.document.close();
+    // Printing is handled by the small script that waits for images to load
+  }, [draft, songs, bandsList, settings, exportIncludeAttachments, t]);
+
   // Load attachments for items in the currently selected setlist
   useEffect(() => {
     if (draft && draft.items.length > 0) {
@@ -1840,11 +1951,36 @@ export default function SetlistsTab() {
                             loading="eager"
                           />
                         ) : att.type.startsWith('audio/') ? (
-                          <audio controls src={att.url} className="w-full p-3">
+                          <audio
+                            controls
+                            src={att.url}
+                            className="w-full p-3"
+                            onError={(e) => {
+                              const media = e.currentTarget;
+                              // Offline fallback: if the primary URL fails to
+                              // load (e.g. SW cache miss, network error), retry
+                              // with a cache-busting query so Service Worker
+                              // strategy 3b can serve the pinned OFFLINE_CACHE
+                              // copy of the backing track transparently.
+                              if (!media.src.includes('_offline=')) {
+                                media.src = att.url + (att.url.includes('?') ? '&' : '?') + '_offline=1';
+                              }
+                            }}
+                          >
                             Your browser does not support audio.
                           </audio>
                         ) : att.type.startsWith('video/') ? (
-                          <video controls src={att.url} className="w-full">
+                          <video
+                            controls
+                            src={att.url}
+                            className="w-full"
+                            onError={(e) => {
+                              const media = e.currentTarget;
+                              if (!media.src.includes('_offline=')) {
+                                media.src = att.url + (att.url.includes('?') ? '&' : '?') + '_offline=1';
+                              }
+                            }}
+                          >
                             Your browser does not support video.
                           </video>
                         ) : (
@@ -2177,6 +2313,12 @@ export default function SetlistsTab() {
                   {/* Export */}
                   <button type="button" onClick={() => setShowExport(true)} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 hover:scale-105 active:scale-95 transition-all duration-200 shrink-0 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20">
                     {t('setlists.export')}
+                  </button>
+
+                  {/* Print / PDF Export (stage-ready black-on-white sheet) */}
+                  <button type="button" onClick={handlePrintPdf} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all duration-200 shrink-0 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" title={t('setlists.exportPdf')}>
+                    <span aria-hidden>📄</span>
+                    <span className="hidden md:inline">{t('setlists.exportPdf')}</span>
                   </button>
 
                   {/* Duplicate */}

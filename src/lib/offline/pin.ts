@@ -25,20 +25,35 @@ interface PinInput {
   songs: unknown[];
 }
 
-function collectAttachmentUrls(input: PinInput): string[] {
+function collectAttachmentUrls(input: PinInput): { urls: string[]; audioCount: number } {
   const urls = new Set<string>();
+  // Audio files (mp3/wav/m4a/ogg/flac backing tracks & rehearsal demos) must
+  // always be precached — the <audio> player replays them from the SW cache
+  // (gigs-manager-offline-v1) while offline.
+  const AUDIO_PATTERN = /\.(mp3|wav|m4a|ogg|oga|flac|aac|webm)(?:[?#]|$)/i;
+  let audioCount = 0;
   const pushFrom = (list: unknown) => {
     if (!Array.isArray(list)) return;
     for (const entry of list) {
-      if (entry && typeof entry === "object" && typeof (entry as { publicUrl?: unknown }).publicUrl === "string") {
-        urls.add((entry as { publicUrl: string }).publicUrl);
-      }
+      if (!entry || typeof entry !== "object") continue;
+      const att = entry as { publicUrl?: unknown; url?: unknown; contentType?: unknown };
+      // Attachments arrive in two shapes: song attachments carry `publicUrl`
+      // (Supabase storage list) while setlist-item attachments carry `url`
+      // (uploaded via loadItemAttachments). Both must be collected or pinned
+      // audio/chord charts silently miss the cache.
+      const url = typeof att.publicUrl === "string" ? att.publicUrl : typeof att.url === "string" ? att.url : null;
+      if (!url || !url.startsWith("http")) continue;
+      const isAudio =
+        (typeof att.contentType === "string" && att.contentType.startsWith("audio/")) ||
+        AUDIO_PATTERN.test(url);
+      if (isAudio) audioCount++;
+      urls.add(url);
     }
   };
 
   pushFrom(input.songs);
   Object.values(input.itemAttachments || {}).forEach(pushFrom);
-  return Array.from(urls);
+  return { urls: Array.from(urls), audioCount };
 }
 
 /** Asks the service worker to precache the given URLs (best-effort). */
@@ -71,8 +86,11 @@ export async function pinSetlistForOffline(input: PinInput & { id: string }): Pr
     console.warn("[offline/pin] could not persist pinned setlist to IndexedDB");
   }
 
-  const urls = collectAttachmentUrls(input);
+  const { urls, audioCount } = collectAttachmentUrls(input);
   cacheUrlsInServiceWorker(urls);
+  if (audioCount > 0) {
+    console.info(`[offline/pin] pinned ${urls.length} attachments incl. ${audioCount} audio file(s)`);
+  }
   return urls.length;
 }
 

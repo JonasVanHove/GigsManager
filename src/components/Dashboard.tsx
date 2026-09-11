@@ -320,20 +320,15 @@ export default function Dashboard() {
   // Overview view mode: 'grid' (cards) or 'compact' (dense list).
   // Account-bound via settings (overviewViewMode) with a localStorage mirror
   // so the choice survives instant refresh and syncs across devices.
-  // Guarded for SSR (localStorage only exists on the client via window) and
-  // computed lazily so the render never touches window/localStorage during
-  // server rendering or hydration.
-  const [overviewViewMode, setOverviewViewMode] = useState<"grid" | "compact">(() => {
-    if (settings.overviewViewMode === "compact") return "compact";
-    if (typeof window !== "undefined") {
-      try {
-        return window.localStorage.getItem("gig-manager-overview-view-mode") === "compact" ? "compact" : "grid";
-      } catch {
-        return "grid";
-      }
-    }
-    return "grid";
-  });
+  // Hydration-safe (#418/#423): the initial value must be derivable on the
+  // server too, so we start from the account/default value and never touch
+  // window/localStorage during render. A lazy useState(() => localStorage…)
+  // initializer renders different HTML on the client than on the server and
+  // makes React fail hydration. The mirror is restored post-mount in the
+  // effect below.
+  const [overviewViewMode, setOverviewViewMode] = useState<"grid" | "compact">(
+    settings.overviewViewMode === "compact" ? "compact" : "grid"
+  );
   // Keep in sync if the account settings load in later (e.g. first fetch, or a
   // different device updated the preference).
   // Latest view-mode value we wrote ourselves (optimistic update). The sync
@@ -358,6 +353,19 @@ export default function Dashboard() {
     }
     setOverviewViewMode(accountMode);
   }, [settings.overviewViewMode]);
+  // Restore the localStorage mirror once, after mount (hydration-safe: see
+  // the comment above the state declaration). Until real account settings
+  // arrive, the local mirror wins so the refreshed view keeps the user's
+  // last choice; the account-sync effect above governs cross-device updates.
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("gig-manager-overview-view-mode") === "compact") {
+        setOverviewViewMode("compact");
+      }
+    } catch {
+      // Storage unavailable (private browsing) — the account value stands.
+    }
+  }, []);
   const handleSetOverviewViewMode = useCallback(
     (mode: "grid" | "compact") => {
       localOverviewModeRef.current = mode;

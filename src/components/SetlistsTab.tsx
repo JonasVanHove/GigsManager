@@ -347,27 +347,14 @@ export default function SetlistsTab() {
   const [performanceActiveSong, setPerformanceActiveSong] = useState<DraftItem | null>(null);
   /** Fullscreen zoom/pan lightbox: { index } into currentSongAttachments. */
   const [zoomViewerState, setZoomViewerState] = useState<{ index: number } | null>(null);
-  const [showGeneralNotes, setShowGeneralNotes] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('setlists_showGeneralNotes');
-      return saved ? JSON.parse(saved) : true;
-    }
-    return true;
-  });
-  const [showTuningPanel, setShowTuningPanel] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('setlists_showTuningPanel');
-      return saved ? JSON.parse(saved) : true;
-    }
-    return true;
-  });
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('setlists_sidebarCollapsed');
-      return saved ? JSON.parse(saved) : false;
-    }
-    return false;
-  });
+  // Hydration-safe (#418/#423): these UI-preference states are restored from
+  // localStorage *after mount* (see the restore effect below) instead of via a
+  // lazy useState(() => localStorage…) initializer. A render-time localStorage
+  // read produces different HTML on the client than the server-rendered output,
+  // which makes React fail hydration with a console error.
+  const [showGeneralNotes, setShowGeneralNotes] = useState(true);
+  const [showTuningPanel, setShowTuningPanel] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [exportIncludeAttachments, setExportIncludeAttachments] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -382,22 +369,30 @@ export default function SetlistsTab() {
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [convertingItemId, setConvertingItemId] = useState<string | null>(null);
   const [includeTuningNotes, setIncludeTuningNotes] = useState(false);
-  const [setlistListCollapsed, setSetlistListCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('setlists_setlistListCollapsed');
-      return saved ? JSON.parse(saved) : false;
-    }
-    return false;
-  });
-  const [repertoireCollapsed, setRepertoireCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('setlists_repertoireCollapsed');
-      return saved ? JSON.parse(saved) : false;
-    }
-    return false;
-  });
+  const [setlistListCollapsed, setSetlistListCollapsed] = useState(false);
+  const [repertoireCollapsed, setRepertoireCollapsed] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftVersionRef = useRef(0);
+
+  // Post-mount restore of the localStorage-backed UI preferences (see the
+  // hydration comment above the state declarations). Declared before the
+  // persist effects below, so on mount they settle to the restored values.
+  useEffect(() => {
+    const restore = <T,>(key: string, apply: (value: T) => void) => {
+      try {
+        const saved = window.localStorage.getItem(key);
+        if (saved === null) return;
+        apply(JSON.parse(saved) as T);
+      } catch {
+        // Corrupt/unavailable storage — keep the default.
+      }
+    };
+    restore('setlists_showGeneralNotes', setShowGeneralNotes);
+    restore('setlists_showTuningPanel', setShowTuningPanel);
+    restore('setlists_sidebarCollapsed', setSidebarCollapsed);
+    restore('setlists_setlistListCollapsed', setSetlistListCollapsed);
+    restore('setlists_repertoireCollapsed', setRepertoireCollapsed);
+  }, []);
 
   const activeDraft = draft;
   const songOccurrences = useMemo(() => {

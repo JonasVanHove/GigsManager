@@ -370,30 +370,20 @@ export async function GET(request: NextRequest) {
 
       if (!settings) {
         console.log("[GET /api/settings] No settings found, returning defaults");
-        return NextResponse.json(DEFAULT_SETTINGS);
+        return NextResponse.json(DEFAULT_SETTINGS, {
+          headers: { "Cache-Control": "private, no-store" },
+        });
       }
 
-      console.log("[GET /api/settings] Settings found, returning");
-      const settingsData: any = settings;
-      return NextResponse.json({
-        currency: settings.currency || DEFAULT_SETTINGS.currency,
-        claimPerformanceFee: settings.claimPerformanceFee ?? DEFAULT_SETTINGS.claimPerformanceFee,
-        claimTechnicalFee: settings.claimTechnicalFee ?? DEFAULT_SETTINGS.claimTechnicalFee,
-        theme: settings.theme || DEFAULT_SETTINGS.theme,
-        customTab1: settingsData.customTab1 || DEFAULT_SETTINGS.customTab1,
-        customTab2: settingsData.customTab2 || DEFAULT_SETTINGS.customTab2,
-        overviewViewMode: (settingsData.overviewViewMode === "compact" ? "compact" : "grid"),
-        pdfIncludeLogo: settingsData.pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
-        pdfFont: settingsData.pdfFont || DEFAULT_SETTINGS.pdfFont,
-        pdfPageSize: settingsData.pdfPageSize || DEFAULT_SETTINGS.pdfPageSize,
-        pdfPageBreakMode: settingsData.pdfPageBreakMode || DEFAULT_SETTINGS.pdfPageBreakMode,
-        pdfDarkMode: settingsData.pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
-        pdfShowHeaders: settingsData.pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
-        pdfShowMetadata: settingsData.pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
-        pdfImagesOnly: settingsData.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
-        pdfShowPageNumbers: settingsData.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
-        pdfMarginSize: settingsData.pdfMarginSize || DEFAULT_SETTINGS.pdfMarginSize,
-        excludeSelfFromMemberCount: settingsData.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
+      console.log("[GET /api/settings] Settings found, returning DB values");
+      // Canonical serializer — DB values always win; defaults only fill cells
+      // that are NULL/empty in the stored row, so a persisted customTab1 /
+      // customTab2 / overviewViewMode is returned verbatim on initial load.
+      // "private, no-store" keeps any proxy/browser from caching per-user
+      // settings (a stale cached response previously risked serving
+      // outdated custom tabs after a hard refresh).
+      return NextResponse.json(serializeSettingsResponse(settings as Record<string, any>), {
+        headers: { "Cache-Control": "private, no-store" },
       });
     } catch (dbErr) {
       const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);

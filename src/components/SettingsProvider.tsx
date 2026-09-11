@@ -15,6 +15,11 @@ import { formatDate, formatDateTime, resolveLocale, type AppLanguage } from "@/l
 const PENDING_SETTINGS_STORAGE_KEY = "gig-manager-settings-pending";
 const MAX_SAVE_RETRIES = 2; // extra attempts after the first request
 const SAVE_RETRY_DELAY_MS = 700;
+// Bounded retries for the *initial* settings GET. It is the only DB source
+// for customTab1/customTab2 on page load, so a transient 5xx (serverless
+// cold start) must not strand the user on default tabs for the whole session.
+const SETTINGS_FETCH_RETRIES = 2;
+const SETTINGS_FETCH_RETRY_DELAY_MS = 500;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -160,15 +165,30 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const res = await fetch("/api/settings", {
-          cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
+        // Bounded retry loop (see SETTINGS_FETCH_RETRIES above): transient
+        // 5xx / network errors are retried before degrading to defaults, so
+        // the DB payload (custom tabs, theme, PDF prefs) lands on first load.
+        let res: Response | null = null;
+        let lastFetchErr: unknown = null;
+        for (let attempt = 0; attempt <= SETTINGS_FETCH_RETRIES; attempt += 1) {
+          if (attempt > 0) await sleep(SETTINGS_FETCH_RETRY_DELAY_MS * attempt);
+          if (cancelled) return;
+          try {
+            res = await fetch("/api/settings", {
+              cache: "no-store",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+              },
+            });
+            if (res.ok || res.status < 500) break;
+          } catch (fetchErr) {
+            lastFetchErr = fetchErr;
+            res = null;
+          }
+        }
 
-        if (res.ok && !cancelled) {
+        if (res && res.ok && !cancelled) {
           const data: UserSettingsData = await res.json();
           // Re-apply any settings that failed to push earlier (offline / 5xx),
           // so a reload never silently reverts the user's last edits.
@@ -195,7 +215,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
               })
               .catch((err) => console.warn("[Settings] Deferred settings flush failed:", err));
           }
-        } else if (res.status >= 500) {
+        } else if (!res || res.status >= 500) {
+          if (lastFetchErr) {
+            console.error("Failed to load settings:", lastFetchErr);
+          } else if (res) {
+            console.error("Failed to load settings: HTTP", res.status);
+          }
+          // All retries exhausted — block further fetches for this session and
+          // fall back to defaults. The pending-sync store is re-applied over
+          // the defaults by the success path on the next successful load, so
+          // the user's last edits are never visibly lost.
           settingsFetchBlockedRef.current = true;
           if (!cancelled) {
             setSettings(DEFAULT_SETTINGS);

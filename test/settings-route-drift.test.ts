@@ -52,6 +52,13 @@ function putRequest(body: Record<string, unknown>): any {
   }) as any;
 }
 
+function getRequest(): any {
+  return new Request("https://example.com/api/settings", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${makeToken("supabase-user-1")}` },
+  }) as any;
+}
+
 function prismaP2022(column: string) {
   return {
     code: "P2022",
@@ -148,5 +155,53 @@ describe("PUT /api/settings — Prisma P2022 column-drift recovery", () => {
     expect(response.status).toBe(401);
     const body = await response.json();
     expect(body.error).toBe("Missing authorization token");
+  });
+});
+
+describe("GET /api/settings — DB-authoritative custom tabs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-key";
+    process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/test";
+    getUserMock.mockResolvedValue({ data: { user: { id: "supabase-user-1" } }, error: null });
+    getOrCreateUserMock.mockResolvedValue({ id: "internal-user-1", email: "user@example.com" });
+  });
+
+  it("returns stored customTab1/customTab2/overviewViewMode verbatim (no default overwrite)", async () => {
+    findUniqueMock.mockResolvedValue({
+      currency: "USD",
+      customTab1: "bands",
+      customTab2: "investments",
+      overviewViewMode: "compact",
+    });
+
+    const { GET } = await import("@/app/api/settings/route");
+    const response = await GET(getRequest());
+
+    expect(response.status).toBe(200);
+    // Per-user settings must never be cacheable — a stale cached response
+    // previously risked serving outdated custom tabs after a hard refresh.
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    const body = await response.json();
+    expect(body.customTab1).toBe("bands");
+    expect(body.customTab2).toBe("investments");
+    expect(body.overviewViewMode).toBe("compact");
+  });
+
+  it("fills only absent cells from defaults — a stored value always wins", async () => {
+    findUniqueMock.mockResolvedValue({
+      currency: "EUR",
+      customTab1: "bands",
+      // customTab2 / overviewViewMode are NULL in the stored row
+    });
+
+    const { GET } = await import("@/app/api/settings/route");
+    const response = await GET(getRequest());
+    const body = await response.json();
+
+    expect(body.customTab1).toBe("bands");
+    expect(body.customTab2).toBe("songs");
+    expect(body.overviewViewMode).toBe("grid");
   });
 });

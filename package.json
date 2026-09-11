@@ -1,6 +1,6 @@
 {
   "name": "gig-manager",
-  "version": "1.28.32",
+  "version": "1.28.33",
   "private": true,
   "scripts": {
     "dev": "next dev",

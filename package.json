@@ -1,6 +1,6 @@
 {
   "name": "gig-manager",
-  "version": "1.28.30",
+  "version": "1.28.31",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,6 +15,7 @@
     "test:e2e:headed": "playwright test --headed",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:apply-settings-schema": "node scripts/apply-settings-schema.js",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",

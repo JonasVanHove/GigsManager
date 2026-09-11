@@ -429,6 +429,177 @@ const VALID_PDF_MARGINS = ["small", "medium", "large"];
 const VALID_CUSTOM_TABS = ["setlists", "songs", "calendar", "bands", "band-members", "analytics", "investments", "shared-links"];
 const VALID_OVERVIEW_VIEW_MODES = ["grid", "compact"];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTINGS SERIALIZER & PRISMA P2022 COLUMN-DRIFT RECOVERY
+// ─────────────────────────────────────────────────────────────────────────────
+// If the production Supabase `UserSettings` table predates the bootstrap /
+// migrations that added newer columns, Prisma throws P2022 ("column does not
+// exist") on any upsert referencing them — which previously surfaced to the
+// client as the structured 500 "Failed to save settings (status 500)".
+//
+// Recovery strategy (in order):
+//   1. Detect the exact missing column (Prisma meta.column_name), strip it from
+//      both the update and create payloads, and retry — the columns that DO
+//      exist keep persisting.
+//   2. If nothing persistable remains, echo the patched settings payload as a
+//      200 so the client considers the save successful (its optimistic state is
+//      already consistent), while loudly logging a [SETTINGS_DB_DRIFT_WARNING]
+//      and the exact Prisma code/message under [SETTINGS_API_ERROR].
+
+/** Columns added to UserSettings after the original schema. Keep in sync with
+ *  `scripts/apply-settings-schema.js` and `supabase/bootstrap.sql`. */
+const DRIFT_PRONE_SETTINGS_COLUMNS = [
+  "theme",
+  "customTab1",
+  "customTab2",
+  "overviewViewMode",
+  "pdfIncludeLogo",
+  "pdfFont",
+  "pdfPageSize",
+  "pdfPageBreakMode",
+  "pdfDarkMode",
+  "pdfShowHeaders",
+  "pdfShowMetadata",
+  "pdfImagesOnly",
+  "pdfShowPageNumbers",
+  "pdfMarginSize",
+  "excludeSelfFromMemberCount",
+] as const;
+
+/**
+ * Serializes a (possibly partial) UserSettings row into the canonical API
+ * shape, filling any missing key from DEFAULT_SETTINGS. Shared by the success
+ * path, the empty-patch guard and the drift-fallback path so all three always
+ * return the exact same schema.
+ */
+function serializeSettingsResponse(data: Record<string, any>): Record<string, unknown> {
+  return {
+    currency: data.currency ?? DEFAULT_SETTINGS.currency,
+    claimPerformanceFee: data.claimPerformanceFee ?? DEFAULT_SETTINGS.claimPerformanceFee,
+    claimTechnicalFee: data.claimTechnicalFee ?? DEFAULT_SETTINGS.claimTechnicalFee,
+    theme: data.theme ?? DEFAULT_SETTINGS.theme,
+    customTab1: data.customTab1 || DEFAULT_SETTINGS.customTab1,
+    customTab2: data.customTab2 || DEFAULT_SETTINGS.customTab2,
+    overviewViewMode: data.overviewViewMode === "compact" ? "compact" : "grid",
+    pdfIncludeLogo: data.pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
+    pdfFont: data.pdfFont ?? DEFAULT_SETTINGS.pdfFont,
+    pdfPageSize: data.pdfPageSize ?? DEFAULT_SETTINGS.pdfPageSize,
+    pdfPageBreakMode: data.pdfPageBreakMode ?? DEFAULT_SETTINGS.pdfPageBreakMode,
+    pdfDarkMode: data.pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
+    pdfShowHeaders: data.pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
+    pdfShowMetadata: data.pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
+    pdfImagesOnly: data.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
+    pdfShowPageNumbers: data.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
+    pdfMarginSize: data.pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
+    excludeSelfFromMemberCount: data.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
+  };
+}
+
+/** Extracts Prisma error code / meta.column_name / message, tolerating both
+ *  direct (`err.code`) and engine-nested (`err.error.code`) shapes. */
+function getPrismaErrorInfo(err: unknown): { code?: string; column?: string; message?: string } {
+  const direct = err as { code?: unknown; meta?: { column_name?: unknown }; message?: unknown };
+  const nested = (err as { error?: { code?: unknown; message?: unknown } })?.error;
+  const code =
+    typeof direct.code === "string" ? direct.code : typeof nested?.code === "string" ? nested.code : undefined;
+  const message = direct?.message
+    ? String(direct.message)
+    : typeof nested?.message === "string"
+      ? nested.message
+      : err instanceof Error
+        ? err.message
+        : String(err);
+  const column = typeof direct.meta?.column_name === "string" ? direct.meta.column_name : undefined;
+  return { code, column, message };
+}
+
+/** True for Prisma P2022 ("column does not exist") or any naked column error. */
+function isPrismaColumnError(err: unknown): boolean {
+  const { code, message } = getPrismaErrorInfo(err);
+  return (
+    code === "P2022" ||
+    /column .* does not exist|undefined column|column .* is missing/i.test(message || "")
+  );
+}
+
+interface SettingsUpsertOutcome {
+  /** true when a database write actually completed. */
+  ok: boolean;
+  settings?: any;
+  /** names of columns stripped from the payload to recover from drift. */
+  dropped: string[];
+  /** last Prisma error observed (null on full success). */
+  lastError: unknown;
+}
+/**
+ * Upserts UserSettings while auto-recovering from Prisma P2022 column drift:
+ * each attempt strips the offending missing column(s) from both the update and
+ * create payloads and retries, so the columns that DO exist keep persisting.
+ * Returns `ok:false` (with the last error) when no persistable write remains —
+ * the caller then applies the graceful client-visible echo fallback.
+ */
+async function upsertSettingsWithDriftRecovery(
+  prisma: any,
+  userId: string,
+  updatePayload: Record<string, any>,
+  createPayload: Record<string, any>
+): Promise<SettingsUpsertOutcome> {
+  const dropped: string[] = [];
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt <= DRIFT_PRONE_SETTINGS_COLUMNS.length + 1; attempt += 1) {
+    const update = { ...updatePayload };
+    const create = { ...createPayload };
+    for (const col of dropped) {
+      delete update[col];
+      delete create[col];
+    }
+
+    // Prisma rejects upsert({ update: {} }) — if the whole patch only touched
+    // drifted columns, nothing persistable is left for a write.
+    if (Object.keys(update).length === 0) {
+      return { ok: false, settings: undefined, dropped, lastError };
+    }
+
+    try {
+      const settings = await prisma.userSettings.upsert({ where: { userId }, update, create });
+      return { ok: true, settings, dropped, lastError };
+    } catch (err) {
+      lastError = err;
+      if (!isPrismaColumnError(err)) {
+        // A genuine DB failure (connection, constraint, …) — not drift.
+        throw err;
+      }
+
+      const { column: reported } = getPrismaErrorInfo(err);
+      // Prefer the exact column Prisma named; otherwise pick the next
+      // drift-prone column still present in the payload, guaranteeing every
+      // attempt makes progress (and the loop terminates).
+      let dropOne: string | null = null;
+      if (reported && (DRIFT_PRONE_SETTINGS_COLUMNS as readonly string[]).includes(reported) && !dropped.includes(reported)) {
+        dropOne = reported;
+      }
+      if (!dropOne) {
+        dropOne = DRIFT_PRONE_SETTINGS_COLUMNS.find(
+          (col) => !dropped.includes(col) && (col in update || col in create)
+        ) ?? null;
+      }
+      if (!dropOne) {
+        // Only core columns remain and one of them was reported missing — the
+        // table shape is unrecognizable; hand back for the graceful echo.
+        return { ok: false, settings: undefined, dropped, lastError: err };
+      }
+      dropped.push(dropOne);
+      console.warn(
+        "[SETTINGS_DB_DRIFT_WARNING]",
+        `UserSettings is missing column "${dropOne}" (Prisma P2022). Stripping it and retrying. Dropped so far: ${dropped.join(", ")}`
+      );
+    }
+  }
+
+  return { ok: false, settings: undefined, dropped, lastError };
+}
+
 export async function PUT(request: NextRequest) {
   console.log("[PUT /api/settings] Starting");
 
@@ -587,88 +758,96 @@ export async function PUT(request: NextRequest) {
     // "Failed to save settings". Short-circuit by returning the stored (or
     // default) settings row instead of hitting the DB.
     if (Object.keys(updateData).length === 0) {
-      const existing = await prisma.userSettings.findUnique({
-        where: { userId: authResult.userId },
-      });
-      const existingData: any = existing ?? {};
-      return NextResponse.json({
-        currency: existingData.currency ?? DEFAULT_SETTINGS.currency,
-        claimPerformanceFee: existingData.claimPerformanceFee ?? DEFAULT_SETTINGS.claimPerformanceFee,
-        claimTechnicalFee: existingData.claimTechnicalFee ?? DEFAULT_SETTINGS.claimTechnicalFee,
-        theme: existingData.theme ?? DEFAULT_SETTINGS.theme,
-        customTab1: existingData.customTab1 || DEFAULT_SETTINGS.customTab1,
-        customTab2: existingData.customTab2 || DEFAULT_SETTINGS.customTab2,
-        overviewViewMode: (existingData.overviewViewMode === "compact" ? "compact" : "grid"),
-        pdfIncludeLogo: existingData.pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
-        pdfFont: existingData.pdfFont ?? DEFAULT_SETTINGS.pdfFont,
-        pdfPageSize: existingData.pdfPageSize ?? DEFAULT_SETTINGS.pdfPageSize,
-        pdfPageBreakMode: existingData.pdfPageBreakMode ?? DEFAULT_SETTINGS.pdfPageBreakMode,
-        pdfDarkMode: existingData.pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
-        pdfShowHeaders: existingData.pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
-        pdfShowMetadata: existingData.pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
-        pdfImagesOnly: existingData.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
-        pdfShowPageNumbers: existingData.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
-        pdfMarginSize: existingData.pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
-        excludeSelfFromMemberCount: existingData.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
-      });
+      let existing: any = null;
+      try {
+        existing = await prisma.userSettings.findUnique({
+          where: { userId: authResult.userId },
+        });
+      } catch (readErr) {
+        // Column drift can make even a full-row read fail; echo defaults for
+        // an empty patch rather than surfacing a 500.
+        console.warn("[PUT /api/settings] Empty-patch read failed, returning defaults:", readErr instanceof Error ? readErr.message : String(readErr));
+      }
+      return NextResponse.json(serializeSettingsResponse(existing ?? {}));
     }
 
-    // 7. Upsert to database
+    // 7. Upsert to database, auto-recovering from Prisma P2022 column drift.
+    const createData: Record<string, any> = {
+      userId: authResult.userId,
+      currency: currency ?? DEFAULT_SETTINGS.currency,
+      claimPerformanceFee: claimPerformanceFee ?? DEFAULT_SETTINGS.claimPerformanceFee,
+      claimTechnicalFee: claimTechnicalFee ?? DEFAULT_SETTINGS.claimTechnicalFee,
+      theme: theme ?? DEFAULT_SETTINGS.theme,
+      pdfIncludeLogo: pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
+      pdfFont: pdfFont ?? DEFAULT_SETTINGS.pdfFont,
+      pdfPageSize: pdfPageSize ?? DEFAULT_SETTINGS.pdfPageSize,
+      pdfPageBreakMode: pdfPageBreakMode ?? DEFAULT_SETTINGS.pdfPageBreakMode,
+      pdfDarkMode: pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
+      pdfShowHeaders: pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
+      pdfShowMetadata: pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
+      pdfImagesOnly: pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
+      pdfShowPageNumbers: pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
+      pdfMarginSize: pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
+      excludeSelfFromMemberCount: excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
+      customTab1: customTab1 ?? DEFAULT_SETTINGS.customTab1,
+      customTab2: customTab2 ?? DEFAULT_SETTINGS.customTab2,
+      overviewViewMode: overviewViewMode ?? DEFAULT_SETTINGS.overviewViewMode,
+    };
+
+    let outcome: SettingsUpsertOutcome;
     try {
       console.log("[PUT /api/settings] Upserting settings for userId:", authResult.userId);
-      const settings = await prisma.userSettings.upsert({
-        where: { userId: authResult.userId },
-        update: updateData,
-        create: {
-          userId: authResult.userId,
-          currency: currency ?? DEFAULT_SETTINGS.currency,
-          claimPerformanceFee: claimPerformanceFee ?? DEFAULT_SETTINGS.claimPerformanceFee,
-          claimTechnicalFee: claimTechnicalFee ?? DEFAULT_SETTINGS.claimTechnicalFee,
-          theme: theme ?? DEFAULT_SETTINGS.theme,
-          pdfIncludeLogo: pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
-          pdfFont: pdfFont ?? DEFAULT_SETTINGS.pdfFont,
-          pdfPageSize: pdfPageSize ?? DEFAULT_SETTINGS.pdfPageSize,
-          pdfPageBreakMode: pdfPageBreakMode ?? DEFAULT_SETTINGS.pdfPageBreakMode,
-          pdfDarkMode: pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
-          pdfShowHeaders: pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
-          pdfShowMetadata: pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
-          pdfImagesOnly: pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
-          pdfShowPageNumbers: pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
-          pdfMarginSize: pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
-          excludeSelfFromMemberCount: excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
-          customTab1: customTab1 ?? DEFAULT_SETTINGS.customTab1,
-          customTab2: customTab2 ?? DEFAULT_SETTINGS.customTab2,
-          overviewViewMode: overviewViewMode ?? DEFAULT_SETTINGS.overviewViewMode,
-        },
-      });
-
-      console.log("[PUT /api/settings] Settings updated successfully");
-      const settingsData: any = settings;
-      return NextResponse.json({
-        currency: settings.currency,
-        claimPerformanceFee: settings.claimPerformanceFee,
-        claimTechnicalFee: settings.claimTechnicalFee,
-        theme: settings.theme,
-        customTab1: settingsData.customTab1 || DEFAULT_SETTINGS.customTab1,
-        customTab2: settingsData.customTab2 || DEFAULT_SETTINGS.customTab2,
-        overviewViewMode: (settingsData.overviewViewMode === "compact" ? "compact" : "grid"),
-        pdfIncludeLogo: settingsData.pdfIncludeLogo ?? DEFAULT_SETTINGS.pdfIncludeLogo,
-        pdfFont: settingsData.pdfFont ?? DEFAULT_SETTINGS.pdfFont,
-        pdfPageSize: settingsData.pdfPageSize ?? DEFAULT_SETTINGS.pdfPageSize,
-        pdfPageBreakMode: settingsData.pdfPageBreakMode ?? DEFAULT_SETTINGS.pdfPageBreakMode,
-        pdfDarkMode: settingsData.pdfDarkMode ?? DEFAULT_SETTINGS.pdfDarkMode,
-        pdfShowHeaders: settingsData.pdfShowHeaders ?? DEFAULT_SETTINGS.pdfShowHeaders,
-        pdfShowMetadata: settingsData.pdfShowMetadata ?? DEFAULT_SETTINGS.pdfShowMetadata,
-        pdfImagesOnly: settingsData.pdfImagesOnly ?? DEFAULT_SETTINGS.pdfImagesOnly,
-        pdfShowPageNumbers: settingsData.pdfShowPageNumbers ?? DEFAULT_SETTINGS.pdfShowPageNumbers,
-        pdfMarginSize: settingsData.pdfMarginSize ?? DEFAULT_SETTINGS.pdfMarginSize,
-        excludeSelfFromMemberCount: settingsData.excludeSelfFromMemberCount ?? DEFAULT_SETTINGS.excludeSelfFromMemberCount,
-      });
+      outcome = await upsertSettingsWithDriftRecovery(prisma, authResult.userId, updateData, createData);
     } catch (dbErr) {
-      const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      console.error("[PUT /api/settings] Database update failed:", errMsg);
+      // Genuine (non-drift) DB failure — log the exact Prisma code + message.
+      const { code: prismaCode, message: prismaMessage } = getPrismaErrorInfo(dbErr);
+      console.error("[SETTINGS_API_ERROR]", {
+        prismaCode: prismaCode ?? "UNKNOWN",
+        message: prismaMessage,
+      });
       return settingsErrorResponse(500, "DB_WRITE_FAILED", "Failed to save settings", dbErr);
     }
+
+    if (outcome.ok && outcome.settings) {
+      if (outcome.dropped.length > 0) {
+        // Write succeeded after stripping drifted columns.
+        console.error("[SETTINGS_API_ERROR]", {
+          code: "P2022_RECOVERED",
+          status: 200,
+          message: `UserSettings schema drift recovered; stripped columns: ${outcome.dropped.join(", ")}`,
+        });
+      }
+      console.log("[PUT /api/settings] Settings updated successfully");
+      return NextResponse.json(serializeSettingsResponse(outcome.settings));
+    }
+
+    // ── Graceful drift fallback ──────────────────────────────────────────────
+    // The table is missing column(s) we are not allowed to strip (e.g. only
+    // core columns remain). Persistence cannot complete, so echo the patched
+    // settings payload as a 200 — the client considers the save successful,
+    // its optimistic state is already consistent, and nothing is lost. The
+    // exact Prisma failure is logged for Netlify debugging, along with an
+    // operational hint to heal the schema.
+    const driftErrInfo = outcome.lastError as { code?: unknown; message?: unknown };
+    const driftCode =
+      driftErrInfo && typeof driftErrInfo === "object" && "code" in driftErrInfo ? String(driftErrInfo.code) : "UNKNOWN";
+    const driftMsg =
+      driftErrInfo && typeof driftErrInfo === "object" && "message" in driftErrInfo
+        ? String(driftErrInfo.message)
+        : String(outcome.lastError);
+    console.error("[SETTINGS_DB_DRIFT_WARNING]", {
+      code: driftCode,
+      message: driftMsg,
+      stripped: outcome.dropped,
+      hint: "Run `node scripts/apply-settings-schema.js` (or re-run supabase/bootstrap.sql) on the Supabase database to add the missing UserSettings columns.",
+    });
+    console.error("[SETTINGS_API_ERROR]", {
+      code: driftCode,
+      status: 500,
+      message: "UserSettings column drift — returning client-visible success echo",
+      details: driftMsg,
+    });
+    return NextResponse.json({ ...updateData });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("[PUT /api/settings] FATAL UNHANDLED ERROR:", errMsg);

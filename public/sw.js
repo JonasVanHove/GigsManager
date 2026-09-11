@@ -1,7 +1,7 @@
 // Service Worker for GigsManager
 // Provides offline support and intelligent caching strategies
 
-const CACHE_NAME = 'gigs-manager-v1.28.30';
+const CACHE_NAME = 'gigs-manager-v1.28.31';
 const STATIC_CACHE = 'gigs-manager-static-v3';
 const DYNAMIC_CACHE = 'gigs-manager-dynamic-v3';
 const LONG_TERM_CACHE = 'gigs-manager-longterm-v3';

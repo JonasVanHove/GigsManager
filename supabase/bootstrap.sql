@@ -74,6 +74,27 @@ CREATE TABLE IF NOT EXISTS "UserSettings" (
     CONSTRAINT "UserSettings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
 );
 
+-- ── Idempotent column backfill ────────────────────────────────────────────────
+-- `CREATE TABLE IF NOT EXISTS` cannot add columns to a table that was already
+-- created by an older bootstrap, which left production Supabase missing newer
+-- columns and made PUT /api/settings crash with Prisma P2022 ("column does not
+-- exist") — surfacing as a 503 on Netlify. These guards are safe to re-run.
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "theme" TEXT NOT NULL DEFAULT 'system';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "customTab1" TEXT NOT NULL DEFAULT 'setlists';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "customTab2" TEXT NOT NULL DEFAULT 'songs';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "overviewViewMode" TEXT NOT NULL DEFAULT 'grid';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfIncludeLogo" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfFont" TEXT NOT NULL DEFAULT 'inter';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfPageSize" TEXT NOT NULL DEFAULT 'a4';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfPageBreakMode" TEXT NOT NULL DEFAULT 'auto';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfDarkMode" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfShowHeaders" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfShowMetadata" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfImagesOnly" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfShowPageNumbers" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "pdfMarginSize" TEXT NOT NULL DEFAULT 'medium';
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "excludeSelfFromMemberCount" BOOLEAN NOT NULL DEFAULT false;
+
 -- ── Indexes for performance ─────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS "Gig_userId_idx"         ON "Gig" ("userId");

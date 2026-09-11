@@ -61,6 +61,58 @@ function validateEnvironment() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STRUCTURED ERROR RESPONSES
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The handlers below are contractually forbidden from returning a raw 503
+// crash. Every failure maps to exactly one of:
+//   - 401 → authentication / authorization problems
+//   - 400 → malformed request body or invalid field values
+//   - 500 → server configuration / dependency / database failures
+// Each response carries a stable `code` and an error `details` string, while
+// the *exact* underlying error is logged server-side under [SETTINGS_API_ERROR].
+
+interface SettingsErrorBody {
+  error: string;
+  code: string;
+  status: number;
+  details?: string;
+}
+
+function settingsErrorResponse(
+  status: 400 | 401 | 500,
+  code: string,
+  message: string,
+  details?: unknown
+): NextResponse {
+  const detailText =
+    details instanceof Error
+      ? details.message
+      : typeof details === "string"
+        ? details
+        : details === undefined
+          ? undefined
+          : (() => {
+              try {
+                return JSON.stringify(details);
+              } catch {
+                return String(details);
+              }
+            })();
+
+  console.error("[SETTINGS_API_ERROR]", {
+    code,
+    status,
+    message,
+    details: detailText,
+  });
+
+  const body: SettingsErrorBody = { error: message, code, status };
+  if (detailText) body.details = detailText.slice(0, 500);
+  return NextResponse.json(body, { status });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SAFE IMPORTS WITH ERROR HANDLING
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -211,8 +263,8 @@ async function requireAuth(
     console.log("[Settings Auth] Local JWT decode failed, trying Supabase admin API...");
 
     if (!supabaseAdmin || !supabaseAdmin.auth || typeof supabaseAdmin.auth.getUser !== "function") {
-      console.error("[Settings Auth] Supabase admin client not available");
-      return { type: "error", status: 503, message: "Service unavailable" };
+      console.error("[SETTINGS_API_ERROR]", "Supabase admin client not available");
+      return { type: "error", status: 500, message: "Authentication service unavailable" };
     }
 
     try {
@@ -247,8 +299,8 @@ async function requireAuth(
       }
     } catch (supabaseErr) {
       const errMsg = supabaseErr instanceof Error ? supabaseErr.message : String(supabaseErr);
-      console.error("[Settings Auth] Supabase API call failed:", errMsg);
-      return { type: "error", status: 503, message: "Authentication service unavailable" };
+      console.error("[SETTINGS_API_ERROR]", "Supabase API call failed:", errMsg);
+      return { type: "error", status: 500, message: "Authentication service unavailable" };
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -269,7 +321,7 @@ export async function GET(request: NextRequest) {
     // 1. Validate environment first
     const envCheck = validateEnvironment();
     if (!envCheck.isValid) {
-      console.error("[GET /api/settings] Environment validation failed");
+      console.error("[GET /api/settings] Environment validation failed:", envCheck.missingVars.join(", "));
       // Return defaults rather than 500 - user won't have broken app
       return NextResponse.json(DEFAULT_SETTINGS, {
         headers: { "Cache-Control": "private, no-store" },
@@ -384,8 +436,13 @@ export async function PUT(request: NextRequest) {
     // 1. Validate environment
     const envCheck = validateEnvironment();
     if (!envCheck.isValid) {
-      console.error("[PUT /api/settings] Environment validation failed");
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+      console.error("[PUT /api/settings] Environment validation failed:", envCheck.missingVars.join(", "));
+      return settingsErrorResponse(
+        500,
+        "ENV_MISCONFIGURED",
+        "Server configuration error",
+        `Missing environment variables: ${envCheck.missingVars.join(", ")}`
+      );
     }
 
     // 2. Safe imports
@@ -395,7 +452,7 @@ export async function PUT(request: NextRequest) {
 
     if (!prisma || !supabaseAdmin || !getOrCreateUser) {
       console.error("[PUT /api/settings] Failed to import required modules");
-      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+      return settingsErrorResponse(500, "SERVER_INIT_FAILED", "Server initialization failure");
     }
 
     // 3. Parse request body safely
@@ -463,13 +520,17 @@ export async function PUT(request: NextRequest) {
     const authResult = await requireAuth(request, supabaseAdmin, getOrCreateUser);
 
     if (authResult.type === "error") {
-      console.warn("[PUT /api/settings] Auth failed");
-      return NextResponse.json({ error: authResult.message }, { status: authResult.status });
+      console.warn("[PUT /api/settings] Auth failed with status", authResult.status);
+      return settingsErrorResponse(
+        authResult.status === 401 ? 401 : 500,
+        "AUTH_FAILED",
+        authResult.message || "Not authorized"
+      );
     }
 
     if (authResult.type === "degraded") {
       console.warn("[PUT /api/settings] Auth degraded, cannot update");
-      return NextResponse.json({ error: "Service temporarily unavailable" }, { status: 503 });
+      return settingsErrorResponse(500, "DATABASE_UNAVAILABLE", "Unable to save settings at this time");
     }
 
     // 6. Build update data
@@ -606,11 +667,11 @@ export async function PUT(request: NextRequest) {
     } catch (dbErr) {
       const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
       console.error("[PUT /api/settings] Database update failed:", errMsg);
-      return NextResponse.json({ error: "Failed to save settings" }, { status: 503 });
+      return settingsErrorResponse(500, "DB_WRITE_FAILED", "Failed to save settings", dbErr);
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error("[PUT /api/settings] FATAL UNHANDLED ERROR:", errMsg);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return settingsErrorResponse(500, "UNHANDLED_ERROR", "Internal server error", err);
   }
 }

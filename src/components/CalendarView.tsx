@@ -92,10 +92,16 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
   const router = useRouter();
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(preloadedGigs === undefined);
-  const [view, setView] = useState<View>(() =>
-    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "agenda" : "month"
-  );
-  const [date, setDate] = useState(new Date());
+  // Hydration-safe (#418/#423): start from a deterministic default that both
+  // server and client render identically. The viewport-adaptive default is
+  // applied post-mount via the restore effect below so the initial HTML matches.
+  const [view, setView] = useState<View>("month");
+  // Hydration-safe: new Date() in a useState initializer produces a different
+  // timestamp on the server vs client (clock skew + request arrival time),
+  // which makes React bail out of hydration with a console error. Start from
+  // a fixed reference date and let the restore effect below apply the real
+  // "today" once the component is mounted.
+  const [date, setDate] = useState<Date>(new Date("2024-01-01T00:00:00Z"));
   const [calendarHeight, setCalendarHeight] = useState(600);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [filterCharity, setFilterCharity] = useState(true);
@@ -317,6 +323,21 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
     updateCalendarHeight();
     window.addEventListener("resize", updateCalendarHeight);
     return () => window.removeEventListener("resize", updateCalendarHeight);
+  }, []);
+
+  // Hydration-safe (#418/#423): restore the viewport-adaptive view mode and
+  // the real "today" date after mount. The initial useState defaults above are
+  // deterministic (so server === client HTML), and this effect updates them to
+  // the correct runtime values once the component is hydrated.
+  useEffect(() => {
+    // Restore viewport-adaptive default for mobile/desktop calendar view
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setView("agenda");
+    }
+    // Restore the real current date (midnight local time) for the calendar display
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setDate(today);
   }, []);
 
   useEffect(() => {

@@ -67,13 +67,34 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#0f172a" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
         <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, minimal-ui" />
+        {/* 
+          Pre-hydration theme script: runs before React hydrates so the
+          server-rendered HTML already carries the correct dark/light class.
+          Without this, the server renders with no 'dark' class but the
+          ThemeProvider effect adds it immediately on mount, causing a
+          flash and potential hydration mismatch for theme-dependent styling.
+          suppressHydrationWarning on <html> (above) tolerates the class
+          difference for the html element itself; the script keeps the
+          initial paint consistent with the hydrated result.
+        */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                const theme = localStorage.getItem('theme') || 'system';
-                if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
+                var theme = localStorage.getItem('theme');
+                if (theme !== 'system' && theme !== 'light' && theme !== 'dark') theme = 'system';
+                var html = document.documentElement;
+                if (theme === 'dark') {
+                  html.classList.add('dark');
+                } else if (theme === 'light') {
+                  html.classList.remove('dark');
+                } else {
+                  // system preference — defer to matchMedia; matches what ThemeProvider will do
+                  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    html.classList.add('dark');
+                  } else {
+                    html.classList.remove('dark');
+                  }
                 }
               } catch (e) {}
             `,

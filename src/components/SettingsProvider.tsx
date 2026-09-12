@@ -91,6 +91,10 @@ interface SettingsContextType {
   fmtDateTime: (value: string | null | undefined) => string;
   /** Whether to exclude current user from band member count */
   excludeSelfFromMemberCount: boolean;
+  /** Counter incremented each time settings (incl. customTab1/customTab2) update.
+   *  Navigation components watch this to prioritize re-rendering tabs as soon as
+   *  the GET /api/settings response lands, via startTransition. */
+  navTabVersion: number;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -108,6 +112,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // response is merged *under* these keys so a rapid second toggle can't be
   // rolled back to the first toggle's stale echo (race-safe persistence).
   const pendingPatchRef = useRef<Partial<UserSettingsData>>({});
+  // Signals to consumers that customTab1/customTab2 have been populated from
+  // the DB (or are still at deterministic defaults). Navigation components
+  // watch this counter to prioritize re-rendering tabs as soon as the GET
+  // /api/settings response lands, rather than waiting for the full settings
+  // object to settle. Incremented on every settings update (including the
+  // initial DEFAULT_SETTINGS), so the first render already carries a stable
+  // value and later DB-driven updates increment it to trigger a priority
+  // navigation re-render via useTransition in Dashboard.
+  const navTabVersionRef = useRef(0);
+  const [navTabVersion, setNavTabVersion] = useState(0);
 
   const locale = resolveLocale(language);
 
@@ -154,6 +168,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const load = async () => {
       if (!session?.user) {
         setSettings(DEFAULT_SETTINGS);
+        navTabVersionRef.current += 1;
+        setNavTabVersion(navTabVersionRef.current);
         setLoading(false);
         return;
       }
@@ -193,7 +209,27 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           // Re-apply any settings that failed to push earlier (offline / 5xx),
           // so a reload never silently reverts the user's last edits.
           const pending = readPendingSettingsSync();
-          setSettings(pending ? { ...data, ...pending } : data);
+
+          // Prioritize custom tab navigation hydration: update the navigation-
+          // critical fields (customTab1, customTab2) immediately so the header
+          // re-renders with the DB-provided tab titles as soon as the GET
+          // /api/settings response lands, before the remaining settings settle.
+          // This avoids a visible flash from default tabs → custom tabs on load.
+          setSettings(prev => ({
+            ...prev,
+            customTab1: pending?.customTab1 ?? data.customTab1 ?? DEFAULT_SETTINGS.customTab1,
+            customTab2: pending?.customTab2 ?? data.customTab2 ?? DEFAULT_SETTINGS.customTab2,
+          }));
+          navTabVersionRef.current += 1;
+          setNavTabVersion(navTabVersionRef.current);
+
+          // Now merge the full settings payload so the remaining fields
+          // (currency, theme, PDF prefs, etc.) settle without blocking the nav.
+          setSettings(prev => {
+            const merged = { ...prev, ...data, ...pending };
+            return merged;
+          });
+
           if (pending && token) {
             // Best-effort flush of deferred settings (fire-and-forget). A
             // failure simply leaves the local pending copy for the next flush.
@@ -228,6 +264,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           settingsFetchBlockedRef.current = true;
           if (!cancelled) {
             setSettings(DEFAULT_SETTINGS);
+            navTabVersionRef.current += 1;
+            setNavTabVersion(navTabVersionRef.current);
           }
         }
       } catch (err) {
@@ -409,7 +447,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SettingsContext.Provider value={{ settings, loading, updateSettings, fmtCurrency, language, setLanguage, locale, fmtDate, fmtDateTime, excludeSelfFromMemberCount: settings.excludeSelfFromMemberCount ?? false }}>
+    <SettingsContext.Provider value={{ settings, loading, updateSettings, fmtCurrency, language, setLanguage, locale, fmtDate, fmtDateTime, excludeSelfFromMemberCount: settings.excludeSelfFromMemberCount ?? false, navTabVersion }}>
       {children}
     </SettingsContext.Provider>
   );

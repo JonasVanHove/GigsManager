@@ -1,0 +1,31 @@
+name: Keep Supabase Active (health endpoint)
+
+# Supabase free-tier pauses the database after 7 days of inactivity.
+# This workflow pings the deployed /api/health endpoint twice a week; every
+# hit runs a real `SELECT 1` against the Supabase Postgres database (via
+# Prisma), which registers as genuine database activity and resets the
+# inactivity timer.
+#
+# Note: .github/workflows/keepalive.yml (every 4 days) additionally pings the
+# PostgREST API directly as a redundant fallback — both can safely coexist.
+
+on:
+  schedule:
+    - cron: "0 12 * * 1,4" # Twice a week: Monday & Thursday at 12:00 UTC
+  workflow_dispatch: # Manual trigger (for testing)
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping app health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl /api/health (runs SELECT 1 on Supabase)
+        run: |
+          echo "Pinging https://gigsmanager.netlify.app/api/health …"
+          curl --fail --silent --show-error --max-time 30 \
+            "https://gigsmanager.netlify.app/api/health"
+          echo ""
+          echo "✅ Health endpoint OK — database activity registered."

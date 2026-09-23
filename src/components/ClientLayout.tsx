@@ -6,7 +6,16 @@ import { SettingsProvider } from "./SettingsProvider";
 import { ThemeProvider } from "./ThemeProvider";
 import { I18nProvider } from "./I18nProvider";
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
+export function ClientLayout({
+  children,
+  initialCustomTab1,
+  initialCustomTab2,
+}: {
+  children: React.ReactNode;
+  /** Custom tabs parsed from the SSR cookie by the server root layout. */
+  initialCustomTab1?: string | null;
+  initialCustomTab2?: string | null;
+}) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -32,7 +41,10 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   // The providers will handle their own loading states internally
   return (
     <AuthProvider>
-      <SettingsProvider>
+      <SettingsProvider
+        initialCustomTab1={initialCustomTab1}
+        initialCustomTab2={initialCustomTab2}
+      >
         <I18nProvider>
           <ThemeProvider>
             {children}

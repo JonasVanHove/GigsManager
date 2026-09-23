@@ -1,9 +1,15 @@
 ﻿"use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { useRef } from "react";
 import type { UserSettingsData } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
+import {
+  CUSTOM_TAB1_STORAGE_KEY,
+  CUSTOM_TAB2_STORAGE_KEY,
+  buildCustomTabsCookieString,
+  isValidTabSlug,
+} from "@/lib/custom-tabs";
 import { useAuth } from "./AuthProvider";
 import { formatDate, formatDateTime, resolveLocale, type AppLanguage } from "@/lib/preferences";
 
@@ -71,6 +77,38 @@ function isTransientSaveError(res: Response | null | undefined, err?: unknown): 
   return err instanceof TypeError;
 }
 
+// useLayoutEffect warns during SSR (and never runs there anyway) — this
+// isomorphic alias keeps server logs clean while the browser still gets the
+// pre-paint layout effect for the localStorage cache adopt.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/**
+ * Cache-first custom tabs: mirror the tab pair into localStorage AND the SSR
+ * cookie in one call. Runs on every successful settings fetch and on every UI
+ * save, so the next page load renders the right tab names from the first byte
+ * (cookie → root layout) with localStorage as the client-side fallback.
+ * Only writes the cookie when BOTH halves are valid (never clobbers a good
+ * cookie with a half-populated pair).
+ */
+function persistCustomTabsToCache(
+  tab1: string | null | undefined,
+  tab2: string | null | undefined
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (isValidTabSlug(tab1)) window.localStorage.setItem(CUSTOM_TAB1_STORAGE_KEY, tab1);
+    if (isValidTabSlug(tab2)) window.localStorage.setItem(CUSTOM_TAB2_STORAGE_KEY, tab2);
+  } catch {
+    // Storage full / private mode — React state already carries the change.
+  }
+  try {
+    const cookie = buildCustomTabsCookieString(tab1, tab2);
+    if (cookie) document.cookie = cookie;
+  } catch {
+    // Cookies blocked — the localStorage fallback still covers client loads.
+  }
+}
+
 interface SettingsContextType {
   settings: UserSettingsData;
   /** Is the initial settings load still in progress? */
@@ -99,9 +137,28 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export function SettingsProvider({ children }: { children: React.ReactNode }) {
+interface SettingsProviderProps {
+  children: React.ReactNode;
+  /**
+   * Custom tabs parsed from the keep-alive cookie by the server root layout.
+   * Identical on the server render AND the client's first (hydration) render
+   * (serialized in the RSC payload), so the nav markup matches byte-for-byte
+   * while still showing the real custom tab names from the first byte —
+   * #418/#423-safe by construction (never a direct localStorage read here).
+   */
+  initialCustomTab1?: string | null;
+  initialCustomTab2?: string | null;
+}
+
+export function SettingsProvider({ children, initialCustomTab1, initialCustomTab2 }: SettingsProviderProps) {
   const { session, getAccessToken } = useAuth();
-  const [settings, setSettings] = useState<UserSettingsData>(DEFAULT_SETTINGS);
+  // Deterministic initial state: server and client first render both derive
+  // from the same cookie-backed props, so hydration stays clean.
+  const [settings, setSettings] = useState<UserSettingsData>(() => ({
+    ...DEFAULT_SETTINGS,
+    customTab1: initialCustomTab1 ?? DEFAULT_SETTINGS.customTab1,
+    customTab2: initialCustomTab2 ?? DEFAULT_SETTINGS.customTab2,
+  }));
   const [loading, setLoading] = useState(true);
   const [language, setLanguageState] = useState<AppLanguage>("system");
   const settingsFetchBlockedRef = useRef(false);
@@ -122,6 +179,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   // navigation re-render via useTransition in Dashboard.
   const navTabVersionRef = useRef(0);
   const [navTabVersion, setNavTabVersion] = useState(0);
+  // Latest committed settings — lets updateSettings compute the full tab pair
+  // for a synchronous cache write without adding `settings` to its deps.
+  const settingsSnapshotRef = useRef(settings);
+  // True when the root layout already server-rendered the tabs from the
+  // cookie; then the localStorage adopt below must stay away (cookie won).
+  const ssrTabsProvidedRef = useRef(initialCustomTab1 != null || initialCustomTab2 != null);
 
   const locale = resolveLocale(language);
 
@@ -132,6 +195,45 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore storage failures
     }
+  }, []);
+
+  // Keep the snapshot fresh for every state update (fetch, cache adopt, …).
+  useEffect(() => {
+    settingsSnapshotRef.current = settings;
+  }, [settings]);
+
+  // Cache-first custom tabs (instant navigation): when the SSR cookie was
+  // absent, adopt the localStorage cache in a LAYOUT effect — it runs after
+  // hydration but BEFORE the browser paints, so the default tab names are
+  // never visibly shown (no layout shift / flash), while server and client
+  // still agree on the initial HTML (#418/#423-safe: the first render matches
+  // the server; only a post-hydration, pre-paint update follows).
+  useIsomorphicLayoutEffect(() => {
+    if (ssrTabsProvidedRef.current) return;
+    let raw1: string | null = null;
+    let raw2: string | null = null;
+    try {
+      raw1 = window.localStorage.getItem(CUSTOM_TAB1_STORAGE_KEY);
+      raw2 = window.localStorage.getItem(CUSTOM_TAB2_STORAGE_KEY);
+    } catch {
+      return; // Storage unavailable — defaults + background fetch stand.
+    }
+    const tab1 = isValidTabSlug(raw1) ? raw1 : null;
+    const tab2 = isValidTabSlug(raw2) ? raw2 : null;
+    if (!tab1 && !tab2) return;
+    setSettings((prev) => ({
+      ...prev,
+      customTab1: tab1 ?? prev.customTab1,
+      customTab2: tab2 ?? prev.customTab2,
+    }));
+    // Promote localStorage → cookie so the NEXT server render is instant too
+    // (the cookie was necessarily absent here, so this cannot clobber it).
+    persistCustomTabsToCache(
+      tab1 ?? DEFAULT_SETTINGS.customTab1,
+      tab2 ?? DEFAULT_SETTINGS.customTab2
+    );
+    navTabVersionRef.current += 1;
+    setNavTabVersion(navTabVersionRef.current);
   }, []);
 
   // -- Fetch on login ------------------------------------------------------
@@ -167,7 +269,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
     const load = async () => {
       if (!session?.user) {
-        setSettings(DEFAULT_SETTINGS);
+        // Reset to defaults but keep the last-known custom nav tabs (cookie /
+        // localStorage cache) so the navigation never flashes back to the
+        // default tab names while logged out.
+        setSettings((prev) => ({
+          ...DEFAULT_SETTINGS,
+          customTab1: prev.customTab1 ?? DEFAULT_SETTINGS.customTab1,
+          customTab2: prev.customTab2 ?? DEFAULT_SETTINGS.customTab2,
+        }));
         navTabVersionRef.current += 1;
         setNavTabVersion(navTabVersionRef.current);
         setLoading(false);
@@ -215,11 +324,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           // re-renders with the DB-provided tab titles as soon as the GET
           // /api/settings response lands, before the remaining settings settle.
           // This avoids a visible flash from default tabs → custom tabs on load.
+          const freshTab1 = pending?.customTab1 ?? data.customTab1 ?? DEFAULT_SETTINGS.customTab1;
+          const freshTab2 = pending?.customTab2 ?? data.customTab2 ?? DEFAULT_SETTINGS.customTab2;
           setSettings(prev => ({
             ...prev,
-            customTab1: pending?.customTab1 ?? data.customTab1 ?? DEFAULT_SETTINGS.customTab1,
-            customTab2: pending?.customTab2 ?? data.customTab2 ?? DEFAULT_SETTINGS.customTab2,
+            customTab1: freshTab1,
+            customTab2: freshTab2,
           }));
+          // Background-sync cache update: overwrite localStorage + the SSR
+          // cookie with the fresh DB values so subsequent visits/reloads load
+          // the updated tabs instantly (before the next fetch even starts).
+          persistCustomTabsToCache(freshTab1, freshTab2);
+          settingsSnapshotRef.current = {
+            ...settingsSnapshotRef.current,
+            customTab1: freshTab1,
+            customTab2: freshTab2,
+          };
           navTabVersionRef.current += 1;
           setNavTabVersion(navTabVersionRef.current);
 
@@ -263,7 +383,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           // the user's last edits are never visibly lost.
           settingsFetchBlockedRef.current = true;
           if (!cancelled) {
-            setSettings(DEFAULT_SETTINGS);
+            // Fall back to defaults for everything EXCEPT the custom nav tabs:
+            // the last cached values (cookie/localStorage) keep the navigation
+            // stable while the API is unreachable (cache-first).
+            setSettings((prev) => ({
+              ...DEFAULT_SETTINGS,
+              customTab1: prev.customTab1 ?? DEFAULT_SETTINGS.customTab1,
+              customTab2: prev.customTab2 ?? DEFAULT_SETTINGS.customTab2,
+            }));
             navTabVersionRef.current += 1;
             setNavTabVersion(navTabVersionRef.current);
           }
@@ -293,6 +420,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setSettings((prev) => ({ ...prev, ...patch }));
       // Track in-flight keys so stale PUT echoes can't clobber newer edits.
       pendingPatchRef.current = { ...pendingPatchRef.current, ...patch };
+
+      // Cache-first: when the patch touches the custom nav tabs, mirror them
+      // into localStorage + the SSR cookie SYNCHRONOUSLY — before the network
+      // mutation — so even a reload mid-flight (or a failed PUT) renders the
+      // user's chosen tabs from the first byte of the next response.
+      if (patch.customTab1 !== undefined || patch.customTab2 !== undefined) {
+        const mergedTabs = { ...settingsSnapshotRef.current, ...patch };
+        persistCustomTabsToCache(mergedTabs.customTab1, mergedTabs.customTab2);
+        settingsSnapshotRef.current = mergedTabs;
+      }
 
       let token: string | null = null;
       try {

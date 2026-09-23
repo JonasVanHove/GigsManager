@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { cookies } from "next/headers";
 import { ClientLayout } from "@/components/ClientLayout";
+import { CUSTOM_TAB_COOKIE_NAME, parseCustomTabsCookie } from "@/lib/custom-tabs";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,6 +55,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Custom-tab cache cookie: written client-side by SettingsProvider whenever
+  // tabs are fetched or saved. Parsing it here lets the FIRST server-rendered
+  // HTML already carry the real custom tab names (no flash of defaults), and
+  // the client's hydration render receives the identical values as props via
+  // the RSC payload — so server and client match byte-for-byte (#418/#423).
+  const ssrTabs = parseCustomTabsCookie(cookies().get(CUSTOM_TAB_COOKIE_NAME)?.value);
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -213,7 +221,12 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} ${inter.variable}`} suppressHydrationWarning>
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout
+          initialCustomTab1={ssrTabs.customTab1 ?? null}
+          initialCustomTab2={ssrTabs.customTab2 ?? null}
+        >
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );

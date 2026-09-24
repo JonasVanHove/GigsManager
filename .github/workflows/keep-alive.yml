@@ -1,31 +1,59 @@
 name: Keep Supabase Active (health endpoint)
 
-# Supabase free-tier pauses the database after 7 days of inactivity.
-# This workflow pings the deployed /api/health endpoint twice a week; every
-# hit runs a real `SELECT 1` against the Supabase Postgres database (via
-# Prisma), which registers as genuine database activity and resets the
-# inactivity timer.
-#
-# Note: .github/workflows/keepalive.yml (every 4 days) additionally pings the
-# PostgREST API directly as a redundant fallback — both can safely coexist.
-
+# Supabase free-tier pauses an inactive database after seven days. This
+# workflow pings the deployed health endpoint twice a week. Each successful
+# request executes a real SELECT 1 against Supabase Postgres via Prisma.
 on:
   schedule:
-    - cron: "0 12 * * 1,4" # Twice a week: Monday & Thursday at 12:00 UTC
-  workflow_dispatch: # Manual trigger (for testing)
+    - cron: "0 12 * * 1,4" # Monday & Thursday at 12:00 UTC
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# Do not let a manual check overlap a scheduled check against the endpoint.
+concurrency:
+  group: supabase-keep-alive
+  cancel-in-progress: false
+
 jobs:
   ping:
-    name: Ping app health endpoint
+    name: Verify Supabase database health
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Curl /api/health (runs SELECT 1 on Supabase)
+      - name: Ping and validate the health endpoint
+        shell: bash
+        env:
+          # Optional: Settings -> Secrets and variables -> Actions -> Variables.
+          # KEEP_ALIVE_URL is a public endpoint URL, not a secret. The default
+          # keeps this workflow working when no repository variable is set.
+          HEALTHCHECK_URL: ${{ vars.KEEP_ALIVE_URL || 'https://gigsmanager.netlify.app/api/health' }}
         run: |
-          echo "Pinging https://gigsmanager.netlify.app/api/health …"
-          curl --fail --silent --show-error --max-time 30 \
-            "https://gigsmanager.netlify.app/api/health"
-          echo ""
-          echo "✅ Health endpoint OK — database activity registered."
+          set -euo pipefail
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          echo "Checking ${HEALTHCHECK_URL} (runs SELECT 1 on Supabase)..."
+          curl --fail --silent --show-error \
+            --retry 3 \
+            --retry-delay 5 \
+            --retry-max-time 60 \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --output "$response_file" \
+            --write-out 'HTTP status: %{http_code}\n' \
+            "$HEALTHCHECK_URL"
+          echo
+          cat "$response_file"
+          echo
+
+          node -e '
+            const fs = require("fs");
+            const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (payload.status !== "healthy" || payload.database !== "connected") {
+              console.error("Health endpoint did not confirm a healthy Supabase connection.");
+              process.exit(1);
+            }
+            console.log("Health endpoint OK — database activity registered.");
+          ' "$response_file"

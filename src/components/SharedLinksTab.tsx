@@ -6,6 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastContainer";
 import { formatDate } from "@/lib/preferences";
 import BandTag from "./BandTag";
+import { Icons } from "./Icons";
 
 const DEFAULT_SHARE_LINK_VISIBILITY: ShareLinkVisibility = {
   showEventName: true,
@@ -60,6 +61,40 @@ const visibilityGroups: Array<{
     ],
   },
 ];
+
+/** Chip labels for the NON-financial fields a shared link can expose. */
+const infoChipLabels: Array<{ key: keyof ShareLinkVisibility; label: string }> = [
+  { key: "showEventName", label: "Event name" },
+  { key: "showGigDate", label: "Gig date" },
+  { key: "showBookingDate", label: "Booking date" },
+  { key: "showVenuePerformers", label: "Venue / performers" },
+  { key: "showNotes", label: "Notes" },
+  { key: "showClientPaymentStatus", label: "Client payment" },
+  { key: "showBandPaymentStatus", label: "Band payment" },
+];
+
+/** Chip labels for financial fields (suppressed while hide-all is on). */
+const financialChipLabels: Array<{ key: keyof ShareLinkVisibility; label: string }> = [
+  { key: "showPerformanceFee", label: "Performance fee" },
+  { key: "showPerMusicianShare", label: "Per musician" },
+  { key: "showManagerEarnings", label: "Manager earnings" },
+  { key: "showManagerBonus", label: "Manager bonus" },
+  { key: "showTechnicalFee", label: "Technical fee" },
+  { key: "showTotalCost", label: "Total cost" },
+];
+
+/**
+ * Compact visual snippet of what external viewers will actually see on the
+ * public /share page — only the flags that are switched ON are rendered.
+ */
+function getVisibleShareChips(visibility?: ShareLinkVisibility): string[] {
+  const v = visibility ?? DEFAULT_SHARE_LINK_VISIBILITY;
+  const chips = infoChipLabels.filter(({ key }) => v[key]).map(({ label }) => label);
+  if (!v.hideAllFinancialInformation) {
+    chips.push(...financialChipLabels.filter(({ key }) => v[key]).map(({ label }) => label));
+  }
+  return chips;
+}
 
 export default function SharedLinksTab() {
   const { getAccessToken } = useAuth();
@@ -405,61 +440,120 @@ export default function SharedLinksTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {links.map((link) => (
-            <article
-              key={link.id}
-              className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-slate-900 dark:text-white">
-                    📎 {link.title || "Untitled Shared Overview"}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Created: {formatDate(link.createdAt)} • Expires: {link.expiresAt ? formatDate(link.expiresAt) : "Never"} • Gigs: {link.gigCount}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    {link.passwordProtected && (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">🔒 Password protected</span>
+          {links.map((link) => {
+            const visibleChips = getVisibleShareChips(link.visibility);
+    return (
+      <article
+        key={link.id}
+        className="grid gap-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900/80 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-center"
+      >
+              {/* Visual snippet — how this link looks to external viewers */}
+              <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="flex items-center gap-1.5 border-b border-slate-200 bg-white/80 px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900/70">
+                  <span className="h-2 w-2 rounded-full bg-red-400" aria-hidden />
+                  <span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
+                  <span className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                    /share/{link.token.slice(0, 12)}…
+                  </span>
+                </div>
+                <div className="bg-gradient-to-br from-brand-600 via-violet-600 to-indigo-700 px-3 py-3 text-white">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold">
+                      {link.title || "Shared Gig Overview"}
+                    </p>
+                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium backdrop-blur">
+                      {link.gigCount} {link.gigCount === 1 ? "gig" : "gigs"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                    {link.selectionMode === "all" && (
+                      <span className="rounded-full bg-white/15 px-2 py-0.5">All gigs</span>
                     )}
-                    {link.isExpired && (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">Expired</span>
-                    )}
+                    {link.selectionMode === "artist" &&
+                      (link.includeArtists ?? []).slice(0, 4).map((artist) => (
+                        <span
+                          key={artist}
+                          className="max-w-32 truncate rounded-full bg-white/15 px-2 py-0.5"
+                        >
+                          {artist}
+                        </span>
+                      ))}
                   </div>
                 </div>
+                <div className="flex flex-wrap gap-1.5 px-3 py-2">
+                  {visibleChips.slice(0, 6).map((label) => (
+                    <span
+                      key={label}
+                      className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700"
+                    >
+                      {label}
+                    </span>
+                  ))}
+                  {visibleChips.length > 6 && (
+                    <span className="px-1 py-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+                      +{visibleChips.length - 6} more
+                    </span>
+                  )}
+                </div>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => openEditModal(link)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    Edit permissions
-                  </button>
+              {/* Status badges, meta & quick actions */}
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {link.isExpired ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                      <Icons.Clock className="h-3.5 w-3.5" /> Expired
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      <Icons.CheckCircle className="h-3.5 w-3.5" /> Active
+                    </span>
+                  )}
+                  {link.passwordProtected && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                      <Icons.Lock className="h-3.5 w-3.5" /> Protected
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Created {formatDate(link.createdAt)} • Expires{" "}
+                  {link.expiresAt ? formatDate(link.expiresAt) : "never"}
+                </p>
+              <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => copyLink(link.token)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
                   >
-                    Copy link
+                    <Icons.Copy className="h-3.5 w-3.5" /> Copy link
                   </button>
                   <a
                     href={`/share/${link.token}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    Preview
+                    <Icons.ExternalLink className="h-3.5 w-3.5" /> Preview
                   </a>
+                  <button
+                    onClick={() => openEditModal(link)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <Icons.Edit className="h-3.5 w-3.5" /> Edit
+                  </button>
                   <button
                     onClick={() => handleDelete(link.id)}
                     disabled={deletingId === link.id}
-                    className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/30"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950/30"
                   >
-                    {deletingId === link.id ? "Deleting..." : "Delete"}
+                    <Icons.Trash className="h-3.5 w-3.5" />
+                    {deletingId === link.id ? "Revoking…" : "Revoke"}
                   </button>
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 

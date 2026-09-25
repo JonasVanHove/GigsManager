@@ -13,7 +13,7 @@ import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
 import { useToast } from "./ToastContainer";
 import { Icons } from "./Icons";
-import LandingPage from "./LandingPage";
+
 import GigCard from "./GigCard";
 import GigForm from "./GigForm";
 import DeleteConfirm from "./DeleteConfirm";
@@ -1352,9 +1352,17 @@ export default function Dashboard() {
 
   // -- Render -----------------------------------------------------------------
 
-  // Show login if not authenticated (but render immediately, don't block)
+  // Redirect unauthenticated users to the landing page.
+  // In the /app route flow, AuthGate already handles this — this guard
+  // exists as a safety net for direct imports of Dashboard.
+  useEffect(() => {
+    if (!session?.user) {
+      router.replace("/");
+    }
+  }, [session, router]);
+
   if (!session?.user) {
-    return <LandingPage />;
+    return null;
   }
 
   // Render dashboard immediately - don't block on loading states

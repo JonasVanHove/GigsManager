@@ -1,18 +1,17 @@
-﻿import { Suspense } from "react";
-import Dashboard from "@/components/Dashboard";
-import { ToastProvider } from "@/components/ToastContainer";
+import { Suspense } from "react";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { MarketingLandingPage } from "@/components/MarketingLandingPage";
 
 export default function Home() {
   return (
-    <ToastProvider>
-      <Suspense fallback={
+    <Suspense
+      fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <LoadingSpinner size="lg" message="Loading application..." />
+          <LoadingSpinner size="lg" message="Loading..." />
         </div>
-      }>
-        <Dashboard />
-      </Suspense>
-    </ToastProvider>
+      }
+    >
+      <MarketingLandingPage />
+    </Suspense>
   );
 }

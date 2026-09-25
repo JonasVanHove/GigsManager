@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Avatar from "./Avatar";
@@ -299,27 +299,30 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   // directly under document.body (same pattern as XAIConfirmationModal).
   // This prevents parent transforms, filters, overflow or stacking contexts in
   // the layout from breaking `position: fixed` dead-center positioning.
+  // State for active mobile settings section
+  const [activeSection, setActiveSection] = useState<'all' | 'profile' | 'nav' | 'appearance' | 'pdf'>('all');
+
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] items-center justify-center bg-black/70 p-4 backdrop-blur-sm modal-backdrop-enter"
+      className="fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-sm modal-backdrop-enter"
       onClick={handleBackdropClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Strict layout reset: `relative my-auto` guarantees no stray
-          margin-top / top / translate offset can leak in — combined with
-          items-center it yields perfect vertical symmetry (equal space above
-          the header and below the footer). Surface colours stay theme-aware
-          (a hard bg-slate-900 would be unreadable in light mode). */}
       <div
-        className="relative my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200/50 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-800 dark:bg-slate-900 max-h-[85dvh] settings-modal-card modal-content-enter"
+        className="relative my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200/50 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-800 dark:bg-slate-900 max-h-[92dvh] sm:max-h-[85dvh] settings-modal-card modal-content-enter"
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100/50 px-6 py-5 dark:border-slate-700/50">
-          <h2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-lg font-semibold text-transparent dark:from-white dark:to-slate-200">
-            {t('settings.title')}
-          </h2>
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100/50 px-4 py-3.5 sm:px-6 sm:py-5 dark:border-slate-700/50">
+          <div>
+            <h2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-lg font-semibold text-transparent dark:from-white dark:to-slate-200">
+              {t('settings.title')}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 sm:hidden">
+              Customize app experience & preferences
+            </p>
+          </div>
           <button
             onClick={onClose}
             aria-label="Close settings"
@@ -329,480 +332,550 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           </button>
         </div>
 
+        {/* Section Navigation Pills for quick scrolling on mobile */}
+        <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-slate-100 bg-slate-50/70 p-2 text-xs no-scrollbar dark:border-slate-800 dark:bg-slate-900/60 sm:px-6">
+          <button
+            onClick={() => setActiveSection('all')}
+            className={`min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 font-medium transition ${
+              activeSection === 'all'
+                ? 'bg-brand-600 text-white shadow-sm dark:bg-brand-500'
+                : 'bg-white/80 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-300'
+            }`}
+          >
+            All Settings
+          </button>
+          <button
+            onClick={() => setActiveSection('profile')}
+            className={`min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 font-medium transition ${
+              activeSection === 'profile'
+                ? 'bg-indigo-600 text-white shadow-sm dark:bg-indigo-500'
+                : 'bg-white/80 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-300'
+            }`}
+          >
+            {t('settings.profile')}
+          </button>
+          <button
+            onClick={() => setActiveSection('nav')}
+            className={`min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 font-medium transition ${
+              activeSection === 'nav'
+                ? 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-500'
+                : 'bg-white/80 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-300'
+            }`}
+          >
+            {t('settings.customTabs')}
+          </button>
+          <button
+            onClick={() => setActiveSection('appearance')}
+            className={`min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 font-medium transition ${
+              activeSection === 'appearance'
+                ? 'bg-amber-600 text-white shadow-sm dark:bg-amber-500'
+                : 'bg-white/80 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-300'
+            }`}
+          >
+            {t('settings.appearance')}
+          </button>
+          <button
+            onClick={() => setActiveSection('pdf')}
+            className={`min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 font-medium transition ${
+              activeSection === 'pdf'
+                ? 'bg-purple-600 text-white shadow-sm dark:bg-purple-500'
+                : 'bg-white/80 text-slate-600 hover:bg-white dark:bg-slate-800/60 dark:text-slate-300'
+            }`}
+          >
+            PDF & Band
+          </button>
+        </div>
+
         {/* min-h-0 is critical: without it the tall settings content cannot
             shrink below its content height, pushing the footer outside the
             clipped card on short laptop viewports. */}
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-6">
-          <div className="rounded-2xl border border-indigo-500/30 bg-indigo-50/40 p-4 backdrop-blur dark:border-indigo-500/20 dark:bg-indigo-950/10">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-                <Icons.People className="h-3.5 w-3.5" />
-              </span>
-              <label className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                {t('settings.profile')}
-              </label>
-            </div>
-            <div className="flex items-center gap-3">
-              <Avatar
-                src={avatarUrl}
-                name={displayName}
-                email={session?.user?.email}
-                size="lg"
-              />
-              <div className="flex-1 space-y-2">
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder={t('settings.displayName')}
-                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder={t('settings.avatarUrl')}
-                    className="flex-1 rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-                  />
-                  <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-600 shadow-sm backdrop-blur transition-all duration-200 hover:bg-slate-50/90 hover:shadow-md dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:bg-slate-700/70">
-                    {uploading ? <Icons.Spinner className="h-4 w-4" /> : <Icons.Download className="h-4 w-4" />}
-                    <span className="hidden sm:inline">{t('settings.upload')}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      disabled={uploading}
-                      className="hidden"
-                    />
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-4 sm:p-6">
+          {(activeSection === 'all' || activeSection === 'profile') && (
+            <>
+              <div className="rounded-2xl border border-indigo-500/30 bg-indigo-50/40 p-4 backdrop-blur dark:border-indigo-500/20 dark:bg-indigo-950/10">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <Icons.People className="h-3.5 w-3.5" />
+                  </span>
+                  <label className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                    {t('settings.profile')}
                   </label>
                 </div>
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              {t('settings.uploadHint')}
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              {t('settings.project')}
-            </label>
-            <a
-              href={githubRepoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm font-medium text-slate-800 shadow-sm backdrop-blur transition-all duration-200 hover:bg-slate-50/90 hover:shadow-md dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700/70"
-              title="Open GitHub repository"
-            >
-              <Icons.GitHub className="h-4 w-4" />
-              {t('settings.githubRepo')}
-            </a>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {t('settings.githubRepoHint')}
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              {t('settings.currency')}
-            </label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {t('settings.currencyHint')}
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              {t('settings.language')}
-            </label>
-            <select
-              value={appLanguage}
-              onChange={(e) => setAppLanguage(e.target.value as AppLanguage)}
-              className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-            >
-              <option value="system">{t('settings.languageSystem')}</option>
-              <option value="en">{t('settings.languageEnglish')}</option>
-              <option value="nl">{t('settings.languageDutch')}</option>
-            </select>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {appLanguage === "system"
-                ? t('settings.languageHintSystem')
-                : appLanguage === "nl"
-                ? t('settings.languageHintDutch')
-                : t('settings.languageHintEnglish')}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/40 p-4 backdrop-blur dark:border-emerald-500/20 dark:bg-emerald-950/10">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
-                <Icons.ListView className="h-3.5 w-3.5" />
-              </span>
-              <label className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                {t('settings.customTabs')}
-              </label>
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">
-                {t('settings.tabAccountBound', 'Account')}
-              </span>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  {t('settings.customTab1')}
-                </label>
-                <select
-                  value={customTab1}
-                  onChange={(e) => handleChangeCustomTab1(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-                >
-                  <option value="setlists">{t('dashboard.setlists')}</option>
-                  <option value="songs">{t('dashboard.songs')}</option>
-                  <option value="calendar">{t('dashboard.calendar')}</option>
-                  <option value="bands">{t('dashboard.bands')}</option>
-                  <option value="band-members">{t('dashboard.bandMembers')}</option>
-                  <option value="analytics">{t('dashboard.insights')}</option>
-                  <option value="investments">{t('dashboard.investments')}</option>
-                  <option value="shared-links">{t('dashboard.share')}</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  {t('settings.customTab2')}
-                </label>
-                <select
-                  value={customTab2}
-                  onChange={(e) => handleChangeCustomTab2(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
-                >
-                  <option value="setlists">{t('dashboard.setlists')}</option>
-                  <option value="songs">{t('dashboard.songs')}</option>
-                  <option value="calendar">{t('dashboard.calendar')}</option>
-                  <option value="bands">{t('dashboard.bands')}</option>
-                  <option value="band-members">{t('dashboard.bandMembers')}</option>
-                  <option value="analytics">{t('dashboard.insights')}</option>
-                  <option value="investments">{t('dashboard.investments')}</option>
-                  <option value="shared-links">{t('dashboard.share')}</option>
-                </select>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {t('settings.customTabsHint')}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-50/40 p-4 backdrop-blur dark:border-amber-500/20 dark:bg-amber-950/10">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
-                <Icons.Music2 className="h-3.5 w-3.5" />
-              </span>
-              <label className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                {t('settings.appearance')}
-              </label>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {(["light", "dark", "system"] as const).map((themeOption) => (
-                <button
-                  key={themeOption}
-                  onClick={() => setTheme(themeOption)}
-                  className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                    theme === themeOption
-                      ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-600"
-                  }`}
-                >
-                  {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {theme === "system"
-                ? t('settings.themeHintSystem')
-                : theme === "dark"
-                ? t('settings.themeHintDark')
-                : t('settings.themeHintLight')}
-            </p>
-          </div>
-
-          {canRequestFullscreen && (
-            <div>
-              <label className="mb-3 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {t('settings.display')}
-              </label>
-              <button
-                onClick={toggleFullscreen}
-                className={`flex w-full items-center justify-between rounded-lg border-2 px-4 py-3 transition-all duration-200 ${
-                  isFullscreen
-                    ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-950/30"
-                    : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
-                }`}
-              >
-                <span className={`text-sm font-medium ${isFullscreen ? "text-brand-700 dark:text-brand-300" : "text-slate-700 dark:text-slate-300"}`}>
-                  {t('settings.fullscreenMode')}
-                </span>
-                <div className={`h-5 w-9 rounded-full transition ${isFullscreen ? "bg-brand-500 dark:bg-brand-600" : "bg-slate-300 dark:bg-slate-600"}`}>
-                  <div className={`h-4 w-4 rounded-full bg-white transition-transform ${isFullscreen ? "translate-x-4" : "translate-x-0.5"}`} />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex items-center justify-center">
+                    <Avatar
+                      src={avatarUrl}
+                      name={displayName}
+                      email={session?.user?.email}
+                      size="lg"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2.5">
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder={t('settings.displayName')}
+                      className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={avatarUrl}
+                        onChange={(e) => setAvatarUrl(e.target.value)}
+                        placeholder={t('settings.avatarUrl')}
+                        className="flex-1 rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                      />
+                      <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-300/60 bg-white/80 px-3.5 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] hover:bg-slate-50/90 hover:shadow-md dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-400 dark:hover:bg-slate-700/70 shrink-0">
+                        {uploading ? <Icons.Spinner className="h-4 w-4 animate-spin" /> : <Icons.Download className="h-4 w-4" />}
+                        <span className="inline">{t('settings.upload')}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
-              </button>
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                {isFullscreen ? t('settings.fullscreenActive') : t('settings.fullscreenInactive')}
-              </p>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  {t('settings.uploadHint')}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('settings.project')}
+                </label>
+                <a
+                  href={githubRepoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-300/60 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm backdrop-blur transition-all duration-200 hover:bg-slate-50/90 hover:shadow-md dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-200 dark:hover:bg-slate-700/70"
+                  title="Open GitHub repository"
+                >
+                  <Icons.GitHub className="h-4 w-4" />
+                  {t('settings.githubRepo')}
+                </a>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('settings.githubRepoHint')}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('settings.currency')}
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('settings.currencyHint')}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('settings.language')}
+                </label>
+                <select
+                  value={appLanguage}
+                  onChange={(e) => setAppLanguage(e.target.value as AppLanguage)}
+                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                >
+                  <option value="system">{t('settings.languageSystem')}</option>
+                  <option value="en">{t('settings.languageEnglish')}</option>
+                  <option value="nl">{t('settings.languageDutch')}</option>
+                </select>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {appLanguage === "system"
+                    ? t('settings.languageHintSystem')
+                    : appLanguage === "nl"
+                    ? t('settings.languageHintDutch')
+                    : t('settings.languageHintEnglish')}
+                </p>
+              </div>
+            </>
+          )}
+
+          {(activeSection === 'all' || activeSection === 'nav') && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50/40 p-4 backdrop-blur dark:border-emerald-500/20 dark:bg-emerald-950/10">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  <Icons.ListView className="h-3.5 w-3.5" />
+                </span>
+                <label className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  {t('settings.customTabs')}
+                </label>
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-300">
+                  {t('settings.tabAccountBound', 'Account')}
+                </span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {t('settings.customTab1')}
+                  </label>
+                  <select
+                    value={customTab1}
+                    onChange={(e) => handleChangeCustomTab1(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 min-h-[44px] focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+                  >
+                    <option value="setlists">{t('dashboard.setlists')}</option>
+                    <option value="songs">{t('dashboard.songs')}</option>
+                    <option value="calendar">{t('dashboard.calendar')}</option>
+                    <option value="bands">{t('dashboard.bands')}</option>
+                    <option value="band-members">{t('dashboard.bandMembers')}</option>
+                    <option value="analytics">{t('dashboard.insights')}</option>
+                    <option value="investments">{t('dashboard.investments')}</option>
+                    <option value="shared-links">{t('dashboard.share')}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {t('settings.customTab2')}
+                  </label>
+                  <select
+                    value={customTab2}
+                    onChange={(e) => handleChangeCustomTab2(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 min-h-[44px] focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/30"
+                  >
+                    <option value="setlists">{t('dashboard.setlists')}</option>
+                    <option value="songs">{t('dashboard.songs')}</option>
+                    <option value="calendar">{t('dashboard.calendar')}</option>
+                    <option value="bands">{t('dashboard.bands')}</option>
+                    <option value="band-members">{t('dashboard.bandMembers')}</option>
+                    <option value="analytics">{t('dashboard.insights')}</option>
+                    <option value="investments">{t('dashboard.investments')}</option>
+                    <option value="shared-links">{t('dashboard.share')}</option>
+                  </select>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {t('settings.customTabsHint')}
+                </p>
+              </div>
             </div>
           )}
 
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-              {t('settings.feeComponents')}
-            </legend>
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-              {t('settings.feeComponentsHint')}
-            </p>
-
-            <div className="space-y-3">
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={claimPerf}
-                  onChange={(e) => setClaimPerf(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.performanceFee')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.performanceFeeHint')}
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={claimTech}
-                  onChange={(e) => setClaimTech(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.technicalFee')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.technicalFeeHint')}
-                  </p>
-                </div>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-              {t('settings.pdfExportSettings')}
-            </legend>
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
-              {t('settings.pdfExportSettingsHint')}
-            </p>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={pdfIncludeLogo}
-                  onChange={(e) => setPdfIncludeLogo(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.includeLogo')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.includeLogoHint')}
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={pdfShowHeaders}
-                  onChange={(e) => setPdfShowHeaders(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.showHeaders')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.showHeadersHint')}
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={pdfShowMetadata}
-                  onChange={(e) => setPdfShowMetadata(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.showMetadata')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.showMetadataHint')}
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={pdfShowPageNumbers}
-                  onChange={(e) => setPdfShowPageNumbers(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.pageNumbers')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.pageNumbersHint')}
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={pdfDarkMode}
-                  onChange={(e) => setPdfDarkMode(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.darkMode')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.darkModeHint')}
-                  </p>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
-                <input
-                  type="checkbox"
-                  checked={pdfImagesOnly}
-                  onChange={(e) => setPdfImagesOnly(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
-                />
-                <div>
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.imagesOnly')}</span>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.imagesOnlyHint')}
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('settings.font')}
-                </label>
-                <select
-                  value={pdfFont}
-                  onChange={(e) => setPdfFont(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-                >
-                  <option value="inter">Inter</option>
-                  <option value="arial">Arial</option>
-                  <option value="times">Times</option>
-                  <option value="georgia">Georgia</option>
-                  <option value="courier">Courier</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('settings.size')}
-                </label>
-                <select
-                  value={pdfPageSize}
-                  onChange={(e) => setPdfPageSize(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-                >
-                  <option value="a4">A4</option>
-                  <option value="letter">Letter</option>
-                  <option value="legal">Legal</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('settings.breaks')}
-                </label>
-                <select
-                  value={pdfPageBreakMode}
-                  onChange={(e) => setPdfPageBreakMode(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-                >
-                  <option value="auto">Auto</option>
-                  <option value="song">Song</option>
-                  <option value="section">Section</option>
-                  <option value="none">None</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('settings.margin')}
-                </label>
-                <select
-                  value={pdfMarginSize}
-                  onChange={(e) => setPdfMarginSize(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
-                >
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                </select>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset className="rounded-2xl border border-slate-200/60 bg-white/50 p-4 shadow-sm backdrop-blur dark:border-slate-700/60 dark:bg-slate-800/50">
-            <legend className="mb-3 px-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              {t('settings.bandSettings')}
-            </legend>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t('settings.includeSelfInCount')}
+          {(activeSection === 'all' || activeSection === 'appearance') && (
+            <>
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-50/40 p-4 backdrop-blur dark:border-amber-500/20 dark:bg-amber-950/10">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:bg-amber-400/20 dark:text-amber-300">
+                    <Icons.Music2 className="h-3.5 w-3.5" />
+                  </span>
+                  <label className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                    {t('settings.appearance')}
                   </label>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {t('settings.includeSelfInCountHint')}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["light", "dark", "system"] as const).map((themeOption) => (
+                    <button
+                      key={themeOption}
+                      onClick={() => setTheme(themeOption)}
+                      className={`min-h-[44px] rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                        theme === themeOption
+                          ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-400 dark:bg-brand-950/30 dark:text-brand-300"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-600"
+                      }`}
+                    >
+                      {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {theme === "system"
+                    ? t('settings.themeHintSystem')
+                    : theme === "dark"
+                    ? t('settings.themeHintDark')
+                    : t('settings.themeHintLight')}
+                </p>
+              </div>
+
+              {canRequestFullscreen && (
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {t('settings.display')}
+                  </label>
+                  <button
+                    onClick={toggleFullscreen}
+                    className={`flex min-h-[44px] w-full items-center justify-between rounded-lg border-2 px-4 py-3 transition-all duration-200 ${
+                      isFullscreen
+                        ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-950/30"
+                        : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
+                    }`}
+                  >
+                    <span className={`text-sm font-medium ${isFullscreen ? "text-brand-700 dark:text-brand-300" : "text-slate-700 dark:text-slate-300"}`}>
+                      {t('settings.fullscreenMode')}
+                    </span>
+                    <div className={`h-5 w-9 rounded-full transition ${isFullscreen ? "bg-brand-500 dark:bg-brand-600" : "bg-slate-300 dark:bg-slate-600"}`}>
+                      <div className={`h-4 w-4 rounded-full bg-white transition-transform ${isFullscreen ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </div>
+                  </button>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    {isFullscreen ? t('settings.fullscreenActive') : t('settings.fullscreenInactive')}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setExcludeSelfFromMemberCount(!excludeSelfFromMemberCount)}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
-                    !excludeSelfFromMemberCount ? "bg-brand-600" : "bg-slate-200 dark:bg-slate-700"
-                  }`}
-                  role="switch"
-                  aria-checked={!excludeSelfFromMemberCount}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      !excludeSelfFromMemberCount ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          </fieldset>
+              )}
+            </>
+          )}
+
+          {(activeSection === 'all' || activeSection === 'pdf') && (
+            <>
+              <fieldset>
+                <legend className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('settings.feeComponents')}
+                </legend>
+                <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                  {t('settings.feeComponentsHint')}
+                </p>
+
+                <div className="space-y-3">
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={claimPerf}
+                      onChange={(e) => setClaimPerf(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.performanceFee')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.performanceFeeHint')}
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-3 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={claimTech}
+                      onChange={(e) => setClaimTech(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.technicalFee')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.technicalFeeHint')}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('settings.pdfExportSettings')}
+                </legend>
+                <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                  {t('settings.pdfExportSettingsHint')}
+                </p>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={pdfIncludeLogo}
+                      onChange={(e) => setPdfIncludeLogo(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.includeLogo')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.includeLogoHint')}
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={pdfShowHeaders}
+                      onChange={(e) => setPdfShowHeaders(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.showHeaders')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.showHeadersHint')}
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={pdfShowMetadata}
+                      onChange={(e) => setPdfShowMetadata(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.showMetadata')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.showMetadataHint')}
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={pdfShowPageNumbers}
+                      onChange={(e) => setPdfShowPageNumbers(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.pageNumbers')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.pageNumbersHint')}
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={pdfDarkMode}
+                      onChange={(e) => setPdfDarkMode(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.darkMode')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.darkModeHint')}
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:bg-slate-800/70">
+                    <input
+                      type="checkbox"
+                      checked={pdfImagesOnly}
+                      onChange={(e) => setPdfImagesOnly(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:text-brand-400 dark:focus:ring-brand-400"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{t('settings.imagesOnly')}</span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.imagesOnlyHint')}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {t('settings.font')}
+                    </label>
+                    <select
+                      value={pdfFont}
+                      onChange={(e) => setPdfFont(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                    >
+                      <option value="inter">Inter</option>
+                      <option value="arial">Arial</option>
+                      <option value="times">Times</option>
+                      <option value="georgia">Georgia</option>
+                      <option value="courier">Courier</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {t('settings.size')}
+                    </label>
+                    <select
+                      value={pdfPageSize}
+                      onChange={(e) => setPdfPageSize(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                    >
+                      <option value="a4">A4</option>
+                      <option value="letter">Letter</option>
+                      <option value="legal">Legal</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {t('settings.breaks')}
+                    </label>
+                    <select
+                      value={pdfPageBreakMode}
+                      onChange={(e) => setPdfPageBreakMode(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="song">Song</option>
+                      <option value="section">Section</option>
+                      <option value="none">None</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {t('settings.margin')}
+                    </label>
+                    <select
+                      value={pdfMarginSize}
+                      onChange={(e) => setPdfMarginSize(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2.5 text-sm text-slate-900 shadow-sm backdrop-blur transition-all duration-200 min-h-[44px] focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600/60 dark:bg-slate-800/70 dark:text-slate-100 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                    >
+                      <option value="small">Small</option>
+                      <option value="medium">Medium</option>
+                      <option value="large">Large</option>
+                    </select>
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset className="rounded-2xl border border-slate-200/60 bg-white/50 p-4 shadow-sm backdrop-blur dark:border-slate-700/60 dark:bg-slate-800/50">
+                <legend className="mb-3 px-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {t('settings.bandSettings')}
+                </legend>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {t('settings.includeSelfInCount')}
+                      </label>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {t('settings.includeSelfInCountHint')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExcludeSelfFromMemberCount(!excludeSelfFromMemberCount)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
+                        !excludeSelfFromMemberCount ? "bg-brand-600" : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                      role="switch"
+                      aria-checked={!excludeSelfFromMemberCount}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          !excludeSelfFromMemberCount ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </fieldset>
+            </>
+          )}
 
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>

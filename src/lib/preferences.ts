@@ -9,15 +9,8 @@ const LANGUAGE_TO_LOCALE: Record<Exclude<AppLanguage, "system">, string> = {
 const DEFAULT_LOCALE = "nl-BE";
 
 function getNavigatorLocale() {
-  if (typeof navigator !== "undefined" && navigator.language) {
-    return navigator.language;
-  }
-
-  if (typeof document !== "undefined") {
-    const lang = document.documentElement.lang?.trim();
-    if (lang) return lang;
-  }
-
+  // Deterministic locale for SSR and hydration: use DEFAULT_LOCALE to ensure
+  // server-rendered HTML and client initial hydration render match byte-for-byte (#418/#423).
   return DEFAULT_LOCALE;
 }
 

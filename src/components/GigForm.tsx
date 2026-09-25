@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Icons } from "./Icons";
@@ -23,37 +23,39 @@ interface GigFormProps {
   onDelete?: (gig: Gig) => void;
 }
 
-const emptyForm: GigFormData = {
-  eventName: "",
-  date: "",
-  performers: "",
-  numberOfMusicians: 1,
-  performanceLineup: "",
-  managerPerforms: true,
-  isCharity: false,
-  isTentative: false,
-  performanceFee: 0,
-  performanceFeeUnknown: false,
-  technicalFee: 0,
-  managerBonusType: "fixed",
-  managerBonusAmount: 0,
-  performanceDistribution: "equal",
-  managerPerformanceAmount: null,
-  claimPerformanceFee: true,
-  claimTechnicalFee: true,
-  technicalFeeClaimAmount: null,
-  managerHandlesDistribution: true,
-  advanceReceivedByManager: 0,
-  advanceToMusicians: 0,
-  paymentReceived: false,
-  paymentReceivedDate: "",
-  managerInstantPayment: false,
-  bandPaid: false,
-  bandPaidDate: "",
-  bookingDate: new Date().toISOString().split("T")[0],
-  notes: "",
-  bandId: null,
-};
+function getEmptyForm(): GigFormData {
+  return {
+    eventName: "",
+    date: "",
+    performers: "",
+    numberOfMusicians: 1,
+    performanceLineup: "",
+    managerPerforms: true,
+    isCharity: false,
+    isTentative: false,
+    performanceFee: 0,
+    performanceFeeUnknown: false,
+    technicalFee: 0,
+    managerBonusType: "fixed",
+    managerBonusAmount: 0,
+    performanceDistribution: "equal",
+    managerPerformanceAmount: null,
+    claimPerformanceFee: true,
+    claimTechnicalFee: true,
+    technicalFeeClaimAmount: null,
+    managerHandlesDistribution: true,
+    advanceReceivedByManager: 0,
+    advanceToMusicians: 0,
+    paymentReceived: false,
+    paymentReceivedDate: "",
+    managerInstantPayment: false,
+    bandPaid: false,
+    bandPaidDate: "",
+    bookingDate: new Date().toISOString().split("T")[0],
+    notes: "",
+    bandId: null,
+  };
+}
 
 function gigToFormData(gig: Gig): GigFormData {
   return {
@@ -95,8 +97,8 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   const { getAccessToken, user } = useAuth();
   const { locale } = useSettings();
   const isDutch = locale.startsWith("nl");
-  const [form, setForm] = useState<GigFormData>(
-    gig ? gigToFormData(gig) : emptyForm
+  const [form, setForm] = useState<GigFormData>(() =>
+    gig ? gigToFormData(gig) : getEmptyForm()
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -119,7 +121,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const initialFormRef = useRef<GigFormData>(gig ? gigToFormData(gig) : emptyForm);
+  const initialFormRef = useRef<GigFormData>(gig ? gigToFormData(gig) : getEmptyForm());
 
   const isDirty = useMemo(
     () => hasGigFormChanges(initialFormRef.current, form, selectedMemberIds),

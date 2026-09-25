@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useAuth, hasStoredSupabaseToken } from "./AuthProvider";
 import { LoginForm } from "./LoginForm";
 import { Icons } from "./Icons";
@@ -140,13 +139,10 @@ export function MarketingLandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden ring-1 ring-white/10">
-              <Image
+              <img
                 src="/favicon.png"
                 alt="GigsManager"
-                width={36}
-                height={36}
                 className="h-full w-full object-cover"
-                priority
               />
             </div>
             <span className="text-xl font-bold tracking-tight">
@@ -673,11 +669,9 @@ export function MarketingLandingPage() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-md overflow-hidden ring-1 ring-white/10">
-              <Image
+              <img
                 src="/favicon.png"
                 alt="GigsManager"
-                width={28}
-                height={28}
                 className="h-full w-full object-cover"
               />
             </div>

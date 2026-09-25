@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import Avatar from "./Avatar";
 import { recordWebVital } from "@/lib/web-vitals-logger";
 import { recordMetric } from "@/lib/performance-metrics";
@@ -1379,11 +1378,9 @@ export default function Dashboard() {
               className="flex items-center gap-1.5 sm:gap-2.5 hover:opacity-80 transition"
               title="Go to Overview"
             >
-              <Image
+              <img
                 src="/favicon.png"
                 alt="GigsManager"
-                width={36}
-                height={36}
                 className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 rounded-lg"
               />
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white truncate">

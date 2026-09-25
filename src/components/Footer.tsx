@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { APP_VERSION_DISPLAY } from "@/lib/version";
 
 export default function Footer() {
@@ -9,11 +8,9 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col items-center justify-center text-center space-y-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg overflow-hidden bg-slate-900 dark:bg-white/10 ring-1 ring-slate-200 dark:ring-white/20 p-0.5 shadow-sm">
-            <Image
+            <img
               src="/favicon.png"
               alt="GigsManager"
-              width={28}
-              height={28}
               className="h-full w-full object-contain"
             />
           </div>

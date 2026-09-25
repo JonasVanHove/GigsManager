@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useAuth } from "./AuthProvider";
+import { useAuth, hasStoredSupabaseToken } from "./AuthProvider";
 import { LoginForm } from "./LoginForm";
 import { Icons } from "./Icons";
 import LoadingSpinner from "./LoadingSpinner";
@@ -99,6 +99,7 @@ export function MarketingLandingPage() {
   const router = useRouter();
   const [showAuth, setShowAuth] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [authTimeout, setAuthTimeout] = useState(false);
 
   // Zero-flash: redirect authenticated users to /app instantly
   useEffect(() => {
@@ -108,8 +109,22 @@ export function MarketingLandingPage() {
     }
   }, [isLoading, session, router]);
 
-  // While auth is loading or redirect is in flight, show nothing (prevents flash)
-  if (isLoading || isRedirecting) {
+  // Fail-safe for landing page: max 800ms spinner wait if stored token is pending verification
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = setTimeout(() => {
+      setAuthTimeout(true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  // Determine if we should show the loading spinner:
+  // Show spinner ONLY when authenticated user is redirecting, or when checking an existing stored token within 800ms.
+  // Unauthenticated users (no stored token) see the landing page instantly without spinner.
+  const hasToken = typeof window !== "undefined" ? hasStoredSupabaseToken() : false;
+  const shouldShowSpinner = isRedirecting || (isLoading && hasToken && !authTimeout && !session?.user);
+
+  if (shouldShowSpinner) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950">
         <LoadingSpinner size="lg" message="Loading..." />

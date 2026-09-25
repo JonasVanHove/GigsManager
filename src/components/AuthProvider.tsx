@@ -14,7 +14,21 @@ export type SignUpResult = "signed-in" | "confirm-email";
  * is forced to false so the app shell / login view renders automatically; a
  * late-resolving session is still applied afterwards via onAuthStateChange.
  */
-const AUTH_FAILSAFE_TIMEOUT_MS = 3_500;
+const AUTH_FAILSAFE_TIMEOUT_MS = 1_500;
+
+export function hasStoredSupabaseToken(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("sb-") || key.includes("supabase.auth"))) {
+        const val = localStorage.getItem(key);
+        if (val && val.length > 10) return true;
+      }
+    }
+  } catch {}
+  return false;
+}
 
 interface AuthContextType {
   session: AuthSession | null;
@@ -32,7 +46,12 @@ export const AuthContext = React.createContext<AuthContextType | undefined>(
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      return hasStoredSupabaseToken();
+    }
+    return true;
+  });
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
   const accessTokenFreshUntilRef = useRef<number>(0);
@@ -73,9 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             session?.user ?? null,
             session?.access_token ?? null
           );
-          // Only set loading to false after session is resolved
           setIsLoading(false);
-          // Session resolved in time - cancel the fail-safe
           if (failsafeTimer) clearTimeout(failsafeTimer);
         }
       } catch (err) {
@@ -88,10 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Fail-safe timeout: if getSession() never resolves (hard refresh, stalled
-    // Service Worker, suspended tab), force isLoading to false so the shell /
-    // login view renders. Deliberately does NOT clear the session here - if
-    // onAuthStateChange already delivered one, it must survive the timeout.
+    // Fail-safe timeout: if getSession() takes too long (hard refresh, network lag),
+    // force isLoading to false so the landing page or login view renders immediately.
     failsafeTimer = setTimeout(() => {
       if (mounted) {
         console.warn(

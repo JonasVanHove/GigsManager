@@ -98,6 +98,7 @@ export function MarketingLandingPage() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const [showAuth, setShowAuth] = useState(false);
+  const [showDonationModal, setShowDonationModal] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [authTimeout, setAuthTimeout] = useState(false);
 
@@ -431,6 +432,202 @@ export function MarketingLandingPage() {
           </div>
         </div>
       </section>
+
+      {/* -- Pricing / Donation ------------------------------------------- */}
+      <section className="relative border-t border-white/5 py-20 sm:py-28">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute left-1/4 top-0 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/4 rounded-full bg-orange-500/10 blur-[120px]" />
+        </div>
+
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+              Simple,{" "}
+              <span className="bg-gradient-to-r from-brand-400 to-orange-400 bg-clip-text text-transparent">
+                transparent pricing
+              </span>
+            </h2>
+            <p className="mt-4 text-lg text-slate-400">
+              Choose the plan that fits your needs. Free forever for individual musicians.
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Free Tier */}
+            <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Icons.Music className="h-5 w-5 text-brand-400" />
+                <h3 className="text-lg font-semibold text-white">Free / Musician</h3>
+              </div>
+              <div className="mb-4">
+                <span className="text-4xl font-bold text-white">€0</span>
+                <span className="text-slate-400">/month</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Perfect for individual musicians tracking their gigs and earnings.
+              </p>
+              <ul className="space-y-3 mb-6">
+                {[
+                  "Unlimited gig tracking",
+                  "Setlist management",
+                  "Financial calculations",
+                  "Multi-currency support",
+                  "Mobile & desktop access",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
+                    <Icons.Check className="h-4 w-4 text-brand-400" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => {
+                  setShowAuth(true);
+                  setTimeout(
+                    () => document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }),
+                    80
+                  );
+                }}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Get Started Free
+              </button>
+            </div>
+
+            {/* Supporter Tier */}
+            <div className="relative rounded-2xl border border-brand-500/30 bg-gradient-to-br from-brand-500/10 to-orange-500/10 p-6 backdrop-blur-sm">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="inline-flex items-center rounded-full bg-gradient-to-r from-brand-500 to-orange-500 px-3 py-1 text-xs font-semibold text-white">
+                  Support Us
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mb-4 mt-2">
+                <Icons.Heart className="h-5 w-5 text-orange-400" />
+                <h3 className="text-lg font-semibold text-white">Supporter / Donatie</h3>
+              </div>
+              <div className="mb-4">
+                <span className="text-4xl font-bold text-white">€5+</span>
+                <span className="text-slate-400">/month</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                Support the development of GigsManager and help keep it free for everyone.
+              </p>
+              <ul className="space-y-3 mb-6">
+                {[
+                  "Everything in Free",
+                  "Support open-source development",
+                  "Priority feature requests",
+                  "Early access to new features",
+                  "Your name in supporters list",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
+                    <Icons.Check className="h-4 w-4 text-brand-400" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => setShowDonationModal(true)}
+                className="w-full rounded-xl bg-gradient-to-r from-brand-500 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110"
+              >
+                Support via Donatie
+              </button>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Icons.People className="h-5 w-5 text-violet-400" />
+                <h3 className="text-lg font-semibold text-white">Pro / Band Manager</h3>
+              </div>
+              <div className="mb-4">
+                <span className="text-4xl font-bold text-white">€15</span>
+                <span className="text-slate-400">/month</span>
+              </div>
+              <p className="text-sm text-slate-400 mb-6">
+                For band managers and professional musicians managing multiple acts.
+              </p>
+              <ul className="space-y-3 mb-6">
+                {[
+                  "Everything in Free",
+                  "Unlimited band management",
+                  "Advanced analytics & reports",
+                  "Team collaboration tools",
+                  "Priority support",
+                  "Custom branding options",
+                ].map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
+                    <Icons.Check className="h-4 w-4 text-brand-400" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => {
+                  setShowAuth(true);
+                  setTimeout(
+                    () => document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }),
+                    80
+                  );
+                }}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Contact for Pro
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* -- Donation Modal ------------------------------------------------ */}
+      {showDonationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowDonationModal(false)}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl backdrop-blur-xl">
+            <button
+              onClick={() => setShowDonationModal(false)}
+              className="absolute right-4 top-4 text-slate-400 transition hover:text-white"
+            >
+              <Icons.X className="h-5 w-5" />
+            </button>
+            
+            <div className="flex items-center gap-2 mb-4">
+              <Icons.Heart className="h-5 w-5 text-orange-400" />
+              <h3 className="text-xl font-semibold text-white">Support GigsManager</h3>
+            </div>
+            
+            <p className="text-sm text-slate-400 mb-6">
+              Thank you for considering supporting GigsManager! Your donation helps keep the project free and open-source for all musicians.
+            </p>
+            
+            <div className="space-y-4">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h4 className="text-sm font-semibold text-white mb-2">Direct Bank Transfer</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">IBAN:</span>
+                    <span className="text-white font-mono">BE46 7390 1188 6036</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Account holder:</span>
+                    <span className="text-white">GigsManager Support</span>
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setShowDonationModal(false)}
+                className="w-full rounded-xl bg-gradient-to-r from-brand-500 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* -- CTA / Auth -------------------------------------------------- */}
       <section

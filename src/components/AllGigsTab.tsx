@@ -968,7 +968,7 @@ export default function AllGigsTab({
                           <div className="inline-flex items-center gap-1 justify-end">
                             {gig.setlistId && (
                               <button
-                                onClick={() => router.push(`/?tab=setlists&setlist=${gig.setlistId}`)}
+                                onClick={() => router.push(`/app?tab=setlists&setlist=${gig.setlistId}`)}
                                 title={isDutch ? "Bekijk setlist" : "View setlist"}
                                 className="rounded-lg p-1.5 text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-950/50"
                               >

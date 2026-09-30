@@ -54,6 +54,7 @@ function getEmptyForm(): GigFormData {
     bookingDate: new Date().toISOString().split("T")[0],
     notes: "",
     bandId: null,
+    setlistId: null,
   };
 }
 
@@ -90,6 +91,7 @@ function gigToFormData(gig: Gig): GigFormData {
     bookingDate: gig.bookingDate ? gig.bookingDate.split("T")[0] : "",
     notes: gig.notes ?? "",
     bandId: gig.bandId ?? null,
+    setlistId: gig.setlistId ?? null,
   };
 }
 
@@ -107,6 +109,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   const [bandMembersLoading, setBandMembersLoading] = useState(false);
   const [allGigs, setAllGigs] = useState<Gig[]>([]);
   const [bandsList, setBandsList] = useState<Array<{ id: string; name: string; logoUrl?: string; color?: string | null }>>([]);
+  const [setlistsList, setSetlistsList] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [syncFromMembers, setSyncFromMembers] = useState(!gig);
@@ -305,6 +308,31 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
       console.error("Failed to fetch gigs:", err);
     }
   }, [getAccessToken]);
+
+  // Setlists are needed for the "Assign setlist to gig" select.
+  const fetchSetlists = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const response = await fetch("/api/setlists", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const rows = Array.isArray(data) ? data : (data.setlists ?? data.data ?? []);
+      setSetlistsList(
+        rows
+          .filter((row: any) => row && typeof row.id === "string")
+          .map((row: any) => ({ id: row.id, title: row.title || "Untitled setlist" }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch setlists:", err);
+    }
+  }, [getAccessToken]);
+
+  useEffect(() => {
+    void fetchSetlists();
+  }, [fetchSetlists]);
 
   const fetchBands = useCallback(async () => {
     try {
@@ -729,6 +757,27 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Names who played in this performance. Use commas to separate.</p>
                 </div>
 
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Linked setlist</label>
+                  <select
+                    className={inputCls}
+                    value={form.setlistId || ""}
+                    onChange={(e) => set("setlistId", e.target.value || null)}
+                  >
+                    <option value="">{isDutch ? "Geen setlist gekoppeld" : "No setlist linked"}</option>
+                    {setlistsList.map((setlist) => (
+                      <option key={setlist.id} value={setlist.id}>
+                        {setlist.title}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {isDutch
+                      ? "Koppel de setlist die dit optreden gebruikt. De setlist opent met de link op de gig."
+                      : "Link the setlist this performance uses. The gig's link icon opens it directly."}
+                  </p>
+                </div>
+
                 <div>
                   <label className={labelCls}>Number of Musicians <span className="text-red-500">*</span></label>
                   <input
@@ -807,6 +856,15 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                 <div className="sm:col-span-2">
                   <label className={labelCls}>Performance line-up</label>
                   <input type="text" className={inputCls} placeholder="e.g. Alice, Bob, Chris" value={form.performanceLineup} onChange={(e) => set("performanceLineup", e.target.value)} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelCls}>Linked setlist</label>
+                  <select className={inputCls} value={form.setlistId || ""} onChange={(e) => set("setlistId", e.target.value || null)}>
+                    <option value="">{isDutch ? "Geen setlist gekoppeld" : "No setlist linked"}</option>
+                    {setlistsList.map((setlist) => (
+                      <option key={setlist.id} value={setlist.id}>{setlist.title}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className={labelCls}>Number of Musicians <span className="text-red-500">*</span></label>

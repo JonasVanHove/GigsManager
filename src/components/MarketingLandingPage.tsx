@@ -151,6 +151,12 @@ export function MarketingLandingPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href="/demo"
+              className="hidden text-sm font-medium text-slate-400 transition hover:text-white sm:inline"
+            >
+              Live demo
+            </a>
             <button
               onClick={() => {
                 setShowAuth(true);
@@ -211,6 +217,14 @@ export function MarketingLandingPage() {
               beautiful dashboard. Stop juggling spreadsheets and start focusing on the music.
             </p>
 
+            <p
+              className="mx-auto mt-4 max-w-2xl text-base text-slate-500 animate-fade-in"
+              style={{ animationDelay: "0.22s" }}
+            >
+              Every gig, every setlist and every euro in one place. No setup calls, no spreadsheets —
+              open your first gig in under two minutes.
+            </p>
+
             <div
               className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-fade-in"
               style={{ animationDelay: "0.3s" }}
@@ -229,13 +243,28 @@ export function MarketingLandingPage() {
                 <Icons.ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
               <a
+                href="/demo"
+                className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-slate-200 backdrop-blur-sm transition hover:bg-white/10 hover:text-white"
+              >
+                <Icons.Sparkles className="h-4 w-4 text-brand-400" />
+                Open live demo
+                <Icons.ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+              <a
                 href="#features"
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-slate-300 backdrop-blur-sm transition hover:bg-white/10 hover:text-white"
+                className="inline-flex items-center gap-2 rounded-2xl px-4 py-4 text-base font-semibold text-slate-400 transition hover:text-white"
               >
                 See Features
                 <Icons.ChevronDown className="h-4 w-4" />
               </a>
             </div>
+
+            <p
+              className="mt-4 text-xs text-slate-500 animate-fade-in"
+              style={{ animationDelay: "0.36s" }}
+            >
+              The demo opens instantly — no account, no password.
+            </p>
           </div>
 
           {/* -- Interactive preview card ------------------------------------- */}
@@ -646,13 +675,23 @@ export function MarketingLandingPage() {
             </p>
 
             {!showAuth && (
-              <button
-                onClick={() => setShowAuth(true)}
-                className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-brand-500/25 transition-all hover:shadow-brand-500/40 hover:brightness-110"
-              >
-                Create Free Account
-                <Icons.ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="mt-8 flex flex-col items-center justify-center gap-4">
+                <button
+                  onClick={() => setShowAuth(true)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-brand-500/25 transition-all hover:shadow-brand-500/40 hover:brightness-110"
+                >
+                  Create Free Account
+                  <Icons.ChevronRight className="h-4 w-4" />
+                </button>
+                <p className="text-sm text-slate-500">or</p>
+                <a
+                  href="/demo"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Icons.Sparkles className="h-4 w-4 text-brand-400" />
+                  Bekijk eerst de demo — geen wachtwoord nodig
+                </a>
+              </div>
             )}
           </div>
 

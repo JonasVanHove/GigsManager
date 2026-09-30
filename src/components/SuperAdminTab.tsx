@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useAuth } from "./AuthProvider";
 import LoadingSpinner from "./LoadingSpinner";
@@ -40,10 +40,23 @@ interface PlatformStats {
   totalRevenuePending: number;
 }
 
+interface DemoStats {
+  present: boolean;
+  email: string;
+  gigs: number;
+  bands: number;
+  setlists: number;
+  users: number;
+  included: boolean;
+  mode: "production" | "full-analysis";
+}
+
 export default function SuperAdminTab() {
   const { getAccessToken } = useAuth();
   const [users, setUsers] = useState<SuperAdminUserRow[]>([]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [demo, setDemo] = useState<DemoStats | null>(null);
+  const [includeDemo, setIncludeDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedUser, setSelectedUser] = useState<SuperAdminUserRow | null>(null);
@@ -67,7 +80,7 @@ export default function SuperAdminTab() {
           fetch("/api/superadmin/users", {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
-          fetch("/api/superadmin/stats", {
+          fetch(`/api/superadmin/stats?includeDemo=${includeDemo ? "true" : "false"}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
         ]);
@@ -78,11 +91,12 @@ export default function SuperAdminTab() {
         }
 
         const usersPayload = (await usersResponse.json()) as { users?: SuperAdminUserRow[] };
-        const statsPayload = (await statsResponse.json()) as { stats?: PlatformStats };
+        const statsPayload = (await statsResponse.json()) as { stats?: PlatformStats; demo?: DemoStats };
 
         if (mounted) {
           setUsers(usersPayload.users || []);
           setStats(statsPayload.stats || null);
+          setDemo(statsPayload.demo || null);
           setError("");
         }
       } catch (err) {
@@ -116,6 +130,41 @@ export default function SuperAdminTab() {
   useEffect(() => {
     setPage(1);
   }, [query]);
+
+  // Reloads the KPI numbers whenever the demo-data toggle is flipped.
+  const toggleIncludeDemo = useCallback(() => {
+    setLoading(true);
+    setError("");
+    setIncludeDemo((previous) => !previous);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const reloadStats = async () => {
+      try {
+        const accessToken = await getAccessToken();
+        if (!accessToken || !active) return;
+        const response = await fetch(`/api/superadmin/stats?includeDemo=${includeDemo ? "true" : "false"}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!response.ok || !active) return;
+        const payload = (await response.json()) as { stats?: PlatformStats; demo?: DemoStats };
+        if (!active) return;
+        setStats(payload.stats || null);
+        setDemo(payload.demo || null);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Failed to reload statistics");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void reloadStats();
+    return () => {
+      active = false;
+    };
+  }, [includeDemo, getAccessToken]);
 
   const currencyFormatter = new Intl.NumberFormat("nl-BE", {
     style: "currency",
@@ -156,13 +205,54 @@ export default function SuperAdminTab() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-cyan-300">Superadmin</p>
             <h2 className="mt-2 text-2xl font-bold md:text-3xl">Platform operations</h2>
           </div>
-          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 backdrop-blur-sm">
-            Live status: Healthy
+          <div className="flex flex-wrap items-center gap-2">
+            {includeDemo && (
+              <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-amber-200">
+                Full Analysis Mode
+              </span>
+            )}
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 backdrop-blur-sm">
+              Live status: Healthy
+            </div>
           </div>
         </div>
         <p className="mt-3 max-w-3xl text-sm text-slate-300">
           Monitor user activity, workspace health, and platform-wide performance from a single operational view.
         </p>
+
+        {/* Demo-data switch: KPIs exclude the public demo account by default. */}
+        <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white">Include Demo Data</p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              {demo?.present
+                ? `${demo.email}: ${demo.gigs} gigs · ${demo.bands} bands · ${demo.setlists} setlists. ${
+                    includeDemo
+                      ? "Currently counted in every KPI."
+                      : "Currently excluded from every KPI."
+                  }`
+                : "No demo account found in the database."}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={includeDemo}
+            onClick={toggleIncludeDemo}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition ${
+              includeDemo
+                ? "bg-amber-400 text-amber-950"
+                : "bg-white/10 text-slate-200 hover:bg-white/20"
+            }`}
+          >
+            <span
+              className={`inline-block h-3 w-3 rounded-full ${
+                includeDemo ? "bg-amber-950" : "bg-slate-400"
+              }`}
+            />
+            {includeDemo ? "Demo data ON" : "Demo data OFF"}
+          </button>
+        </div>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -221,7 +311,14 @@ export default function SuperAdminTab() {
                           </div>
                           <div className="min-w-0">
                             <div className="truncate font-semibold text-slate-900 dark:text-slate-50">{user.name || "Unnamed user"}</div>
-                            <div className="truncate text-sm text-slate-500 dark:text-slate-400">{user.email}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm text-slate-500 dark:text-slate-400">{user.email}</span>
+                              {user.email?.toLowerCase() === demo?.email?.toLowerCase() && (
+                                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+                                  Demo
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>

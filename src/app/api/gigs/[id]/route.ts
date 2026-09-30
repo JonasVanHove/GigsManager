@@ -99,6 +99,26 @@ export async function PUT(
     const isTentative = Boolean(body.isTentative);
     const hasBookingDate = Boolean(body.bookingDate && String(body.bookingDate).trim());
 
+    // Only change the setlist link when the client actually sends the field.
+    // Forms that don't manage setlists (the gig form) used to wipe the link on
+    // every save because `body.setlistId` was always undefined -> null.
+    let nextSetlistId: string | null = existing.setlistId;
+    if (body.setlistId !== undefined) {
+      if (body.setlistId) {
+        const targetSetlistId = String(body.setlistId);
+        const owned = await prisma.setlist.findFirst({
+          where: { id: targetSetlistId, userId: user.id },
+          select: { id: true },
+        });
+        if (!owned) {
+          return NextResponse.json({ error: "Setlist not found" }, { status: 400 });
+        }
+        nextSetlistId = targetSetlistId;
+      } else {
+        nextSetlistId = null;
+      }
+    }
+
     const gig = await prisma.gig.update({
       where: { id: params.id },
       data: {
@@ -136,7 +156,7 @@ export async function PUT(
             ? new Date(String(body.bookingDate))
             : existing.bookingDate,
         notes: body.notes ? String(body.notes).trim() : null,
-        setlistId: body.setlistId ? String(body.setlistId) : null,
+        setlistId: nextSetlistId,
         bandId: body.bandId ? String(body.bandId) : null,
       },
     });

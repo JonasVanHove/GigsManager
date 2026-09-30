@@ -124,7 +124,13 @@ export async function PATCH(
       where: { id: existing.id },
       data: {
         title,
-        description: body.description ? String(body.description).trim() : null,
+        // The setlist meta (datum/locatie/notities/status) lives in `description`.
+        // Assignments such as "Assign to Gig" only send gigIds, so an omitted
+        // description must be preserved instead of wiped.
+        description:
+          body.description !== undefined
+            ? String(body.description).trim() || null
+            : (existing as any).description ?? null,
         status: body.status ? String(body.status).trim() : (existing as any).status || "concept",
         datum: body.datum !== undefined ? (body.datum ? String(body.datum).trim() : null) : (existing as any).datum,
         locatie: body.locatie !== undefined ? (body.locatie ? String(body.locatie).trim() : null) : (existing as any).locatie,
@@ -196,9 +202,9 @@ export async function PATCH(
           select: { bandId: true, date: true, eventName: true },
         });
         
-        // Auto-link band to setlist if gigs have a band and body.bandId is not set
+        // Auto-link band to setlist if gigs have a band and the client did not send one
         const bandIds = gigsToAdd.map((g: any) => g.bandId).filter((b: any) => b !== null);
-        if (bandIds.length > 0 && body.bandId === undefined) {
+        if (bandIds.length > 0 && !body.bandId) {
           // Use the first bandId (assuming gigs are for the same band)
           await (prisma.setlist.update as any)({
             where: { id: existing.id },

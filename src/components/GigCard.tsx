@@ -235,7 +235,7 @@ const GigCard = memo(function GigCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                router.push(`/?tab=setlists&setlist=${gig.setlistId}`);
+                router.push(`/app?tab=setlists&setlist=${gig.setlistId}`);
               }}
               title={isDutch ? "Bekijk setlist" : "View setlist"}
               className="rounded-lg p-2 text-cyan-600 transition-all duration-200 hover:bg-cyan-100/60 dark:hover:bg-cyan-900/30 dark:text-cyan-300 dark:hover:text-cyan-200"

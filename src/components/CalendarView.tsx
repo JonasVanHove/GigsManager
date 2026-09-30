@@ -922,7 +922,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
               {selectedEvent.resource.setlistId && (
                 <button
                   onClick={() => {
-                    router.push(`/?tab=setlists&setlist=${selectedEvent.resource.setlistId}`);
+                    router.push(`/app?tab=setlists&setlist=${selectedEvent.resource.setlistId}`);
                     handleCloseModal();
                   }}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-900/30 dark:bg-cyan-900/10 dark:text-cyan-300 dark:hover:bg-cyan-900/20"

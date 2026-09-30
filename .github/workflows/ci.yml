@@ -5,11 +5,42 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      seed_supabase_auth:
+        description: "Demo-seed ook een Supabase-login aanmaken (vereist STAGING_SUPABASE_SERVICE_ROLE_KEY)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Stop outdated runs on the same ref instead of queueing them.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    name: Lint → Generate → Build
+  verify:
+    name: Lint → Typecheck → Test → Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Placeholders only — this job never opens a database connection:
+    # `prisma generate` compiles the client locally, `src/lib/prisma.ts`
+    # degrades to a stub client when the database is unreachable, and
+    # `src/app/api/health` is `force-dynamic` so it is never pre-rendered.
+    # DIRECT_URL is mandatory: prisma.config.ts uses env("DIRECT_URL"), which
+    # throws "Cannot resolve environment variable: DIRECT_URL." — that already
+    # broke `npm ci` (postinstall → prisma generate) in the old workflow.
+    # NEXT_PUBLIC_* are not required to build (the dashboard routes are
+    # dynamically rendered), but they are pinned so the build never depends on
+    # a developer's .env and stays reproducible.
+    env:
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
+      DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
+      NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder-anon-key"
 
     steps:
       - name: Checkout code
@@ -18,20 +49,115 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          # Prisma 7 requires ^20.19 || ^22.12 || >=24. Node 18 (the old value)
+          # fails both `npm ci` and `prisma generate`.
+          node-version: 22
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
       - name: Generate Prisma client
+        # Local compile only, no connection to a live database.
         run: npx prisma generate
 
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck
+        # tsconfig.json includes "**/*.ts", so this also covers the root
+        # maintenance scripts such as scripts/seed-demo-account.ts.
+        run: npx tsc --noEmit
+
+      - name: Unit tests (vitest)
+        id: unit_tests
+        # Non-blocking: test/band-tag-contrast.test.ts fails on main for a
+        # pre-existing reason (the "soft" band tag picks its text colour from
+        # the dark-mode composite, so light band colours get white text in
+        # light mode). Fix that bug and drop continue-on-error to make the
+        # suite a hard gate.
+        continue-on-error: true
+        run: npm test
+
+      - name: Report unit test status
+        if: steps.unit_tests.outcome == 'failure'
+        run: |
+          echo "::warning title=Unit tests::npm test is red on main (see the step summary). The test step is continue-on-error until test/band-tag-contrast.test.ts is fixed."
+
       - name: Build
         run: npm run build
+
+  demo-seed:
+    name: Seed demo account (staging, manual only)
+    # Never runs on push/PR — a demo seed is only ever triggered by hand.
+    if: github.event_name == 'workflow_dispatch'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Protected environment: add reviewers + the STAGING_* secrets here so the
+    # seed can only be started deliberately, and never against production.
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
         env:
-          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
-          DIRECT_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+          # Placeholders: prisma generate (postinstall) only needs the *name*
+          # of the variable, the real staging URL is used in the step below.
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
+          DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci?schema=public"
+
+      - name: Guard — staging database must be configured
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${STAGING_DATABASE_URL:-}" in
+            ""|"postgresql://ci:ci@"*)
+              echo "::error::Secret STAGING_DATABASE_URL ontbreekt (of is nog de placeholder). Seed geannuleerd."
+              exit 1
+              ;;
+          esac
+          echo "Staging database ingesteld."
+
+      - name: Seed demo account
+        shell: bash
+        env:
+          # Only the staging database. There is deliberately no production URL
+          # in this workflow, and the seeder only ever writes rows for
+          # demo@gigsmanager.app.
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL || secrets.STAGING_DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
+          DEMO_PASSWORD: ${{ vars.STAGING_DEMO_PASSWORD }}
+          SEED_AUTH: ${{ inputs.seed_supabase_auth }}
+        run: |
+          set -euo pipefail
+          if [ "${SEED_AUTH}" = "true" ]; then
+            npx tsx scripts/seed-demo-account.ts --reset
+          else
+            npx tsx scripts/seed-demo-account.ts --reset --skip-auth
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Demo-account staging-seed"
+            echo ""
+            echo "- Account: \`demo@gigsmanager.app\` (Demo Band Manager)"
+            echo "- Wachtwoord: \`${{ vars.STAGING_DEMO_PASSWORD || 'Demo1234!' }}\`"
+            echo "- Gigs: 6 · setlists: 2 · songs: 10 · investeringen: 2"
+          } >> "$GITHUB_STEP_SUMMARY"
+

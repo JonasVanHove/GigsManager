@@ -4,54 +4,20 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, hasStoredSupabaseToken } from "./AuthProvider";
 import { LoginForm } from "./LoginForm";
+import LanguageSwitcher from "./LanguageSwitcher";
+import LandingLanguageProvider from "./LandingLanguageProvider";
+import { useLandingLanguage } from "@/lib/landing-i18n";
 import { Icons } from "./Icons";
 import LoadingSpinner from "./LoadingSpinner";
 
-// -- Feature data ---------------------------------------------------------------
-
-const features = [
-  {
-    icon: Icons.Calendar,
-    title: "Gigs Tracking",
-    description:
-      "Log every performance with venue, date, band members, and notes. Never lose track of a booking again.",
-    gradient: "from-blue-500 to-cyan-400",
-  },
-  {
-    icon: Icons.ListView,
-    title: "Setlist Builder",
-    description:
-      "Create and manage detailed setlists, reorder songs on the fly, and print production-ready PDFs for the stage.",
-    gradient: "from-violet-500 to-fuchsia-400",
-  },
-  {
-    icon: Icons.Analytics,
-    title: "Band Analytics",
-    description:
-      "Deep insights into performance frequency, revenue trends, and band member earnings over any time range.",
-    gradient: "from-amber-500 to-orange-400",
-  },
-  {
-    icon: Icons.Wallet,
-    title: "Financial Overview",
-    description:
-      "Automatic fee splits, per-musician calculations, pending payments, and multi-currency support at a glance.",
-    gradient: "from-emerald-500 to-teal-400",
-  },
-  {
-    icon: Icons.Link,
-    title: "Shared Public Links",
-    description:
-      "Generate shareable, read-only links to gig overviews with granular control over what data is visible.",
-    gradient: "from-rose-500 to-pink-400",
-  },
-  {
-    icon: Icons.Music2,
-    title: "Song Library",
-    description:
-      "A centralised repertoire with keys, tempo, capo positions, and lyrics — always ready for rehearsal or stage.",
-    gradient: "from-indigo-500 to-blue-400",
-  },
+// -- Feature presentation (titles/descriptions come from the translation) ----
+const featurePresentation = [
+  { icon: Icons.Calendar, gradient: "from-blue-500 to-cyan-400" },
+  { icon: Icons.ListView, gradient: "from-violet-500 to-fuchsia-400" },
+  { icon: Icons.Analytics, gradient: "from-amber-500 to-orange-400" },
+  { icon: Icons.Wallet, gradient: "from-emerald-500 to-teal-400" },
+  { icon: Icons.Link, gradient: "from-rose-500 to-pink-400" },
+  { icon: Icons.Music2, gradient: "from-indigo-500 to-blue-400" },
 ];
 
 // -- Animated counter for stats -----------------------------------------------
@@ -94,7 +60,16 @@ function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: str
 // -- Landing Page Component ---------------------------------------------------
 
 export function MarketingLandingPage() {
+  return (
+    <LandingLanguageProvider>
+      <LandingContent />
+    </LandingLanguageProvider>
+  );
+}
+
+function LandingContent() {
   const { session, isLoading } = useAuth();
+  const { copy } = useLandingLanguage();
   const router = useRouter();
   const [showAuth, setShowAuth] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
@@ -155,8 +130,9 @@ export function MarketingLandingPage() {
               href="/demo"
               className="hidden text-sm font-medium text-slate-400 transition hover:text-white sm:inline"
             >
-              Live demo
+              {copy.nav.liveDemo}
             </a>
+            <LanguageSwitcher />
             <button
               onClick={() => {
                 setShowAuth(true);
@@ -167,7 +143,7 @@ export function MarketingLandingPage() {
               }}
               className="text-sm font-medium text-slate-400 transition hover:text-white"
             >
-              Log In
+              {copy.nav.logIn}
             </button>
             <button
               onClick={() => {
@@ -179,7 +155,7 @@ export function MarketingLandingPage() {
               }}
               className="rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110 active:brightness-95"
             >
-              Get Started Free
+              {copy.nav.getStarted}
             </button>
           </div>
         </div>
@@ -199,13 +175,13 @@ export function MarketingLandingPage() {
             {/* Badge */}
             <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-slate-300 backdrop-blur-sm animate-fade-in">
               <Icons.Music className="h-4 w-4 text-brand-400" />
-              Built for live music professionals
+              {copy.hero.badge}
             </div>
 
             <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-7xl leading-[1.1] animate-slide-in-down">
-              Manage your gigs,{" "}
+              {copy.hero.titleLead}{" "}
               <span className="bg-gradient-to-r from-brand-400 via-violet-400 to-orange-400 bg-clip-text text-transparent">
-                not spreadsheets
+                {copy.hero.titleAccent}
               </span>
             </h1>
 
@@ -213,16 +189,14 @@ export function MarketingLandingPage() {
               className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400 sm:text-xl animate-fade-in"
               style={{ animationDelay: "0.15s" }}
             >
-              Track performances, split fees, manage payments, and build setlists — all in one
-              beautiful dashboard. Stop juggling spreadsheets and start focusing on the music.
+              {copy.hero.subtitle}
             </p>
 
             <p
               className="mx-auto mt-4 max-w-2xl text-base text-slate-500 animate-fade-in"
               style={{ animationDelay: "0.22s" }}
             >
-              Every gig, every setlist and every euro in one place. No setup calls, no spreadsheets —
-              open your first gig in under two minutes.
+              {copy.hero.subline}
             </p>
 
             <div
@@ -239,7 +213,7 @@ export function MarketingLandingPage() {
                 }}
                 className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-brand-500/25 transition-all hover:shadow-brand-500/40 hover:brightness-110 active:brightness-95"
               >
-                Get Started Free
+                {copy.hero.primaryCta}
                 <Icons.ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
               <a
@@ -247,14 +221,14 @@ export function MarketingLandingPage() {
                 className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-slate-200 backdrop-blur-sm transition hover:bg-white/10 hover:text-white"
               >
                 <Icons.Sparkles className="h-4 w-4 text-brand-400" />
-                Open live demo
+                {copy.hero.demoCta}
                 <Icons.ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </a>
               <a
                 href="#features"
                 className="inline-flex items-center gap-2 rounded-2xl px-4 py-4 text-base font-semibold text-slate-400 transition hover:text-white"
               >
-                See Features
+                {copy.hero.featuresCta}
                 <Icons.ChevronDown className="h-4 w-4" />
               </a>
             </div>
@@ -263,7 +237,7 @@ export function MarketingLandingPage() {
               className="mt-4 text-xs text-slate-500 animate-fade-in"
               style={{ animationDelay: "0.36s" }}
             >
-              The demo opens instantly — no account, no password.
+              {copy.hero.demoNote}
             </p>
           </div>
 
@@ -278,7 +252,7 @@ export function MarketingLandingPage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-                <span className="ml-3 text-xs text-slate-500 font-mono">gigsmanager.com/app</span>
+                <span className="ml-3 text-xs text-slate-500 font-mono">{copy.preview.url}</span>
               </div>
 
               {/* Dashboard mockup */}
@@ -286,10 +260,10 @@ export function MarketingLandingPage() {
                 {/* KPI row */}
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
                   {[
-                    { label: "Total Gigs", value: "48", icon: Icons.Calendar, color: "text-slate-200" },
-                    { label: "My Earnings", value: "€24,150", icon: Icons.Wallet, color: "text-emerald-400" },
-                    { label: "Pending", value: "5", icon: Icons.Clock, color: "text-amber-400" },
-                    { label: "Owe to Band", value: "€1,240", icon: Icons.People, color: "text-rose-400" },
+                    { label: copy.preview.kpiTotalGigs, value: "48", icon: Icons.Calendar, color: "text-slate-200" },
+                    { label: copy.preview.kpiMyEarnings, value: "€24,150", icon: Icons.Wallet, color: "text-emerald-400" },
+                    { label: copy.preview.kpiPending, value: "5", icon: Icons.Clock, color: "text-amber-400" },
+                    { label: copy.preview.kpiOweToBand, value: "€1,240", icon: Icons.People, color: "text-rose-400" },
                   ].map((kpi) => (
                     <div
                       key={kpi.label}
@@ -310,21 +284,21 @@ export function MarketingLandingPage() {
                 <div className="mt-3 rounded-xl border border-white/5 bg-white/5 p-4 backdrop-blur">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white truncate">Jazz Cafe Summer Session</h3>
+                      <h3 className="font-semibold text-white truncate">{copy.preview.gigName}</h3>
                       <p className="mt-0.5 text-sm text-slate-400 truncate">
-                        Aug 15, 2026 · The Blue Note Quartet · 4 musicians
+                        {copy.preview.gigMeta}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                      Client Paid
+                      {copy.preview.clientPaid}
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                     {[
-                      { label: "Performance", value: "€1,200", color: "text-slate-300" },
-                      { label: "Technical", value: "€200", color: "text-slate-300" },
-                      { label: "My Earnings", value: "€700", color: "text-brand-400" },
-                      { label: "Owe to Others", value: "€900", color: "text-amber-400" },
+                      { label: copy.preview.colPerformance, value: "€1,200", color: "text-slate-300" },
+                      { label: copy.preview.colTechnical, value: "€200", color: "text-slate-300" },
+                      { label: copy.preview.colMyEarnings, value: "€700", color: "text-brand-400" },
+                      { label: copy.preview.colOweToOthers, value: "€900", color: "text-amber-400" },
                     ].map((col) => (
                       <div key={col.label}>
                         <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase">{col.label}</p>
@@ -351,33 +325,34 @@ export function MarketingLandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Everything you need to{" "}
+              {copy.features.titleLead}{" "}
               <span className="bg-gradient-to-r from-brand-400 to-violet-400 bg-clip-text text-transparent">
-                manage your music career
+                {copy.features.titleAccent}
               </span>
             </h2>
-            <p className="mt-4 text-lg text-slate-400">
-              From booking to payment, GigsManager handles the financial complexity so you can focus on performing.
-            </p>
+            <p className="mt-4 text-lg text-slate-400">{copy.features.subtitle}</p>
           </div>
 
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
+            {copy.features.items.map((feature, index) => {
+              const presentation = featurePresentation[index] ?? featurePresentation[0];
+              return (
               <div
                 key={feature.title}
                 className="group relative rounded-2xl border border-white/5 bg-white/[0.02] p-6 backdrop-blur-sm transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04] hover:-translate-y-1"
               >
                 {/* Gradient icon container */}
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} shadow-lg`}>
-                  <feature.icon className="h-5 w-5 text-white" />
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${presentation.gradient} shadow-lg`}>
+                  <presentation.icon className="h-5 w-5 text-white" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-white">{feature.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-400">{feature.description}</p>
 
                 {/* Subtle hover glow */}
-                <div className={`absolute -inset-px -z-10 rounded-2xl bg-gradient-to-br ${feature.gradient} opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-[0.07]`} />
+                <div className={`absolute -inset-px -z-10 rounded-2xl bg-gradient-to-br ${presentation.gradient} opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-[0.07]`} />
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -387,10 +362,10 @@ export function MarketingLandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-4xl grid-cols-2 gap-6 sm:grid-cols-4">
             {[
-              { value: 100, suffix: "%", label: "Free Forever" },
-              { value: 13, suffix: "+", label: "Currencies" },
-              { value: 1, suffix: "s", label: "Calculations" },
-              { value: 0, suffix: "", label: "Ads or Tracking", display: "Zero" },
+              { value: 100, suffix: "%", label: copy.stats.freeForever },
+              { value: 13, suffix: "+", label: copy.stats.currencies },
+              { value: 1, suffix: "s", label: copy.stats.calculations },
+              { value: 0, suffix: "", label: copy.stats.ads, display: copy.stats.zero },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-3xl font-extrabold sm:text-4xl bg-gradient-to-r from-brand-400 to-violet-400 bg-clip-text text-transparent">
@@ -409,25 +384,15 @@ export function MarketingLandingPage() {
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Why musicians love{" "}
+                {copy.why.titleLead}{" "}
                 <span className="bg-gradient-to-r from-brand-400 to-orange-400 bg-clip-text text-transparent">
-                  GigsManager
+                  {copy.why.titleAccent}
                 </span>
               </h2>
-              <p className="mt-4 text-lg text-slate-400">
-                Built by musicians, for musicians. We know the pain of tracking payments after a
-                gig — so we made something simple that actually works.
-              </p>
+              <p className="mt-4 text-lg text-slate-400">{copy.why.subtitle}</p>
 
               <ul className="mt-8 space-y-3">
-                {[
-                  "Free to use — no credit card required",
-                  "Works on desktop, tablet, and mobile",
-                  "Instant financial calculations",
-                  "Multi-currency support (EUR, USD, GBP, …)",
-                  "Export-ready data for your accounting",
-                  "No ads, no tracking, no nonsense",
-                ].map((benefit) => (
+                {copy.why.benefits.map((benefit) => (
                   <li key={benefit} className="flex items-center gap-3">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/10 ring-1 ring-brand-500/20">
                       <Icons.Check className="h-3.5 w-3.5 text-brand-400" />
@@ -444,14 +409,11 @@ export function MarketingLandingPage() {
               <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
 
               <div className="relative">
-                <h3 className="text-lg font-medium text-brand-200">Built for simplicity</h3>
+                <h3 className="text-lg font-medium text-brand-200">{copy.why.card.eyebrow}</h3>
                 <p className="mt-3 text-3xl font-bold sm:text-4xl leading-tight">
-                  From gig to payment in under 60&nbsp;seconds
+                  {copy.why.card.headline}
                 </p>
-                <p className="mt-4 text-brand-200 leading-relaxed">
-                  Add a performance, enter the fees, and GigsManager instantly calculates each
-                  musician's share, your earnings, and what you owe. No formulas, no mistakes, no stress.
-                </p>
+                <p className="mt-4 text-brand-200 leading-relaxed">{copy.why.card.body}</p>
               </div>
             </div>
           </div>
@@ -467,14 +429,12 @@ export function MarketingLandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Simple,{" "}
+              {copy.pricing.titleLead}{" "}
               <span className="bg-gradient-to-r from-brand-400 to-orange-400 bg-clip-text text-transparent">
-                transparent pricing
+                {copy.pricing.titleAccent}
               </span>
             </h2>
-            <p className="mt-4 text-lg text-slate-400">
-              Choose the plan that fits your needs. Free forever for individual musicians.
-            </p>
+            <p className="mt-4 text-lg text-slate-400">{copy.pricing.subtitle}</p>
           </div>
 
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -482,23 +442,15 @@ export function MarketingLandingPage() {
             <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
               <div className="flex items-center gap-2 mb-4">
                 <Icons.Music className="h-5 w-5 text-brand-400" />
-                <h3 className="text-lg font-semibold text-white">Free / Musician</h3>
+                <h3 className="text-lg font-semibold text-white">{copy.pricing.free.title}</h3>
               </div>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">€0</span>
-                <span className="text-slate-400">/month</span>
+                <span className="text-slate-400">{copy.pricing.perMonth}</span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Perfect for individual musicians tracking their gigs and earnings.
-              </p>
+              <p className="text-sm text-slate-400 mb-6">{copy.pricing.free.description}</p>
               <ul className="space-y-3 mb-6">
-                {[
-                  "Unlimited gig tracking",
-                  "Setlist management",
-                  "Financial calculations",
-                  "Multi-currency support",
-                  "Mobile & desktop access",
-                ].map((feature) => (
+                {copy.pricing.free.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
                     <Icons.Check className="h-4 w-4 text-brand-400" />
                     {feature}
@@ -515,7 +467,7 @@ export function MarketingLandingPage() {
                 }}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Get Started Free
+                {copy.pricing.free.cta}
               </button>
             </div>
 
@@ -523,28 +475,20 @@ export function MarketingLandingPage() {
             <div className="relative rounded-2xl border border-brand-500/30 bg-gradient-to-br from-brand-500/10 to-orange-500/10 p-6 backdrop-blur-sm">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <span className="inline-flex items-center rounded-full bg-gradient-to-r from-brand-500 to-orange-500 px-3 py-1 text-xs font-semibold text-white">
-                  Support Us
+                  {copy.pricing.supporter.badge}
                 </span>
               </div>
               <div className="flex items-center gap-2 mb-4 mt-2">
                 <Icons.Heart className="h-5 w-5 text-orange-400" />
-                <h3 className="text-lg font-semibold text-white">Supporter / Donatie</h3>
+                <h3 className="text-lg font-semibold text-white">{copy.pricing.supporter.title}</h3>
               </div>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">€5+</span>
-                <span className="text-slate-400">/month</span>
+                <span className="text-slate-400">{copy.pricing.perMonth}</span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                Support the development of GigsManager and help keep it free for everyone.
-              </p>
+              <p className="text-sm text-slate-400 mb-6">{copy.pricing.supporter.description}</p>
               <ul className="space-y-3 mb-6">
-                {[
-                  "Everything in Free",
-                  "Support open-source development",
-                  "Priority feature requests",
-                  "Early access to new features",
-                  "Your name in supporters list",
-                ].map((feature) => (
+                {copy.pricing.supporter.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
                     <Icons.Check className="h-4 w-4 text-brand-400" />
                     {feature}
@@ -555,7 +499,7 @@ export function MarketingLandingPage() {
                 onClick={() => setShowDonationModal(true)}
                 className="w-full rounded-xl bg-gradient-to-r from-brand-500 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110"
               >
-                Support via Donatie
+                {copy.pricing.supporter.cta}
               </button>
             </div>
 
@@ -563,24 +507,15 @@ export function MarketingLandingPage() {
             <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
               <div className="flex items-center gap-2 mb-4">
                 <Icons.People className="h-5 w-5 text-violet-400" />
-                <h3 className="text-lg font-semibold text-white">Pro / Band Manager</h3>
+                <h3 className="text-lg font-semibold text-white">{copy.pricing.pro.title}</h3>
               </div>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">€15</span>
-                <span className="text-slate-400">/month</span>
+                <span className="text-slate-400">{copy.pricing.perMonth}</span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">
-                For band managers and professional musicians managing multiple acts.
-              </p>
+              <p className="text-sm text-slate-400 mb-6">{copy.pricing.pro.description}</p>
               <ul className="space-y-3 mb-6">
-                {[
-                  "Everything in Free",
-                  "Unlimited band management",
-                  "Advanced analytics & reports",
-                  "Team collaboration tools",
-                  "Priority support",
-                  "Custom branding options",
-                ].map((feature) => (
+                {copy.pricing.pro.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
                     <Icons.Check className="h-4 w-4 text-brand-400" />
                     {feature}
@@ -597,7 +532,7 @@ export function MarketingLandingPage() {
                 }}
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Contact for Pro
+                {copy.pricing.pro.cta}
               </button>
             </div>
           </div>
@@ -621,33 +556,31 @@ export function MarketingLandingPage() {
             
             <div className="flex items-center gap-2 mb-4">
               <Icons.Heart className="h-5 w-5 text-orange-400" />
-              <h3 className="text-xl font-semibold text-white">Support GigsManager</h3>
+              <h3 className="text-xl font-semibold text-white">{copy.donation.title}</h3>
             </div>
-            
-            <p className="text-sm text-slate-400 mb-6">
-              Thank you for considering supporting GigsManager! Your donation helps keep the project free and open-source for all musicians.
-            </p>
-            
+
+            <p className="text-sm text-slate-400 mb-6">{copy.donation.body}</p>
+
             <div className="space-y-4">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <h4 className="text-sm font-semibold text-white mb-2">Direct Bank Transfer</h4>
+                <h4 className="text-sm font-semibold text-white mb-2">{copy.donation.bankTitle}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">IBAN:</span>
+                    <span className="text-slate-400">{copy.donation.iban}</span>
                     <span className="text-white font-mono">BE46 7390 1188 6036</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Account holder:</span>
+                    <span className="text-slate-400">{copy.donation.accountHolder}</span>
                     <span className="text-white">GigsManager Support</span>
                   </div>
                 </div>
               </div>
-              
+
               <button
                 onClick={() => setShowDonationModal(false)}
                 className="w-full rounded-xl bg-gradient-to-r from-brand-500 to-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110"
               >
-                Close
+                {copy.donation.close}
               </button>
             </div>
           </div>
@@ -666,12 +599,10 @@ export function MarketingLandingPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              {showAuth ? "Welcome back" : "Ready to get started?"}
+              {showAuth ? copy.auth.welcomeTitle : copy.auth.readyTitle}
             </h2>
             <p className="mt-4 text-lg text-slate-400">
-              {showAuth
-                ? "Sign in to your account or create a new one."
-                : "Create your free account and start tracking your gigs in minutes."}
+              {showAuth ? copy.auth.signInSubtitle : copy.auth.startSubtitle}
             </p>
 
             {!showAuth && (
@@ -680,16 +611,16 @@ export function MarketingLandingPage() {
                   onClick={() => setShowAuth(true)}
                   className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-brand-500/25 transition-all hover:shadow-brand-500/40 hover:brightness-110"
                 >
-                  Create Free Account
+                  {copy.auth.createCta}
                   <Icons.ChevronRight className="h-4 w-4" />
                 </button>
-                <p className="text-sm text-slate-500">or</p>
+                <p className="text-sm text-slate-500">{copy.auth.or}</p>
                 <a
                   href="/demo"
                   className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
                 >
                   <Icons.Sparkles className="h-4 w-4 text-brand-400" />
-                  Bekijk eerst de demo — geen wachtwoord nodig
+                  {copy.auth.demoLink}
                 </a>
               </div>
             )}
@@ -719,7 +650,7 @@ export function MarketingLandingPage() {
             </span>
           </div>
           <p className="text-sm text-slate-500">
-            &copy; {new Date().getFullYear()} GigsManager. Free and open-source.
+            &copy; {new Date().getFullYear()} GigsManager. {copy.footer.tagline}
           </p>
         </div>
       </footer>

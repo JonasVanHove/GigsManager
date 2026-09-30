@@ -104,7 +104,7 @@ export default function NotificationCenter({
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-slate-900 dark:text-white">{notif.title}</p>
                       <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">{notif.message}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                      <p className="mt-1 text-xs text-slate-500">
                         {formatDateTime(notif.createdAt)}
                       </p>
 
@@ -124,7 +124,7 @@ export default function NotificationCenter({
                       {notif.status === "unread" && onMarkAsRead && (
                         <button
                           onClick={() => onMarkAsRead(notif.id)}
-                          className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition"
                           title={copy.markAsRead}
                         >
                           <Icons.Check className="h-4 w-4" />
@@ -133,7 +133,7 @@ export default function NotificationCenter({
                       {onDismiss && (
                         <button
                           onClick={() => onDismiss(notif.id)}
-                          className="rounded p-1 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition"
+                          className="rounded p-1 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition"
                           title={copy.dismiss}
                         >
                           <Icons.Close className="h-4 w-4" />

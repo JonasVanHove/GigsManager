@@ -122,7 +122,7 @@ export default function BulkEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
       onClick={handleBackdropClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -161,7 +161,7 @@ export default function BulkEditor({
             
             {!useCustomDate ? (
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 bg-white/50 dark:bg-slate-900/50 px-3 py-2 rounded">
-                <span className="text-slate-400 dark:text-slate-500">→</span>
+                <span className="text-slate-500">→</span>
                 <span>Will set payment date to <strong>{today}</strong> (today)</span>
               </div>
             ) : (
@@ -174,7 +174,7 @@ export default function BulkEditor({
                 />
                 {customDate && (
                   <p className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1.5 rounded">
-                    <span className="text-slate-400 dark:text-slate-500">→</span>
+                    <span className="text-slate-500">→</span>
                     <span>Will set payment date to <strong>{customDate}</strong></span>
                   </p>
                 )}

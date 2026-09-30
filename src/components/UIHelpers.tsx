@@ -67,7 +67,7 @@ export function KeyboardShortcut({ keys, description }: KeyboardShortcutProps) {
             <kbd className="rounded bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 shadow dark:bg-slate-700 dark:text-slate-300">
               {key}
             </kbd>
-            {index < keys.length - 1 && <span className="mx-1 text-slate-400">+</span>}
+            {index < keys.length - 1 && <span className="mx-1 text-slate-500">+</span>}
           </span>
         ))}
       </div>

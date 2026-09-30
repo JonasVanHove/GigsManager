@@ -530,7 +530,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
                 setSearchText("");
                 setShowSearchDropdown(false);
               }}
-              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+              className="text-slate-500 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
             >
               ✕
             </button>
@@ -897,7 +897,7 @@ export default function CalendarView({ fmtCurrency, onEditGig, gigs: preloadedGi
                 <button
                   onClick={handleCloseModal}
                   aria-label="Close"
-                  className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                  className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
                 >
                   <Icons.Close className="h-5 w-5" />
                 </button>

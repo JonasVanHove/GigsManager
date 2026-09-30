@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import { Icons } from "./Icons";
@@ -168,7 +168,7 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={busy}
-            className="w-full rounded-lg border border-slate-300/50 bg-slate-50/50 backdrop-blur px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 dark:border-slate-600/50 dark:bg-slate-800/50 dark:backdrop-blur dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-brand-400 dark:focus:ring-brand-400/30"
+            className="w-full rounded-lg border border-slate-300/50 bg-slate-50/50 backdrop-blur px-4 py-3 text-slate-900 placeholder:text-slate-500 transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 dark:border-slate-600/50 dark:bg-slate-800/50 dark:backdrop-blur dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/30"
             placeholder="your@email.com"
             autoComplete="email"
           />
@@ -189,7 +189,7 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={busy}
-              className="w-full rounded-lg border border-slate-300/50 bg-slate-50/50 backdrop-blur px-4 py-3 pr-12 text-slate-900 placeholder:text-slate-400 transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 dark:border-slate-600/50 dark:bg-slate-800/50 dark:backdrop-blur dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/30"
+              className="w-full rounded-lg border border-slate-300/50 bg-slate-50/50 backdrop-blur px-4 py-3 pr-12 text-slate-900 placeholder:text-slate-500 transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 dark:border-slate-600/50 dark:bg-slate-800/50 dark:backdrop-blur dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/30"
               placeholder={isSignUp ? "Min. 6 characters" : "••••••••"}
               autoComplete={isSignUp ? "new-password" : "current-password"}
             />

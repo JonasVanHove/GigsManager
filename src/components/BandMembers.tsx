@@ -645,7 +645,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
               <button
                 onClick={handleCancel}
                 aria-label="Close"
-                className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <Icons.X className="h-5 w-5" />
               </button>
@@ -898,7 +898,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
       {/* Members List */}
       {members.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
-          <Icons.People className="mx-auto h-12 w-12 text-slate-400" />
+          <Icons.People className="mx-auto h-12 w-12 text-slate-500" />
             <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
             {copy.noMembersYet}
           </h3>
@@ -964,21 +964,21 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                             <div className="ml-2 flex gap-1">
                               <button
                                 onClick={() => openGigPicker(member)}
-                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
                                 title={copy.assignGigs}
                               >
                                 <Icons.Calendar className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleEdit(member)}
-                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
+                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
                                 title={copy.edit}
                               >
                                 <Icons.Edit className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(member.id, member.name)}
-                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                                 title={copy.delete}
                               >
                                 <Icons.Trash className="h-4 w-4" />
@@ -990,7 +990,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                         <div className="space-y-3 px-4 py-3">
                           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
                             <div>
-                              <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                                 Total Earned
                               </p>
                               <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -998,7 +998,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                                 {copy.invested}
                               </p>
                               <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -1006,7 +1006,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                                 Gigs
                               </p>
                               <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -1080,21 +1080,21 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                       <div className="ml-2 flex gap-1">
                         <button
                           onClick={() => openGigPicker(member)}
-                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
                           title="Assign gigs"
                         >
                           <Icons.Calendar className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleEdit(member)}
-                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
+                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
                           title="Edit"
                         >
                           <Icons.Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(member.id, member.name)}
-                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                           title="Delete"
                         >
                           <Icons.Trash className="h-4 w-4" />
@@ -1106,7 +1106,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                   <div className="space-y-3 px-4 py-3">
                     <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                           Total Earned
                         </p>
                         <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -1114,7 +1114,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                           {copy.invested}
                         </p>
                         <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -1122,7 +1122,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
                           Gigs
                         </p>
                         <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -1178,7 +1178,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
               <button
                 onClick={closeGigPicker}
                 aria-label="Close"
-                className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
                 title="Close"
               >
                 <Icons.Close className="h-5 w-5" />

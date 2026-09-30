@@ -608,7 +608,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
 
   // -- Shared styles ----------------------------------------------------------
   const inputCls =
-    "block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-400/20 disabled:opacity-50";
+    "block w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-sm placeholder:text-slate-500 dark:placeholder:text-slate-500 focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:focus:ring-brand-400/20 disabled:opacity-50";
   const labelCls = "mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400";
 
   return (
@@ -712,7 +712,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                       <label className={labelCls}>Band / Artist <span className="text-red-500">*</span></label>
                       <p className="text-xs text-slate-500 dark:text-slate-400">Pick an existing band first, or add a new one and use it immediately.</p>
                     </div>
-                    <div className="min-w-[180px] text-right text-xs text-slate-400 dark:text-slate-500">
+                    <div className="min-w-[180px] text-right text-xs text-slate-500">
                       {bandOptions.length > 0 ? `${bandOptions.length} saved band${bandOptions.length !== 1 ? "s" : ""} available` : "No saved bands yet"}
                     </div>
                   </div>
@@ -822,7 +822,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                         <input type="checkbox" checked={selectedMemberIds.includes(member.id)} onChange={() => toggleMember(member.id)} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
                         <span className="font-medium">{member.name}</span>
                       </div>
-                      {member.bands && member.bands.length > 0 && <span className="text-xs text-slate-400">{member.bands.join(", ")}</span>}
+                      {member.bands && member.bands.length > 0 && <span className="text-xs text-slate-500">{member.bands.join(", ")}</span>}
                     </label>
                   ))}
                 </div>

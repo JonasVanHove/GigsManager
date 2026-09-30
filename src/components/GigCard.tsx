@@ -112,22 +112,22 @@ const GigCard = memo(function GigCard({
   const bandStyles = useMemo(() => getBandColorStyles(gig.performers, gig.band?.color), [gig.performers, gig.band?.color]);
 
   return (
-    <div className={`group overflow-hidden rounded-xl border-l-4 border animate-fade-in transition-all duration-300 ${
+    <div className={`group overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
       gig.managerInstantPayment
-        ? 'border-slate-300/60 bg-slate-100/50 backdrop-blur shadow-sm dark:border-slate-600/60 dark:bg-slate-800/50 dark:backdrop-blur'
+        ? 'surface-card border-slate-300/80 bg-slate-100/60 backdrop-blur dark:border-slate-600/60 dark:bg-slate-800/50 dark:backdrop-blur'
         : isSelected
-        ? 'border-blue-400/60 bg-blue-50/50 backdrop-blur shadow-lg dark:bg-blue-950/30 dark:border-blue-400/60 dark:backdrop-blur'
+        ? 'border-blue-400/60 bg-blue-50/60 backdrop-blur shadow-lg dark:bg-blue-950/30 dark:border-blue-400/60 dark:backdrop-blur'
         : isClientPaymentOverdue
-          ? 'border-red-300/60 bg-red-50/40 backdrop-blur shadow-md dark:border-red-500/40 dark:bg-red-950/20 dark:shadow-lg dark:backdrop-blur'
+          ? 'border-red-300/80 bg-red-50/50 backdrop-blur shadow-md dark:border-red-500/40 dark:bg-red-950/20 dark:shadow-lg dark:backdrop-blur'
           : gig.band?.color
-          ? `${bandStyles.soft.backgroundColor} backdrop-blur shadow-md hover:shadow-lg dark:backdrop-blur hover:bg-slate-100/80 dark:hover:bg-slate-800/60`
-          : 'border-slate-200/50 bg-slate-50/70 backdrop-blur shadow-md hover:shadow-lg dark:border-slate-700/50 dark:bg-slate-900/50 dark:backdrop-blur hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
+          ? `surface-card surface-card-hover backdrop-blur ${bandStyles.soft.backgroundColor} dark:backdrop-blur`
+          : 'surface-card surface-card-hover backdrop-blur dark:bg-slate-900/50 dark:backdrop-blur'
     }`} style={{
       borderLeftColor: bandStyles.solid.backgroundColor,
       borderColor: gig.band?.color ? bandStyles.soft.borderColor : undefined
     }}>
       {/* -- Header ------------------------------------------------------ */}
-      <div className={`flex items-start justify-between border-b transition-colors px-3 py-3 sm:px-5 sm:py-4`}>
+      <div className={`flex items-start justify-between divider-subtle border-b transition-colors px-3 py-3 sm:px-5 sm:py-4`}>
         {/* Left side: Checkbox + Event info (clickable to expand/collapse) */}
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {onSelect && (
@@ -165,7 +165,7 @@ const GigCard = memo(function GigCard({
                     <path d="m9.653 16.915-.005-.003-.019-.01a20.759 20.759 0 0 1-1.162-.682 22.045 22.045 0 0 1-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 0 1 8-2.828A4.5 4.5 0 0 1 18 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 0 1-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 0 1-.69.001l-.002-.001Z" />
                   </svg>
                 </span>
-                <span className="hidden tablet:inline-flex shrink-0 items-center gap-1 rounded-full bg-pink-50 dark:bg-pink-950 px-2 py-0.5 text-xs font-medium text-pink-700 dark:text-pink-300 ring-1 ring-pink-600/20 dark:ring-pink-500/30 badge-enter">
+                <span className="badge badge-charity badge-enter hidden tablet:inline-flex shrink-0">
                   <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                     <path d="m9.653 16.915-.005-.003-.019-.01a20.759 20.759 0 0 1-1.162-.682 22.045 22.045 0 0 1-2.582-1.9C4.045 12.733 2 10.352 2 7.5a4.5 4.5 0 0 1 8-2.828A4.5 4.5 0 0 1 18 7.5c0 2.852-2.044 5.233-3.885 6.82a22.049 22.049 0 0 1-3.744 2.582l-.019.01-.005.003h-.002a.739.739 0 0 1-.69.001l-.002-.001Z" />
                   </svg>
@@ -181,7 +181,7 @@ const GigCard = memo(function GigCard({
                     <path d="M12 8v5l3 2" />
                   </svg>
                 </span>
-                <span className="hidden tablet:inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-600/20 dark:ring-amber-500/30 badge-enter">
+                <span className="badge badge-option badge-enter hidden tablet:inline-flex shrink-0">
                   <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="8" />
                     <path d="M12 8v5l3 2" />
@@ -191,7 +191,7 @@ const GigCard = memo(function GigCard({
               </>
             )}
             {hasPendingNotes && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-blue-600/20 dark:ring-blue-500/30 badge-enter">
+              <span className="badge badge-accent badge-enter shrink-0">
                 <Icons.Spinner className="h-3 w-3 shrink-0 animate-pulse" />
                 {isDutch ? "Notities (pending)" : "Notes (pending)"}
               </span>
@@ -201,7 +201,7 @@ const GigCard = memo(function GigCard({
                 <span className="inline-flex tablet:hidden items-center shrink-0 p-1 rounded-md text-amber-700 dark:text-amber-300 badge-enter" title="Manager pays">
                   <Icons.Wallet className="h-4 w-4" />
                 </span>
-                <span className="hidden tablet:inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-600/20 dark:ring-amber-500/30 badge-enter">
+                <span className="badge badge-pending badge-enter hidden tablet:inline-flex shrink-0">
                   <Icons.Wallet className="h-3 w-3 shrink-0" />
                   💰 Manager pays — arrange payment
                 </span>
@@ -209,7 +209,7 @@ const GigCard = memo(function GigCard({
             )}
             {/* Expand/collapse chevron */}
             <Icons.ChevronDown
-              className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${
+              className={`h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
                 effectiveIsExpanded ? "rotate-180" : ""
               }`}
             />
@@ -250,7 +250,7 @@ const GigCard = memo(function GigCard({
                 onDuplicate(gig);
               }}
               title={isDutch ? "Dupliceer optreden" : "Duplicate gig"}
-              className="rounded-lg p-2 text-slate-400 transition-all duration-200 hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-slate-700/50 dark:text-slate-400 dark:hover:text-slate-200"
+              className="rounded-lg p-2 text-slate-500 transition-all duration-200 hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-slate-700/50 dark:text-slate-400 dark:hover:text-slate-200"
             >
               <Icons.Copy className="h-4 w-4 shrink-0" />
             </button>
@@ -258,7 +258,7 @@ const GigCard = memo(function GigCard({
           <button
             onClick={() => onEdit(gig)}
             title={isDutch ? "Bewerken" : "Edit"}
-            className="rounded-lg p-2 text-slate-400 transition-all duration-200 hover:bg-brand-100/60 hover:text-brand-600 dark:hover:bg-brand-900/30 dark:text-slate-300 dark:hover:text-brand-300"
+            className="rounded-lg p-2 text-slate-500 transition-all duration-200 hover:bg-brand-100/60 hover:text-brand-600 dark:hover:bg-brand-900/30 dark:text-slate-300 dark:hover:text-brand-300"
           >
             <Icons.Edit className="h-4 w-4 shrink-0" />
           </button>
@@ -269,7 +269,7 @@ const GigCard = memo(function GigCard({
                 onDelete(gig);
               }}
               title={isDutch ? "Verwijderen" : "Delete"}
-              className="rounded-lg p-2 text-slate-400 transition-all duration-200 hover:bg-red-100/60 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-slate-400 dark:hover:text-red-400"
+              className="rounded-lg p-2 text-slate-500 transition-all duration-200 hover:bg-red-100/60 hover:text-red-600 dark:hover:bg-red-900/30 dark:text-slate-400 dark:hover:text-red-400"
             >
               <Icons.Trash className="h-4 w-4 shrink-0" />
             </button>
@@ -283,7 +283,7 @@ const GigCard = memo(function GigCard({
           {/* -- Financial breakdown ------------------------------------------ */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-3 py-4 text-sm sm:grid-cols-4 sm:px-5 border-b border-slate-100 dark:border-slate-700/50 animate-fade-in">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Performance
           </p>
           <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -292,7 +292,7 @@ const GigCard = memo(function GigCard({
         </div>
 
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Technical
           </p>
           <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
@@ -302,7 +302,7 @@ const GigCard = memo(function GigCard({
 
         {gig.managerBonusAmount > 0 && (
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Bonus{" "}
               <span className="normal-case">
                 ({gig.managerBonusType === "percentage"
@@ -317,7 +317,7 @@ const GigCard = memo(function GigCard({
         )}
 
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Total Received
           </p>
           <p className="mt-0.5 font-bold text-slate-900 dark:text-white">
@@ -331,7 +331,7 @@ const GigCard = memo(function GigCard({
         {/* Row 1: Per musician + My earnings */}
         <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Per Musician
             </p>
             <p className="mt-0.5 font-semibold text-slate-700 dark:text-slate-300">
@@ -382,7 +382,7 @@ const GigCard = memo(function GigCard({
                       <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
                     </svg>
                   ) : (
-                    <svg className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <svg className="h-3.5 w-3.5 shrink-0 text-slate-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path fillRule="evenodd" d="M4.47 4.47a.75.75 0 0 1 1.06 0L10 8.94l4.47-4.47a.75.75 0 1 1 1.06 1.06L11.06 10l4.47 4.47a.75.75 0 1 1-1.06 1.06L10 11.06l-4.47 4.47a.75.75 0 0 1-1.06-1.06L8.94 10 4.47 5.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
                     </svg>
                   )}
@@ -394,7 +394,7 @@ const GigCard = memo(function GigCard({
                   {gig.claimTechnicalFee ? (
                     <Icons.Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   ) : (
-                    <Icons.Close className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+                    <Icons.Close className="h-3.5 w-3.5 shrink-0 text-slate-500" />
                   )}
                   <span className={gig.claimTechnicalFee ? "text-slate-700 dark:text-slate-300" : "text-slate-500 dark:text-slate-400"}>
                     Technical

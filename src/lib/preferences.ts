@@ -59,11 +59,16 @@ export function getBandColorStyles(bandName: string, bandColor?: string | null) 
   if (resolvedBandColor) {
     const solidTextColor = getContrastColor(resolvedBandColor);
     const borderColor = adjustColor(resolvedBandColor, -20);
-    // Calculate soft background by blending with white (light mode) and slate-900 (dark mode)
-    const softBgLight = blendColors(resolvedBandColor, '#ffffff', 0.18);
+    // The soft variant paints the band color at 18% alpha, so its *effective*
+    // background depends on the theme: a pale tint over the white card in light
+    // mode, a deep tint over the dark card in dark mode. A single static text
+    // color cannot serve both — light text on the pale tint is ~1.2:1 and
+    // effectively invisible. Therefore the soft variant reports the color for
+    // BOTH themes and BandTag swaps them via CSS (see .band-tag in globals.css).
+    const softBgLight = blendColors(resolvedBandColor, '#ffffff', 0.82);
     const softBgDark = blendColors(resolvedBandColor, '#0f172a', 0.18);
-    // Use darker background for contrast calculation (worst case)
-    const softTextColor = getContrastColor(softBgDark);
+    const softTextColor = getContrastColor(softBgLight);
+    const softTextColorDark = getContrastColor(softBgDark);
     return {
       solid: {
         backgroundColor: resolvedBandColor,
@@ -74,6 +79,7 @@ export function getBandColorStyles(bandName: string, bandColor?: string | null) 
         backgroundColor: hexToRgba(resolvedBandColor, 0.18),
         borderColor: adjustColor(resolvedBandColor, -15),
         color: softTextColor,
+        darkColor: softTextColorDark,
       },
       line: {
         borderColor: resolvedBandColor,
@@ -88,9 +94,11 @@ export function getBandColorStyles(bandName: string, bandColor?: string | null) 
   const solidTextColor = getContrastColor(solidHex);
   const softColor = hslToRgba(hue, 68, 94, 0.15);
   const borderColor = `hsl(${hue} 70% 78%)`;
-  // Calculate soft background for contrast
+  // Same light/dark split as the explicit-color branch above.
+  const softBgLight = blendColors(solidHex, '#ffffff', 0.85);
   const softBgDark = blendColors(solidHex, '#0f172a', 0.15);
-  const softTextColor = getContrastColor(softBgDark);
+  const softTextColor = getContrastColor(softBgLight);
+  const softTextColorDark = getContrastColor(softBgDark);
 
   return {
     solid: {
@@ -102,6 +110,7 @@ export function getBandColorStyles(bandName: string, bandColor?: string | null) 
       backgroundColor: softColor,
       borderColor,
       color: softTextColor,
+      darkColor: softTextColorDark,
     },
     line: {
       borderColor: solidColor,

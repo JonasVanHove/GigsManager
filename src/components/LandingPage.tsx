@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -198,11 +198,11 @@ export default function LandingPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
                     <div>
-                      <p className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase">Performance</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase">Performance</p>
                       <p className="font-semibold text-slate-800 dark:text-slate-200">€1,200</p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs font-medium text-slate-400 dark:text-slate-500 uppercase">Technical</p>
+                      <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase">Technical</p>
                       <p className="font-semibold text-slate-800 dark:text-slate-200">€200</p>
                     </div>
                     <div>

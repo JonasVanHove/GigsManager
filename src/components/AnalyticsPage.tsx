@@ -235,7 +235,7 @@ export default function AnalyticsPage({ gigs, fmtCurrency }: AnalyticsPageProps)
       <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-8 shadow-sm backdrop-blur">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-            <Icons.Analytics className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+            <Icons.Analytics className="h-8 w-8 text-slate-500" />
           </div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {tr("No data yet", "Nog geen gegevens")}
@@ -872,7 +872,7 @@ function MonthlyIncomeChart({
 
         <div className="relative hidden h-44 overflow-hidden rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50 via-white to-brand-50/40 px-3 sm:h-72 sm:px-4 pb-4 pt-5 sm:pt-6 shadow-inner dark:border-slate-700/70 dark:from-slate-900/80 dark:via-slate-900 dark:to-slate-950/70 md:block">
             <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[linear-gradient(to_top,rgba(148,163,184,0.18)_1px,transparent_1px)] bg-[length:100%_20%] dark:bg-[linear-gradient(to_top,rgba(51,65,85,0.35)_1px,transparent_1px)]" />
-            <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
+            <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
               <span>{tr("Monthly volume", "Maandelijks volume")}</span>
               <span>{tr("Hover for values", "Hover voor waarden")}</span>
             </div>

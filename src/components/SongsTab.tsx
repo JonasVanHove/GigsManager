@@ -750,7 +750,7 @@ export default function SongsTab() {
               return (
                 <div
                   key={song.id}
-                  className="rounded-2xl border border-neutral-800/90 bg-black p-4 transition duration-200 hover:border-neutral-700 hover:shadow-lg hover:shadow-cyan-950/20 w-full"
+                  className="rounded-2xl border border-neutral-800/90 bg-black p-4 transition duration-200 hover:border-neutral-700 hover:shadow-card-hover hover:shadow-cyan-950/20 w-full"
                 >
                   <div className="flex flex-col gap-3">
                     <div className="min-w-0">
@@ -950,7 +950,7 @@ export default function SongsTab() {
                         return (
                           <div
                             key={similarSong.id}
-                            className="rounded-xl border border-purple-200 bg-purple-50/50 p-4 dark:border-purple-800 dark:bg-purple-950/30 hover:shadow-lg transition cursor-pointer hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
+                            className="rounded-xl border border-purple-200 bg-purple-50/50 p-4 dark:border-purple-800 dark:bg-purple-950/30 hover:shadow-card-hover transition cursor-pointer hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
                             onClick={() => {
                               openEditor(similarSong);
                               setSelectedSongForAI(null);
@@ -996,7 +996,7 @@ export default function SongsTab() {
 
       {/* Editor Modal */}
       {editorOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 flex items-center justify-center">
           <div className="w-full max-w-4xl rounded-3xl bg-neutral-950 border border-neutral-800 p-6 shadow-2xl text-slate-100 my-auto">
             <div className="flex items-start justify-between gap-3 border-b border-neutral-800 pb-4">
               <div>

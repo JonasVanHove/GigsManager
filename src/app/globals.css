@@ -5,8 +5,28 @@
 /* ── Base styles ─────────────────────────────────────────────────────────── */
 
 :root {
-  --foreground: 15 23 42;    /* slate-900 */
-  --background: 248 250 252; /* slate-50  */
+  /* Surfaces: soft off-white page, crisp white for elevated cards/modals. */
+  --background: 248 250 252;        /* slate-50  — main views  */
+  --surface: 255 255 255;           /* #ffffff  — cards       */
+  --surface-elevated: 255 255 255;  /* #ffffff  — modals      */
+  --surface-muted: 241 245 249;     /* slate-100 — insets      */
+  --surface-hover: 248 250 252;     /* slate-50  — hover rows  */
+
+  /* Typography: sharp contrast instead of washed-out gray. */
+  --foreground: 15 23 42;           /* slate-900 — headings    */
+  --muted-foreground: 51 65 85;     /* slate-700 — body text   */
+  --subtle-foreground: 100 116 139; /* slate-500 — captions    */
+
+  /* Borders & dividers. */
+  --border: 226 232 240;            /* slate-200 */
+  --border-strong: 203 213 225;     /* slate-300 */
+
+  /* Neutral ambient shadows (never near-black). */
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+  --shadow-elevated: 0 12px 32px -8px rgb(15 23 42 / 0.14), 0 4px 8px -4px rgb(15 23 42 / 0.06);
+  --ring-color: 0 114 128;          /* brand-600 */
+
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
@@ -22,8 +42,20 @@ html {
 }
 
 html.dark {
-  --foreground: 241 245 249; /* slate-100 */
-  --background: 11 15 25;    /* deep modern dark slate #0b0f19 */
+  --foreground: 241 245 249;        /* slate-100 */
+  --muted-foreground: 203 213 225;  /* slate-300 */
+  --subtle-foreground: 148 163 184; /* slate-400 */
+  --background: 11 15 25;           /* deep modern dark slate #0b0f19 */
+  --surface: 23 28 41;              /* slate-900-ish */
+  --surface-elevated: 20 24 35;
+  --surface-muted: 30 36 51;
+  --surface-hover: 39 46 64;
+  --border: 51 65 85;               /* slate-700 */
+  --border-strong: 71 85 105;
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.35);
+  --shadow-card-hover: 0 8px 20px -6px rgb(0 0 0 / 0.5);
+  --shadow-elevated: 0 20px 40px -12px rgb(0 0 0 / 0.6);
+  --ring-color: 51 207 219;         /* brand-300 */
   color-scheme: dark;
 }
 
@@ -34,7 +66,16 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Warm off-white canvas instead of a flat blinding white. */
+html:not(.dark) body {
+  background-color: rgb(var(--background));
+  background-image:
+    radial-gradient(ellipse 70% 40% at 90% -5%, rgb(0 175 195 / 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 35% at 5% 0%, rgb(245 195 0 / 0.045) 0%, transparent 55%);
+  background-attachment: fixed;
+  background-size: 100% 100%;
 }
 
 html.dark body {
@@ -80,10 +121,11 @@ html.dark ::-webkit-scrollbar-thumb {
   background: #4a5568;
 }
 
-/* ── Smooth focus rings - Neon bright ──────────────────────────────── */
+/* ── Focus rings ──────────────────────────────────────────────────────── */
 
+/* Brand-toned focus ring: visible on white surfaces without the neon glare. */
 *:focus-visible {
-  outline: 2px solid #6969ff;
+  outline: 2px solid rgb(var(--ring-color));
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -107,13 +149,337 @@ html.dark input[type="date"]::-webkit-calendar-picker-indicator {
 /* ── Selection highlight - Neon ────────────────────────────────────────── */
 
 ::selection {
-  background: #6969ff;
-  color: white;
+  background: rgb(var(--ring-color));
+  color: #ffffff;
 }
 
 html.dark ::selection {
   background: #00d9ff;
   color: #0a0a0f;
+}
+
+/* ── Base form controls ────────────────────────────────────────────────────
+ *
+ * Tailwind utilities always win over this layer, so individual components
+ * keep full control; this only gives *unstyled* inputs/selects/textareas a
+ * defined border, readable text and a visible focus ring instead of the
+ * browser default (which is nearly invisible on a light page).
+ * Deliberately no background here: an input without a bg utility must stay
+ * transparent so it blends with its container (e.g. performance mode).
+ */
+
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea {
+    border-color: rgb(var(--border-strong));
+    color: rgb(var(--foreground));
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--subtle-foreground));
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid rgb(var(--ring-color));
+    outline-offset: 1px;
+  }
+
+  html.dark input:not([type="checkbox"]):not([type="radio"]),
+  html.dark select,
+  html.dark textarea {
+    border-color: rgb(var(--border-strong));
+    color: rgb(var(--foreground));
+  }
+}
+
+/* ── Light Mode Design System ────────────────────────────────────────────── */
+
+@layer components {
+  /*
+   * Surfaces
+   * ------------------------------------------------------------------
+   * `surface-card` is the default container for lists (gigs, setlists, bands,
+   * shared links): crisp white on the off-white canvas, a hairline border and
+   * a neutral ambient shadow so items lift off the page without looking heavy.
+   */
+  .surface-card {
+    background-color: rgb(var(--surface));
+    border-color: rgb(var(--border));
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-card-hover {
+    transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .surface-card-hover:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: rgb(var(--border-strong));
+  }
+
+  /* Sticky app bar / section headers. */
+  .surface-bar {
+    background-color: rgb(var(--surface) / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgb(var(--border));
+  }
+
+  /* Modals, drawers and dialogs. */
+  .surface-elevated {
+    background-color: rgb(var(--surface-elevated));
+    border: 1px solid rgb(var(--border));
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Secondary text that still passes WCAG AA on light surfaces. */
+  .text-body {
+    color: rgb(var(--muted-foreground));
+  }
+
+  .text-caption {
+    color: rgb(var(--subtle-foreground));
+  }
+
+  .heading-strong {
+    color: rgb(var(--foreground));
+  }
+
+  /* Divider */
+  .divider-subtle {
+    border-color: rgb(var(--border));
+  }
+
+  /*
+   * Status badges — soft pastel background + high-contrast tinted text, so
+   * "Confirmed", "Option" and "Pending" stay instantly readable in light mode.
+   */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    white-space: nowrap;
+  }
+
+  .badge-confirmed {
+    background-color: #ecfdf5;
+    color: #065f46;
+    box-shadow: inset 0 0 0 1px rgb(5 150 105 / 0.22);
+  }
+
+  .badge-pending {
+    background-color: #fffbeb;
+    color: #92400e;
+    box-shadow: inset 0 0 0 1px rgb(217 119 6 / 0.22);
+  }
+
+  .badge-option {
+    background-color: #eff6ff;
+    color: #1e40af;
+    box-shadow: inset 0 0 0 1px rgb(37 99 235 / 0.2);
+  }
+
+  .badge-overdue {
+    background-color: #fef2f2;
+    color: #991b1b;
+    box-shadow: inset 0 0 0 1px rgb(220 38 38 / 0.22);
+  }
+
+  .badge-neutral {
+    background-color: rgb(var(--surface-muted));
+    color: rgb(var(--muted-foreground));
+    box-shadow: inset 0 0 0 1px rgb(var(--border));
+  }
+
+  .badge-accent {
+    background-color: #ecfeff;
+    color: #155e75;
+    box-shadow: inset 0 0 0 1px rgb(8 145 178 / 0.24);
+  }
+
+  .badge-charity {
+    background-color: #fdf2f8;
+    color: #9d174d;
+    box-shadow: inset 0 0 0 1px rgb(219 39 119 / 0.22);
+  }
+
+  html.dark .badge-charity {
+    background-color: rgb(131 24 67 / 0.42);
+    color: #f9a8d4;
+    box-shadow: inset 0 0 0 1px rgb(236 72 153 / 0.35);
+  }
+
+  html.dark .badge-confirmed {
+    background-color: rgb(6 78 59 / 0.45);
+    color: #6ee7b7;
+    box-shadow: inset 0 0 0 1px rgb(16 185 129 / 0.35);
+  }
+
+  html.dark .badge-pending {
+    background-color: rgb(120 53 15 / 0.4);
+    color: #fcd34d;
+    box-shadow: inset 0 0 0 1px rgb(245 158 11 / 0.35);
+  }
+
+  html.dark .badge-option {
+    background-color: rgb(30 58 138 / 0.45);
+    color: #93c5fd;
+    box-shadow: inset 0 0 0 1px rgb(59 130 246 / 0.35);
+  }
+
+  html.dark .badge-overdue {
+    background-color: rgb(127 29 29 / 0.45);
+    color: #fca5a5;
+    box-shadow: inset 0 0 0 1px rgb(239 68 68 / 0.35);
+  }
+
+  html.dark .badge-neutral {
+    background-color: rgb(var(--surface-muted));
+    color: rgb(var(--muted-foreground));
+    box-shadow: inset 0 0 0 1px rgb(var(--border));
+  }
+
+  html.dark .badge-accent {
+    background-color: rgb(8 51 68 / 0.5);
+    color: #67e8f9;
+    box-shadow: inset 0 0 0 1px rgb(34 211 238 / 0.35);
+  }
+
+  /* Band tag: text color follows the active theme (see getBandColorStyles). */
+  .band-tag {
+    color: var(--band-tag-fg, inherit);
+  }
+
+  html.dark .band-tag {
+    color: var(--band-tag-fg-dark, var(--band-tag-fg, inherit));
+  }
+
+  /*
+   * Form controls — defined borders, readable placeholders and a brand focus
+   * ring that stays crisp on white.
+   */
+  .field {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(var(--border-strong));
+    background-color: rgb(var(--surface));
+    color: rgb(var(--foreground));
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .field::placeholder {
+    color: rgb(var(--subtle-foreground));
+  }
+
+  .field:hover {
+    border-color: rgb(var(--subtle-foreground) / 0.6);
+  }
+
+  .field:focus,
+  .field:focus-visible {
+    outline: none;
+    border-color: rgb(var(--ring-color));
+    box-shadow: 0 0 0 3px rgb(var(--ring-color) / 0.18);
+  }
+
+  .field:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  html.dark .field {
+    background-color: rgb(var(--surface-muted));
+    border-color: rgb(var(--border-strong));
+    color: rgb(var(--foreground));
+  }
+
+  select.field {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 1rem 1rem;
+    padding-right: 2.25rem;
+  }
+
+  /*
+   * Navigation tabs — the active tab gets a vibrant brand indicator plus a
+   * filled pill, so it is obvious at a glance in both themes.
+   */
+  .tab-btn {
+    color: rgb(var(--muted-foreground));
+    border-radius: 0.625rem;
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+      color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tab-btn:hover {
+    background-color: rgb(var(--surface-hover));
+    color: rgb(var(--foreground));
+  }
+
+  .tab-btn-active {
+    background-color: rgb(var(--ring-color) / 0.1);
+    color: rgb(var(--ring-color));
+    box-shadow: inset 0 0 0 1px rgb(var(--ring-color) / 0.28);
+    font-weight: 600;
+  }
+
+  .tab-btn-active:hover {
+    background-color: rgb(var(--ring-color) / 0.14);
+    color: rgb(var(--ring-color));
+  }
+
+  html.dark .tab-btn {
+    color: rgb(var(--muted-foreground));
+  }
+
+  html.dark .tab-btn:hover {
+    background-color: rgb(var(--surface-hover));
+    color: rgb(var(--foreground));
+  }
+}
+
+/* ── Theme switching without layout shift ─────────────────────────────────
+ *
+ * Transitions are opt-in: the ThemeProvider adds `theme-anim` to <html> right
+ * before a switch and removes it after the animation. Without this, the very
+ * first paint would also animate (visible as a flash on load) and every layout
+ * property would animate during a theme change, which causes layout shift.
+ */
+
+html.theme-anim body,
+html.theme-anim body *:not(.no-theme-anim) {
+  transition: background-color 180ms ease, border-color 180ms ease,
+    color 180ms ease, box-shadow 180ms ease, fill 180ms ease,
+    stroke 180ms ease !important;
+  transition-delay: 0ms !important;
+}
+
+/* Never animate anything but colors/shadows during a theme switch. */
+html.theme-anim body * {
+  transition-property: background-color, border-color, color, box-shadow, fill, stroke !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-anim body,
+  html.theme-anim body *:not(.no-theme-anim) {
+    transition: none !important;
+  }
 }
 
 /* ── Advanced Animation Utilities ───────────────────────────────────── */
@@ -623,10 +989,16 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  /* Light-safe dimming: slate-tinted instead of pure black, so the overlay
+     never looks like a heavy black slab on a bright page. */
+  background: rgb(15 23 42 / 0.4);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   animation: fadeInBackdrop 0.2s ease-out;
+}
+
+html.dark .modal-backdrop {
+  background: rgb(2 6 23 / 0.7);
 }
 
 @media (min-width: 640px) {
@@ -642,8 +1014,9 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 1rem 1rem 0 0;
-  background: #fff;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background: var(--surface-elevated, #fff);
+  border-top: 1px solid rgb(var(--border));
+  box-shadow: var(--shadow-elevated);
   animation: slideUpSheet 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

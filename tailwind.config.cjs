@@ -93,6 +93,15 @@ module.exports = {
         "dark-secondary": "#1a1a25",
         "dark-tertiary": "#25252f",
       },
+      boxShadow: {
+        // Neutral ambient shadows that follow the active theme (see the
+        // --shadow-* custom properties in globals.css). Registered as real
+        // theme tokens so variants such as `hover:shadow-card-hover` work —
+        // plain @layer component classes cannot be used with variants.
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+        elevated: "var(--shadow-elevated)",
+      },
       screens: {
         xs: "320px",
         sm: "640px",

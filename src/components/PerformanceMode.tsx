@@ -134,7 +134,7 @@ export function PerformanceMode({ gigId, gigName, startTime, onClose, images }: 
         {/* Gig Name */}
         <div className={`text-center transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-20'}`}>
           <h1 className="text-3xl sm:text-4xl font-bold text-brand-400 mb-2">{gigName}</h1>
-          <p className="text-sm text-slate-400">Performance Mode</p>
+          <p className="text-sm text-slate-500">Performance Mode</p>
         </div>
 
         {/* Timer */}

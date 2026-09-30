@@ -62,7 +62,7 @@ export default function XAIExplanationModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
       onClick={handleBackdropClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -101,7 +101,7 @@ export default function XAIExplanationModal({
             </div>
             <button
               onClick={onClose}
-              className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
+              className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
               aria-label="Close"
             >
               <Icons.X className="h-5 w-5" />
@@ -148,7 +148,7 @@ export default function XAIExplanationModal({
             className="touch-target inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300/50 bg-white/70 backdrop-blur px-4 py-2.5 text-sm font-semibold text-slate-700 dark:border-slate-600/50 dark:bg-slate-800/50 dark:backdrop-blur dark:text-slate-200 shadow-sm transition-all duration-200 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 focus:outline-none focus:ring-2 focus:ring-slate-400/50 focus:ring-offset-2 dark:focus:ring-slate-500/50"
           >
             Dismiss
-            <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
+            <span className="ml-2 text-xs text-slate-500">
               ESC
             </span>
           </button>

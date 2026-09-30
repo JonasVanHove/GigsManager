@@ -307,7 +307,7 @@ export default function AllGigsTab({
           <button
             onClick={handleExportCsv}
             title={isDutch ? "Exporteer gefilterde lijst naar CSV" : "Export filtered list to CSV"}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+            className="surface-card inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700"
           >
             <Icons.Download className="h-4 w-4 text-slate-500 dark:text-slate-400" />
             <span>{t("gigs.export", "Export CSV")}</span>
@@ -333,7 +333,7 @@ export default function AllGigsTab({
           className={`rounded-2xl border p-4 text-left transition-all duration-200 backdrop-blur ${
             statusFilters.size === 0
               ? "border-brand-500/50 bg-brand-50/40 dark:bg-brand-950/20 shadow-sm ring-1 ring-brand-500/20"
-              : "border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
+              : "surface-card surface-card-hover"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -348,7 +348,7 @@ export default function AllGigsTab({
             <span className="text-2xl font-bold text-slate-900 dark:text-white">
               {kpis.totalCount}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500">
               ({kpis.confirmedCount} {t("gigs.confirmed", "confirmed").toLowerCase()})
             </span>
           </div>
@@ -362,7 +362,7 @@ export default function AllGigsTab({
           className={`rounded-2xl border p-4 text-left transition-all duration-200 backdrop-blur ${
             datePreset === "upcoming"
               ? "border-emerald-500/50 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-sm ring-1 ring-emerald-500/20"
-              : "border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
+              : "surface-card surface-card-hover"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -377,7 +377,7 @@ export default function AllGigsTab({
             <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
               {kpis.upcomingCount}
             </span>
-            <span className="text-xs text-slate-400">{isDutch ? "in de toekomst" : "scheduled"}</span>
+            <span className="text-xs text-slate-500">{isDutch ? "in de toekomst" : "scheduled"}</span>
           </div>
         </button>
 
@@ -387,7 +387,7 @@ export default function AllGigsTab({
           className={`rounded-2xl border p-4 text-left transition-all duration-200 backdrop-blur ${
             statusFilters.has("unpaid")
               ? "border-amber-500/50 bg-amber-50/40 dark:bg-amber-950/20 shadow-sm ring-1 ring-amber-500/20"
-              : "border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
+              : "surface-card surface-card-hover"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -416,7 +416,7 @@ export default function AllGigsTab({
           className={`rounded-2xl border p-4 text-left transition-all duration-200 backdrop-blur ${
             statusFilters.has("tentative")
               ? "border-yellow-500/50 bg-yellow-50/40 dark:bg-yellow-950/20 shadow-sm ring-1 ring-yellow-500/20"
-              : "border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
+              : "surface-card surface-card-hover"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -431,7 +431,7 @@ export default function AllGigsTab({
             <span className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
               {kpis.tentativeCount}
             </span>
-            <span className="text-xs text-slate-400">{isDutch ? "opties" : "options"}</span>
+            <span className="text-xs text-slate-500">{isDutch ? "opties" : "options"}</span>
           </div>
         </button>
       </div>
@@ -444,18 +444,18 @@ export default function AllGigsTab({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           {/* Search bar */}
           <div className="relative flex-1">
-            <Icons.Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Icons.Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
             <input
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder={isDutch ? "Zoek op optreden, artiest, venue, notities..." : "Search by event, artist, venue, notes..."}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 pl-10 pr-9 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-brand-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/70 pl-10 pr-9 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:border-brand-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition"
             />
             {searchText && (
               <button
                 onClick={() => setSearchText("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 rounded-full"
                 title="Clear search"
               >
                 <Icons.Close className="h-3.5 w-3.5" />
@@ -533,7 +533,7 @@ export default function AllGigsTab({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="field !w-auto rounded-lg px-2.5 py-1 text-xs"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -544,7 +544,7 @@ export default function AllGigsTab({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="field !w-auto rounded-lg px-2.5 py-1 text-xs"
               />
             </div>
             {(startDate || endDate) && (
@@ -553,7 +553,7 @@ export default function AllGigsTab({
                   setStartDate("");
                   setEndDate("");
                 }}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                className="text-xs text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 underline"
               >
                 {t("gigs.clearAll", "Clear")}
               </button>
@@ -563,7 +563,7 @@ export default function AllGigsTab({
 
         {/* Status Filter Tabs / Pills */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1.5">
             {t("gigs.status", "Status")}:
           </span>
 
@@ -662,7 +662,7 @@ export default function AllGigsTab({
                 <button
                   type="button"
                   onClick={() => setGlobalExpandState(true)}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition"
+                  className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition"
                   title={t("gigs.expandAll", "Expand all")}
                 >
                   <Icons.Expand className="h-4 w-4" />
@@ -670,7 +670,7 @@ export default function AllGigsTab({
                 <button
                   type="button"
                   onClick={() => setGlobalExpandState(false)}
-                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition"
+                  className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition"
                   title={t("gigs.collapseAll", "Collapse all")}
                 >
                   <Icons.ChevronDown className="h-4 w-4" />
@@ -684,7 +684,7 @@ export default function AllGigsTab({
         {artists.length > 0 && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 {t("gigs.filterByArtist", "Filter by Band / Artist")}:
               </span>
               {selectedArtists.size > 0 && (
@@ -724,7 +724,7 @@ export default function AllGigsTab({
         {/* Active Filter Chips Bar */}
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-xs text-slate-400 font-medium mr-1">
+            <span className="text-xs text-slate-500 font-medium mr-1">
               {isDutch ? "Actieve filters:" : "Active filters:"}
             </span>
 
@@ -810,7 +810,7 @@ export default function AllGigsTab({
       {/* ========================================================================= */}
       {sortedGigs.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/30 py-16 px-4 text-center">
-          <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mb-3">
+          <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 mb-3">
             <Icons.AlertCircle className="h-8 w-8" />
           </div>
           <p className="text-base font-bold text-slate-900 dark:text-white">
@@ -915,7 +915,7 @@ export default function AllGigsTab({
                           <div className="mt-0.5 flex items-center gap-1.5">
                             <BandTag name={gig.performers} variant={gig.band?.color ? "solid" : "soft"} color={gig.band?.color} />
                             {gig.numberOfMusicians > 1 && (
-                              <span className="text-xs text-slate-400">
+                              <span className="text-xs text-slate-500">
                                 · {gig.numberOfMusicians} mus.
                               </span>
                             )}
@@ -926,27 +926,27 @@ export default function AllGigsTab({
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex flex-wrap items-center gap-1">
                             {tentative ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-950 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-600/20">
+                              <span className="badge badge-option">
                                 ⏳ Tentative
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-600/20">
+                              <span className="badge badge-confirmed">
                                 ✓ Confirmed
                               </span>
                             )}
 
                             {paid ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-50 dark:bg-green-950 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 ring-1 ring-green-600/20">
+                              <span className="badge badge-confirmed">
                                 💰 Paid
                               </span>
                             ) : unpaid ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 dark:bg-orange-950 px-2 py-0.5 text-xs font-medium text-orange-700 dark:text-orange-300 ring-1 ring-orange-600/20">
+                              <span className="badge badge-pending">
                                 ⏳ Unpaid
                               </span>
                             ) : null}
 
                             {gig.isCharity && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 dark:bg-pink-950 px-2 py-0.5 text-xs font-medium text-pink-700 dark:text-pink-300 ring-1 ring-pink-600/20">
+                              <span className="badge badge-charity">
                                 💕 Charity
                               </span>
                             )}
@@ -979,7 +979,7 @@ export default function AllGigsTab({
                               <button
                                 onClick={() => onDuplicate(gig)}
                                 title={isDutch ? "Dupliceer" : "Duplicate"}
-                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                               >
                                 <Icons.Copy className="h-4 w-4" />
                               </button>
@@ -987,7 +987,7 @@ export default function AllGigsTab({
                             <button
                               onClick={() => onEdit(gig)}
                               title={isDutch ? "Bewerken" : "Edit"}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+                              className="rounded-lg p-1.5 text-slate-500 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
                             >
                               <Icons.Edit className="h-4 w-4" />
                             </button>
@@ -995,7 +995,7 @@ export default function AllGigsTab({
                               <button
                                 onClick={() => onDelete(gig)}
                                 title={isDutch ? "Verwijderen" : "Delete"}
-                                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                                className="rounded-lg p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                               >
                                 <Icons.Trash className="h-4 w-4" />
                               </button>

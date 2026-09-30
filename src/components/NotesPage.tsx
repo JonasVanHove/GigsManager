@@ -159,7 +159,7 @@ const renderMarkdown = (value: string) => {
 	}
 
 	closeList();
-	return html.join("") || "<p class='text-slate-400'>No content</p>";
+	return html.join("") || "<p class='text-slate-500'>No content</p>";
 };
 
 const noteLinkLabel = (note: StoredNote, songs: SongRow[], setlists: SetlistRow[], isDutch: boolean) => {

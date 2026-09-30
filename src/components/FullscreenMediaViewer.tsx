@@ -251,7 +251,7 @@ export default function FullscreenMediaViewer({ isOpen, attachments, index, titl
               <button
                 onClick={resetZoom}
                 title="Reset zoom (0)"
-                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${scale !== 1 ? "bg-brand-600 text-white hover:bg-brand-500" : "bg-white/10 text-slate-400"}`}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${scale !== 1 ? "bg-brand-600 text-white hover:bg-brand-500" : "bg-white/10 text-slate-500"}`}
               >
                 100%
               </button>
@@ -360,7 +360,7 @@ export default function FullscreenMediaViewer({ isOpen, attachments, index, titl
                 title={attachment.caption || "PDF document"}
               />
             </div>
-            <p className="text-center text-xs text-slate-400">
+            <p className="text-center text-xs text-slate-500">
               Rendered natively so high-resolution PDF pages stay sharp.
             </p>
           </div>

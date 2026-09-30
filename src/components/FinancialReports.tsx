@@ -420,9 +420,9 @@ export default function FinancialReports({ fmtCurrency }: FinancialReportsProps)
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800/50">
                 <span className="text-slate-600 dark:text-slate-400">Revenue</span>
                 <span className="font-semibold text-slate-900 dark:text-white">{fmtCurrency(payoutMath.revenue)}</span>
-                <span className="text-slate-400">− expenses</span>
+                <span className="text-slate-500">− expenses</span>
                 <span className="font-semibold text-rose-600 dark:text-rose-400">−{fmtCurrency(payoutMath.expenseTotal)}</span>
-                <span className="text-slate-400">= net band income</span>
+                <span className="text-slate-500">= net band income</span>
                 <span className={`font-bold ${payoutMath.netIncome >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}>
                   {fmtCurrency(payoutMath.netIncome)}
                 </span>
@@ -476,7 +476,7 @@ export default function FinancialReports({ fmtCurrency }: FinancialReportsProps)
                     type="button"
                     onClick={() => removePayoutMember(member.id)}
                     disabled={payoutMembers.length <= 1}
-                    className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:border-slate-600 dark:text-slate-400"
+                    className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:border-slate-600 dark:text-slate-400"
                     aria-label="Remove member"
                   >
                     ✕

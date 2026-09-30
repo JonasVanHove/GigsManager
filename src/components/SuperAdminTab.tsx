@@ -224,7 +224,7 @@ export default function SuperAdminTab() {
         <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-white">Include Demo Data</p>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500">
               {demo?.present
                 ? `${demo.email}: ${demo.gigs} gigs · ${demo.bands} bands · ${demo.setlists} setlists. ${
                     includeDemo

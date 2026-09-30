@@ -157,7 +157,7 @@ function QuickActionsRow({
           type="button"
           disabled
           title="Add a shared gig date to enable calendar export"
-          className="inline-flex min-h-9 cursor-not-allowed items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+          className="inline-flex min-h-9 cursor-not-allowed items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
         >
           <Icons.Calendar className="h-3.5 w-3.5" /> Add to Calendar
         </button>
@@ -389,7 +389,7 @@ function SharedGigCard({
         <div className="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
           {gig.gigDate && (
             <p className="flex items-center gap-2">
-              <Icons.Calendar className="h-4 w-4 shrink-0 text-slate-400" />
+              <Icons.Calendar className="h-4 w-4 shrink-0 text-slate-500" />
               <span>
                 {dayDifference === 0
                   ? "Scheduled for today"
@@ -401,13 +401,13 @@ function SharedGigCard({
           )}
           {gig.performers && (
             <p className="flex min-w-0 items-center gap-2">
-              <Icons.MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+              <Icons.MapPin className="h-4 w-4 shrink-0 text-slate-500" />
               <span className="truncate">Venue / performers: {gig.performers}</span>
             </p>
           )}
           {gig.notes && (
             <p className="flex min-w-0 items-center gap-2 sm:col-span-2">
-              <Icons.Document className="h-4 w-4 shrink-0 text-slate-400" />
+              <Icons.Document className="h-4 w-4 shrink-0 text-slate-500" />
               <span className="truncate">{gig.notes}</span>
             </p>
           )}
@@ -659,7 +659,7 @@ function CalendarTimeline({
 
       {items.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white/70 px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900/60">
-          <Icons.Calendar className="mx-auto h-8 w-8 text-slate-400" />
+          <Icons.Calendar className="mx-auto h-8 w-8 text-slate-500" />
           <p className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">
             No gigs are currently shared.
           </p>

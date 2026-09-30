@@ -46,7 +46,7 @@ export default function LoadingSpinner({ size = "md", message, fullScreen = fals
       </div>
 
       {message && (
-        <p className="text-sm font-medium text-slate-400 animate-pulse">{message}</p>
+        <p className="text-sm font-medium text-slate-500 animate-pulse">{message}</p>
       )}
       <span className="sr-only">Loading...</span>
 

@@ -304,13 +304,13 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-sm modal-backdrop-enter"
+      className="fixed inset-0 z-50 flex h-[100dvh] w-[100dvw] items-center justify-center bg-slate-900/40 p-2 sm:p-4 backdrop-blur-sm modal-backdrop-enter"
       onClick={handleBackdropClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       <div
-        className="relative my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200/50 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-800 dark:bg-slate-900 max-h-[92dvh] sm:max-h-[85dvh] settings-modal-card modal-content-enter"
+        className="surface-elevated relative my-auto flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl max-h-[92dvh] sm:max-h-[85dvh] settings-modal-card modal-content-enter"
         role="dialog"
         aria-modal="true"
       >
@@ -326,7 +326,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           <button
             onClick={onClose}
             aria-label="Close settings"
-            className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 transition-all duration-200 hover:bg-slate-100/60 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800/60 dark:hover:text-slate-300"
+            className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition-all duration-200 hover:bg-slate-100/60 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800/60 dark:hover:text-slate-300"
           >
             <Icons.Close className="h-5 w-5" />
           </button>

@@ -128,7 +128,7 @@ function LandingContent() {
           <div className="flex items-center gap-2 sm:gap-3">
             <a
               href="/demo"
-              className="hidden text-sm font-medium text-slate-400 transition hover:text-white sm:inline"
+              className="hidden text-sm font-medium text-slate-500 transition hover:text-white sm:inline"
             >
               {copy.nav.liveDemo}
             </a>
@@ -141,7 +141,7 @@ function LandingContent() {
                   80
                 );
               }}
-              className="text-sm font-medium text-slate-400 transition hover:text-white"
+              className="text-sm font-medium text-slate-500 transition hover:text-white"
             >
               {copy.nav.logIn}
             </button>
@@ -186,7 +186,7 @@ function LandingContent() {
             </h1>
 
             <p
-              className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400 sm:text-xl animate-fade-in"
+              className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-500 sm:text-xl animate-fade-in"
               style={{ animationDelay: "0.15s" }}
             >
               {copy.hero.subtitle}
@@ -226,7 +226,7 @@ function LandingContent() {
               </a>
               <a
                 href="#features"
-                className="inline-flex items-center gap-2 rounded-2xl px-4 py-4 text-base font-semibold text-slate-400 transition hover:text-white"
+                className="inline-flex items-center gap-2 rounded-2xl px-4 py-4 text-base font-semibold text-slate-500 transition hover:text-white"
               >
                 {copy.hero.featuresCta}
                 <Icons.ChevronDown className="h-4 w-4" />
@@ -285,7 +285,7 @@ function LandingContent() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-semibold text-white truncate">{copy.preview.gigName}</h3>
-                      <p className="mt-0.5 text-sm text-slate-400 truncate">
+                      <p className="mt-0.5 text-sm text-slate-500 truncate">
                         {copy.preview.gigMeta}
                       </p>
                     </div>
@@ -330,7 +330,7 @@ function LandingContent() {
                 {copy.features.titleAccent}
               </span>
             </h2>
-            <p className="mt-4 text-lg text-slate-400">{copy.features.subtitle}</p>
+            <p className="mt-4 text-lg text-slate-500">{copy.features.subtitle}</p>
           </div>
 
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -346,7 +346,7 @@ function LandingContent() {
                   <presentation.icon className="h-5 w-5 text-white" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-white">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">{feature.description}</p>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500">{feature.description}</p>
 
                 {/* Subtle hover glow */}
                 <div className={`absolute -inset-px -z-10 rounded-2xl bg-gradient-to-br ${presentation.gradient} opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-[0.07]`} />
@@ -371,7 +371,7 @@ function LandingContent() {
                 <p className="text-3xl font-extrabold sm:text-4xl bg-gradient-to-r from-brand-400 to-violet-400 bg-clip-text text-transparent">
                   {stat.display ?? <AnimatedCounter target={stat.value} suffix={stat.suffix} />}
                 </p>
-                <p className="mt-1 text-sm text-slate-400">{stat.label}</p>
+                <p className="mt-1 text-sm text-slate-500">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -389,7 +389,7 @@ function LandingContent() {
                   {copy.why.titleAccent}
                 </span>
               </h2>
-              <p className="mt-4 text-lg text-slate-400">{copy.why.subtitle}</p>
+              <p className="mt-4 text-lg text-slate-500">{copy.why.subtitle}</p>
 
               <ul className="mt-8 space-y-3">
                 {copy.why.benefits.map((benefit) => (
@@ -434,7 +434,7 @@ function LandingContent() {
                 {copy.pricing.titleAccent}
               </span>
             </h2>
-            <p className="mt-4 text-lg text-slate-400">{copy.pricing.subtitle}</p>
+            <p className="mt-4 text-lg text-slate-500">{copy.pricing.subtitle}</p>
           </div>
 
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -446,9 +446,9 @@ function LandingContent() {
               </div>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">€0</span>
-                <span className="text-slate-400">{copy.pricing.perMonth}</span>
+                <span className="text-slate-500">{copy.pricing.perMonth}</span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">{copy.pricing.free.description}</p>
+              <p className="text-sm text-slate-500 mb-6">{copy.pricing.free.description}</p>
               <ul className="space-y-3 mb-6">
                 {copy.pricing.free.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
@@ -484,9 +484,9 @@ function LandingContent() {
               </div>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">€5+</span>
-                <span className="text-slate-400">{copy.pricing.perMonth}</span>
+                <span className="text-slate-500">{copy.pricing.perMonth}</span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">{copy.pricing.supporter.description}</p>
+              <p className="text-sm text-slate-500 mb-6">{copy.pricing.supporter.description}</p>
               <ul className="space-y-3 mb-6">
                 {copy.pricing.supporter.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
@@ -511,9 +511,9 @@ function LandingContent() {
               </div>
               <div className="mb-4">
                 <span className="text-4xl font-bold text-white">€15</span>
-                <span className="text-slate-400">{copy.pricing.perMonth}</span>
+                <span className="text-slate-500">{copy.pricing.perMonth}</span>
               </div>
-              <p className="text-sm text-slate-400 mb-6">{copy.pricing.pro.description}</p>
+              <p className="text-sm text-slate-500 mb-6">{copy.pricing.pro.description}</p>
               <ul className="space-y-3 mb-6">
                 {copy.pricing.pro.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm text-slate-300">
@@ -549,7 +549,7 @@ function LandingContent() {
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl backdrop-blur-xl">
             <button
               onClick={() => setShowDonationModal(false)}
-              className="absolute right-4 top-4 text-slate-400 transition hover:text-white"
+              className="absolute right-4 top-4 text-slate-500 transition hover:text-white"
             >
               <Icons.X className="h-5 w-5" />
             </button>
@@ -559,18 +559,18 @@ function LandingContent() {
               <h3 className="text-xl font-semibold text-white">{copy.donation.title}</h3>
             </div>
 
-            <p className="text-sm text-slate-400 mb-6">{copy.donation.body}</p>
+            <p className="text-sm text-slate-500 mb-6">{copy.donation.body}</p>
 
             <div className="space-y-4">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <h4 className="text-sm font-semibold text-white mb-2">{copy.donation.bankTitle}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">{copy.donation.iban}</span>
+                    <span className="text-slate-500">{copy.donation.iban}</span>
                     <span className="text-white font-mono">BE46 7390 1188 6036</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">{copy.donation.accountHolder}</span>
+                    <span className="text-slate-500">{copy.donation.accountHolder}</span>
                     <span className="text-white">GigsManager Support</span>
                   </div>
                 </div>
@@ -601,7 +601,7 @@ function LandingContent() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               {showAuth ? copy.auth.welcomeTitle : copy.auth.readyTitle}
             </h2>
-            <p className="mt-4 text-lg text-slate-400">
+            <p className="mt-4 text-lg text-slate-500">
               {showAuth ? copy.auth.signInSubtitle : copy.auth.startSubtitle}
             </p>
 

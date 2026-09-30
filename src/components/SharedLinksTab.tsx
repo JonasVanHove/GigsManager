@@ -132,7 +132,7 @@ function ShareLinkCard({
 
   return (
     <article
-      className={`group relative flex min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-xl dark:border-slate-700 dark:bg-slate-900/85 dark:hover:border-brand-800 dark:hover:shadow-2xl dark:hover:shadow-black/20 ${
+      className={`group relative flex min-w-0 overflow-hidden surface-card surface-card-hover rounded-2xl transition duration-300 hover:-translate-y-0.5 hover:border-brand-300 dark:border-slate-700 dark:bg-slate-900/85 dark:hover:border-brand-800 ${
         viewMode === "list" ? "flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]" : "flex-col"
       }`}
     >
@@ -152,7 +152,7 @@ function ShareLinkCard({
             <span className="ml-1 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
               /share/{link.token.slice(0, 12)}…
             </span>
-            <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
               <span className={`h-1.5 w-1.5 rounded-full ${isExpired ? "bg-amber-500" : "bg-emerald-500"}`} />
               {isExpired ? "Offline" : "Live"}
             </span>
@@ -195,7 +195,7 @@ function ShareLinkCard({
               </span>
             ))}
             {visibleChips.length > 5 && (
-              <span className="px-1 py-1 text-[10px] font-semibold text-slate-400">+{visibleChips.length - 5} more</span>
+              <span className="px-1 py-1 text-[10px] font-semibold text-slate-500">+{visibleChips.length - 5} more</span>
             )}
           </div>
         </div>
@@ -226,13 +226,13 @@ function ShareLinkCard({
 
           <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
             <div>
-              <dt className="font-semibold text-slate-400">Created</dt>
+              <dt className="font-semibold text-slate-500">Created</dt>
               <dd className="mt-0.5 font-bold text-slate-700 dark:text-slate-200">
                 {formatDate(link.createdAt)}
               </dd>
             </div>
             <div>
-              <dt className="font-semibold text-slate-400">Expires</dt>
+              <dt className="font-semibold text-slate-500">Expires</dt>
               <dd className="mt-0.5 font-bold text-slate-700 dark:text-slate-200">
                 {link.expiresAt ? formatDate(link.expiresAt) : "Never"}
               </dd>

@@ -55,7 +55,7 @@ export default function OptimizeFlowModal({ isOpen, onConfirm, onCancel }: Optim
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
       onClick={handleBackdropClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -75,7 +75,7 @@ export default function OptimizeFlowModal({ isOpen, onConfirm, onCancel }: Optim
             <button
               onClick={onCancel}
               aria-label="Close"
-              className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
+              className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
             >
               <Icons.X className="h-5 w-5" />
             </button>

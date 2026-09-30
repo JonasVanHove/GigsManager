@@ -338,7 +338,7 @@ export default function BandsTab() {
 
   const renderMemberEmptyState = () => (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
-      <Icons.People className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+      <Icons.People className="mx-auto mb-3 h-10 w-10 text-slate-500" />
       <p className="text-base font-medium text-slate-700 dark:text-slate-200">
         {memberError ? "Couldn’t load band members" : t('bands.noMembersYet') || "No band members yet"}
       </p>
@@ -378,7 +378,7 @@ export default function BandsTab() {
       </div>
 
       {showForm && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+        <div className="surface-card rounded-2xl p-6">
           <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
             {editingBand ? t('bands.editBand') : t('bands.addBand')}
           </h2>
@@ -508,9 +508,9 @@ export default function BandsTab() {
 
      {bands.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center dark:border-slate-700 dark:bg-slate-900/50">
-          <Icons.People className="mx-auto mb-4 h-12 w-12 text-slate-400" />
+          <Icons.People className="mx-auto mb-4 h-12 w-12 text-slate-500" />
           <p className="text-slate-600 dark:text-slate-400">{t('bands.noBandsYet')}</p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">{t('bands.addFirstBand')}</p>
+          <p className="mt-2 text-sm text-slate-500">{t('bands.addFirstBand')}</p>
         </div>
       ) : (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

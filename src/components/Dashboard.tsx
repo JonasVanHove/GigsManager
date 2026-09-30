@@ -262,7 +262,7 @@ const OverviewCompactRow = ({
       <button
         onClick={() => onEdit(gig)}
         title="Edit performance"
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
       >
         <Icons.Edit className="h-4 w-4" />
       </button>
@@ -1369,7 +1369,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-transparent transition-colors">
       <RouteProgressBar isLoading={loading || isPending} />
       {/* -- Navbar -------------------------------------------------------- */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/40 dark:border-slate-700/40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl dark:backdrop-blur-xl shadow-md dark:shadow-lg transition-colors">
+      <header className="surface-bar sticky top-0 z-30 transition-colors">
         <div className={`mx-auto flex w-full flex-wrap items-center justify-between gap-3 px-3 py-2.5 sm:flex-nowrap sm:px-4 sm:py-3 lg:px-6 ${effectiveWideView ? "max-w-none 2xl:px-8" : "max-w-[1800px]"}`}>
           {/* Left: Logo */}
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
@@ -1400,7 +1400,7 @@ export default function Dashboard() {
 
           {/* Center: Primary navigation + search */}
           <div className="hidden lg:flex min-w-0 items-center gap-3 flex-1 px-2">
-            <nav data-testid="desktop-navigation" className="flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/70 p-1 shadow-sm backdrop-blur dark:border-slate-700/70 dark:bg-slate-800/40">
+            <nav data-testid="desktop-navigation" className="surface-card flex items-center gap-1 rounded-full p-1">
               {getPrimaryNavTabs(settings).map((tab) => (
                 <button
                   key={tab}
@@ -1408,8 +1408,8 @@ export default function Dashboard() {
                   onClick={() => handleTabChange(tab)}
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
                     selectedTab === tab
-                      ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-white"
+                      ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500 dark:text-slate-900"
+                      : "tab-btn"
                   }`}
                 >
                   {renderTabIcon(tab)}
@@ -1423,8 +1423,8 @@ export default function Dashboard() {
                   onClick={() => setShowWorkspaceMenu((open) => !open)}
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
                     workspaceTabs.includes(selectedTab) && !getPrimaryNavTabs(settings).includes(selectedTab)
-                      ? "bg-slate-900 text-white shadow-sm dark:bg-white dark:text-slate-900"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/70 dark:hover:text-white"
+                      ? "bg-brand-600 text-white shadow-sm dark:bg-brand-500 dark:text-slate-900"
+                      : "tab-btn"
                   }`}
                 >
                   {workspaceTabs.includes(selectedTab) && !getPrimaryNavTabs(settings).includes(selectedTab) ? (
@@ -1442,7 +1442,7 @@ export default function Dashboard() {
                 </button>
 
                 {showWorkspaceMenu && (
-                  <div className="absolute left-0 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200/60 bg-white/95 p-1.5 text-xs shadow-2xl backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/95 menu-enter">
+                  <div className="surface-elevated absolute left-0 mt-2 w-52 overflow-hidden rounded-xl p-1.5 text-xs menu-enter">
                     <div className="space-y-0.5">
                       {workspaceTabs.map((tab) => (
                         <button
@@ -1469,7 +1469,7 @@ export default function Dashboard() {
             </nav>
             <div className="min-w-0 flex-1 max-w-md">
               <div className="relative">
-                <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -1483,7 +1483,7 @@ export default function Dashboard() {
                     className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                     title="Clear search"
                   >
-                    <Icons.Close className="h-4 w-4 text-slate-400" />
+                    <Icons.Close className="h-4 w-4 text-slate-500" />
                   </button>
                 )}
               </div>
@@ -1492,7 +1492,7 @@ export default function Dashboard() {
 
           <div className="hidden md:block lg:hidden flex-1 max-w-md mx-4">
             <div className="relative">
-              <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="text"
                 value={searchQuery}
@@ -1506,7 +1506,7 @@ export default function Dashboard() {
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition"
                   title="Clear search"
                 >
-                  <Icons.Close className="h-4 w-4 text-slate-400" />
+                  <Icons.Close className="h-4 w-4 text-slate-500" />
                 </button>
               )}
             </div>
@@ -1569,7 +1569,7 @@ export default function Dashboard() {
                   </div>
                   {/* Menu items */}
                   <div className="py-2">
-                    <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                    <div className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       Profile
                     </div>
                     <div className="grid gap-1 px-2">
@@ -1642,7 +1642,7 @@ export default function Dashboard() {
                 {tabLabels[selectedTab]}
               </span>
             </span>
-            <Icons.ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+            <Icons.ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />
           </button>
         </div>
       </header>
@@ -1650,9 +1650,9 @@ export default function Dashboard() {
       {/* Mobile menu overlay - OUTSIDE header for full viewport coverage */}
       {showMobileMenu && (
         <>
-          <div data-testid="mobile-menu-overlay" className="lg:hidden fixed inset-0 z-[100] bg-black/50 mobile-menu-backdrop" onClick={() => setShowMobileMenu(false)} />
+          <div data-testid="mobile-menu-overlay" className="lg:hidden fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm mobile-menu-backdrop" onClick={() => setShowMobileMenu(false)} />
           {/* Responsive menu width: phone (84vw) → tablet (60vw) → large tablet (50vw) */}
-          <div className="lg:hidden fixed left-0 top-0 bottom-0 z-[101] w-[84vw] max-w-[19rem] tablet:w-[60vw] tablet:max-w-[30rem] tablet-lg:w-[50vw] tablet-lg:max-w-[40rem] bg-white dark:bg-slate-900 shadow-xl overflow-y-auto mobile-menu-enter">
+          <div className="surface-elevated lg:hidden fixed left-0 top-0 bottom-0 z-[101] w-[84vw] max-w-[19rem] tablet:w-[60vw] tablet:max-w-[30rem] tablet-lg:w-[50vw] tablet-lg:max-w-[40rem] overflow-y-auto mobile-menu-enter">
             <div className="p-4 tablet:p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Menu</h2>
@@ -1696,7 +1696,7 @@ export default function Dashboard() {
               {/* Mobile search - visible on phones, hidden on tablets (search in header) */}
               <div className="mb-4 tablet:hidden">
                 <div className="relative">
-                  <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -1743,7 +1743,7 @@ export default function Dashboard() {
 
                 {/* 2. Primary User Shortcuts (Custom Tabs from Settings) */}
                 <div className="space-y-1">
-                  <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     {t('dashboard.shortcuts', 'Shortcuts')}
                   </div>
                   {getPrimaryNavTabs(settings).slice(1).map((tab) => (
@@ -1772,7 +1772,7 @@ export default function Dashboard() {
 
                 {/* 3. Gigs / Calendar */}
                 <div className="space-y-1">
-                  <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     {t('dashboard.gigsAndSchedule', 'Gigs & Calendar')}
                   </div>
                   <button
@@ -1820,7 +1820,7 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setShowMobileWorkspace((prev) => !prev)}
-                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition"
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition"
                     aria-expanded={showMobileWorkspace}
                   >
                     <span>{t('dashboard.workspace', 'Workspace')}</span>
@@ -2166,14 +2166,14 @@ export default function Dashboard() {
                                 <button
                                   onClick={handleExpandAll}
                                   title="Expand all (Cmd+E)"
-                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                  className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
                                 >
                                   <Icons.ChevronUp className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={handleCollapseAll}
                                   title="Collapse all (Cmd+C)"
-                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                  className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
                                 >
                                   <Icons.ChevronDown className="h-4 w-4" />
                                 </button>
@@ -2181,7 +2181,7 @@ export default function Dashboard() {
                                 <button
                                   onClick={handleSelectAll}
                                   title="Select all performances"
-                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                  className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
                                 >
                                   <Icons.CheckCircle className="h-4 w-4" />
                                 </button>
@@ -2197,7 +2197,7 @@ export default function Dashboard() {
                                     <button
                                       onClick={handleClearSelection}
                                       title="Clear selection"
-                                      className="rounded px-1.5 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                      className="rounded px-1.5 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
                                     >
                                     </button>
                                   </>
@@ -2260,14 +2260,14 @@ export default function Dashboard() {
                                 <button
                                   onClick={handleExpandAll}
                                   title="Expand all (Cmd+E)"
-                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                  className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
                                 >
                                   <Icons.ChevronUp className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={handleCollapseAll}
                                   title="Collapse all (Cmd+C)"
-                                  className="rounded p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
+                                  className="rounded p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 text-xs"
                                 >
                                   <Icons.ChevronDown className="h-4 w-4" />
                                 </button>

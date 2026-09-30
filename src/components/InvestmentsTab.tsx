@@ -440,7 +440,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
       </div>
 
       {showForm && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900">
+        <div className="surface-card rounded-2xl p-6">
           <h4 className="mb-4 font-semibold text-slate-900 dark:text-white">
             {editingId ? copy.editInvestment : copy.addInvestment}
           </h4>
@@ -460,7 +460,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
                 type="number"
                 min="0"
                 step="0.01"
-                className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
                 placeholder="0.00"
                 value={form.amount || ""}
                 onChange={(e) =>
@@ -478,7 +478,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
               </label>
               <input
                 type="text"
-                className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
+                className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400 dark:focus:ring-brand-400/20"
                 placeholder={copy.descriptionPlaceholder}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -576,7 +576,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
         </div>
       )}
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+      <div className="surface-card rounded-2xl p-4">
         <div className="grid gap-2 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-200/80 bg-white/85 p-3 dark:border-slate-700 dark:bg-slate-900/60">
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{copy.earned}</p>
@@ -669,7 +669,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
 
                   <button
                     onClick={() => handleStartEdit(inv)}
-                    className="rounded-lg p-2 text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 dark:text-slate-600 dark:hover:bg-brand-900/20"
+                    className="rounded-lg p-2 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600 dark:text-slate-600 dark:hover:bg-brand-900/20"
                     title={copy.edit}
                   >
                     <Icons.Edit className="h-4 w-4" />
@@ -678,7 +678,7 @@ export default function InvestmentsTab({ fmtCurrency }: InvestmentsTabProps) {
                   <button
                     onClick={() => handleDelete(inv.id)}
                     disabled={deleting === inv.id}
-                    className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-slate-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                    className="rounded-lg p-2 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-slate-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                     title={copy.delete}
                   >
                     <Icons.Trash className="h-4 w-4" />

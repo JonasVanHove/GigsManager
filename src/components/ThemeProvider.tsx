@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSettings } from "./SettingsProvider";
 
 /**
@@ -15,6 +15,10 @@ import { useSettings } from "./SettingsProvider";
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
+  // Remembers the first resolved theme so we only animate real user switches,
+  // never the initial (pre-paint) application of the stored preference.
+  const appliedTheme = useRef<string | null>(null);
+  const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const { theme } = settings;
@@ -24,6 +28,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.setItem("theme", theme);
     }
+
+    // Animate only when the resolved theme actually changes after boot.
+    const resolved = theme === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      : theme;
+
+    if (appliedTheme.current !== null && appliedTheme.current !== resolved) {
+      htmlElement.classList.add("theme-anim");
+      if (animationTimer.current) clearTimeout(animationTimer.current);
+      animationTimer.current = setTimeout(() => {
+        htmlElement.classList.remove("theme-anim");
+      }, 220);
+    }
+    appliedTheme.current = resolved;
 
     if (theme === "dark") {
       // Force dark mode — add dark class

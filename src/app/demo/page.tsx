@@ -79,7 +79,7 @@ export default function DemoLoginPage() {
           Gigs<span className="bg-gradient-to-r from-brand-400 to-orange-400 bg-clip-text text-transparent">Manager</span>{" "}
           Demo
         </h1>
-        <p className="text-sm text-slate-400">Live voorbeeld met gigs, setlists, gages en financiën.</p>
+        <p className="text-sm text-slate-500">Live voorbeeld met gigs, setlists, gages en financiën.</p>
       </div>
 
       {state === "signing-in" ? (

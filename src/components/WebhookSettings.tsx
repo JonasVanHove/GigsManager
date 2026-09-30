@@ -269,7 +269,7 @@ export default function WebhookSettings({
       {/* Webhooks List */}
       {webhooks.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-slate-300 py-12 text-center dark:border-slate-600">
-          <Icons.Document className="mx-auto mb-3 h-8 w-8 text-slate-400" />
+          <Icons.Document className="mx-auto mb-3 h-8 w-8 text-slate-500" />
           <p className="text-sm text-slate-600 dark:text-slate-400">
             {copy.noWebhooks}
           </p>
@@ -325,7 +325,7 @@ export default function WebhookSettings({
                     <button
                       onClick={() => onToggleWebhook(webhook.id, !webhook.enabled)}
                       title={webhook.enabled ? "Disable" : "Enable"}
-                      className="rounded p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
                     >
                       {webhook.enabled ? (
                         <Icons.Check className="h-4 w-4" />

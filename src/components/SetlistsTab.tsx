@@ -1741,7 +1741,7 @@ export default function SetlistsTab() {
           if (!Number.isNaN(from)) moveItem(from, index);
         }}
         data-testid="setlist-song-item"
-        className={`rounded-2xl border p-2 sm:p-3 transition-all duration-200 ease-in-out ${activeItemId === item.id ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10" : "border-slate-200 bg-white hover:bg-slate-50 hover:shadow-md dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"}`}
+        className={`rounded-2xl border p-2 sm:p-3 transition-all duration-200 ease-in-out ${activeItemId === item.id ? "border-brand-500 bg-brand-50 shadow-sm dark:border-brand-400 dark:bg-brand-500/10" : "surface-card surface-card-hover hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900"}`}
       >
         <div className="flex items-start gap-2 min-w-0 max-w-full">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
@@ -1800,7 +1800,7 @@ export default function SetlistsTab() {
             </div>
             
             {/* Attachments Section */}
-            <div className="sm:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900">
+            <div className="surface-card sm:col-span-2 rounded-2xl p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {t('setlists.attachments')}
@@ -1878,7 +1878,7 @@ export default function SetlistsTab() {
         {/* Header - compact for mobile, optimized touch targets */}
         <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-slate-950/95 px-3 py-2 sm:px-4 sm:py-3 backdrop-blur shrink-0">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-slate-400">{t('setlists.performanceMode')}</div>
+            <div className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-slate-500">{t('setlists.performanceMode')}</div>
             <div className="truncate text-base sm:text-xl font-semibold">{activeDraft.naam}</div>
             <div className="text-[10px] sm:text-sm text-slate-300">{[activeDraft.datum, activeDraft.locatie].filter(Boolean).join(" · ")}</div>
           </div>
@@ -1935,7 +1935,7 @@ export default function SetlistsTab() {
                 {currentSongAttachments.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center py-8">
                     <div className="text-3xl mb-2">📎</div>
-                    <div className="text-sm text-slate-400">{t('setlists.noAttachments')}</div>
+                    <div className="text-sm text-slate-500">{t('setlists.noAttachments')}</div>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -2418,7 +2418,7 @@ export default function SetlistsTab() {
                   {/* Items List */}
                   <div className="flex-1 min-h-0 overflow-y-auto space-y-2 min-w-0 pr-1">
                     {currentItems.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center text-sm text-slate-400">
+                      <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 p-8 text-center text-sm text-slate-500">
                         <p className="text-2xl mb-2">🎵</p>
                         <p className="font-semibold text-slate-700 dark:text-slate-300">{t('setlists.songPicker')}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Selecteer songs uit het repertoire rechts om je setlist op te bouwen.</p>
@@ -2493,7 +2493,7 @@ export default function SetlistsTab() {
                       <button 
                         type="button" 
                         onClick={() => setRepertoireCollapsed(true)} 
-                        className="rounded p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
+                        className="rounded p-1 text-slate-500 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition"
                         title={t('setlists.hideSongPicker')}
                         aria-label={t('setlists.hideSongPicker')}
                       >
@@ -2545,7 +2545,7 @@ export default function SetlistsTab() {
                         ) : (
                           <span className="text-slate-600 dark:text-slate-400">Tags</span>
                         )}
-                        <span className="text-slate-400 ml-1">▼</span>
+                        <span className="text-slate-500 ml-1">▼</span>
                       </button>
                       
                       {/* Dropdown */}

@@ -82,7 +82,7 @@ export function ConcertModePlayer({ setlist, onClose, isOpen }: ConcertModePlaye
       <div className="flex h-full flex-col">
         <header className="flex items-start justify-between gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
           <div className="min-w-0">
-            <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Concert Mode</div>
+            <div className="text-xs uppercase tracking-[0.16em] text-slate-500">Concert Mode</div>
             <h2 className="truncate text-xl font-semibold sm:text-2xl">{setlist.title}</h2>
             {currentItem && (
               <p className="mt-1 text-sm text-slate-300">
@@ -153,7 +153,7 @@ export function ConcertModePlayer({ setlist, onClose, isOpen }: ConcertModePlaye
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 p-6 text-center text-slate-300">
                     <div className="text-lg font-medium">{currentItem.title || "Untitled item"}</div>
-                    <div className="mt-2 text-sm text-slate-400">No media attached for this item yet.</div>
+                    <div className="mt-2 text-sm text-slate-500">No media attached for this item yet.</div>
                   </div>
                 )}
               </div>

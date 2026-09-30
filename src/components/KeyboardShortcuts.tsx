@@ -103,7 +103,7 @@ export default function KeyboardShortcuts({
             onClick={handleCloseHelp}
             title="Close (Esc)"
             aria-label="Close"
-            className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="touch-target inline-flex h-11 w-11 items-center justify-center rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -186,7 +186,7 @@ export default function KeyboardShortcuts({
                               : key.toUpperCase()}
                           </kbd>
                           {i < shortcut.keys.length - 1 && (
-                            <span className="text-slate-400 ml-1">+</span>
+                            <span className="text-slate-500 ml-1">+</span>
                           )}
                         </div>
                       ))}

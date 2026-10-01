@@ -368,6 +368,12 @@ export const Icons = {
       <path d="m21 15-4.5-4.5L5 21" />
     </svg>
   ),
+
+  Zap: (props: IconProps) => (
+    <svg {...iconDefaults} {...props}>
+      <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z" />
+    </svg>
+  ),
 };
 
 // For backward compatibility with common patterns

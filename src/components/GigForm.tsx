@@ -10,6 +10,7 @@ import { useSettings } from "./SettingsProvider";
 import { hasGigFormChanges } from "@/lib/gig-form-dirty-state";
 import { useModalLock } from "@/hooks/useModalLock";
 import { GigAttachmentsPanel } from "./GigAttachmentsPanel";
+import { GigScheduleHelper } from "./GigScheduleHelper";
 
 interface BandMemberOption {
   id: string;
@@ -56,6 +57,15 @@ function getEmptyForm(): GigFormData {
     notes: "",
     bandId: null,
     setlistId: null,
+    venueName: "",
+    venueLocation: "",
+    soundcheckTime: "",
+    doorsOpenTime: "",
+    performanceDurationMinutes: 90,
+    gearSetupNotes: "",
+    organizerName: "",
+    organizerEmail: "",
+    organizerPhone: "",
   };
 }
 
@@ -93,6 +103,15 @@ function gigToFormData(gig: Gig): GigFormData {
     notes: gig.notes ?? "",
     bandId: gig.bandId ?? null,
     setlistId: gig.setlistId ?? null,
+    venueName: gig.venueName ?? "",
+    venueLocation: gig.venueLocation ?? "",
+    soundcheckTime: gig.soundcheckTime ?? "",
+    doorsOpenTime: gig.doorsOpenTime ?? "",
+    performanceDurationMinutes: gig.performanceDurationMinutes ?? 90,
+    gearSetupNotes: gig.gearSetupNotes ?? "",
+    organizerName: gig.organizerName ?? "",
+    organizerEmail: gig.organizerEmail ?? "",
+    organizerPhone: gig.organizerPhone ?? "",
   };
 }
 
@@ -1060,6 +1079,57 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                     </div>
                   </fieldset>
 
+                  <fieldset className="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+                    <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Venue &amp; Logistics</legend>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Locale naam" : "Venue name"}</label>
+                        <input className={inputCls} placeholder="Ancienne Belgique" value={form.venueName || ""} onChange={(e) => set("venueName", e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Adres" : "Address"}</label>
+                        <input className={inputCls} placeholder="Boulevard Anspach 110, Brussel" value={form.venueLocation || ""} onChange={(e) => set("venueLocation", e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Soundcheck" : "Soundcheck"}</label>
+                        <input type="time" className={inputCls} value={form.soundcheckTime || ""} onChange={(e) => set("soundcheckTime", e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Deuren open" : "Doors open"}</label>
+                        <input type="time" className={inputCls} value={form.doorsOpenTime || ""} onChange={(e) => set("doorsOpenTime", e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Setduur (min)" : "Set length (min)"}</label>
+                        <input
+                          type="number"
+                          min={15}
+                          max={400}
+                          step={5}
+                          className={inputCls}
+                          value={form.performanceDurationMinutes ?? ""}
+                          onChange={(e) => set("performanceDurationMinutes", e.target.value === "" ? null : Math.max(1, Number(e.target.value)))}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Organisator" : "Organizer contact"}</label>
+                        <input className={inputCls} placeholder="Jan Peeters" value={form.organizerName || ""} onChange={(e) => set("organizerName", e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>E-mail</label>
+                        <input type="email" className={inputCls} placeholder="jan@venue.be" value={form.organizerEmail || ""} onChange={(e) => set("organizerEmail", e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{isDutch ? "Telefoon" : "Phone"}</label>
+                        <input className={inputCls} placeholder="+32 470 12 34 56" value={form.organizerPhone || ""} onChange={(e) => set("organizerPhone", e.target.value)} />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className={labelCls}>{isDutch ? "Gereedschap / opstelling" : "Gear / rig"}</label>
+                        <textarea rows={2} className={inputCls} placeholder={isDutch ? "2x DI, 1x amp, eigen monitor, 8 kanalen PA" : "2x DI, 1x amp, own monitor, 8-channel PA"} value={form.gearSetupNotes || ""} onChange={(e) => set("gearSetupNotes", e.target.value)} />
+                      </div>
+                    </div>
+                  </fieldset>
+
                   <fieldset className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
                     <label className={labelCls}>Notes</label>
                     <textarea rows={2} className={inputCls} placeholder="Any additional notes..." value={form.notes} onChange={(e) => set("notes", e.target.value)} />
@@ -1067,6 +1137,8 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
 
                   {/* Attachments + Groq summary only exist for a saved gig. */}
                   {gig && <GigAttachmentsPanel gigId={gig.id} isDutch={isDutch} />}
+
+                  <GigScheduleHelper gigId={gig?.id ?? null} form={form} isDutch={isDutch} />
                 </div>
               )}
             </div>

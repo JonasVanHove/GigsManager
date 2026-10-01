@@ -32,6 +32,18 @@ export interface Gig {
   bookingDate: string; // ISO string - when booking was made
   userId: string; // belongs to this user
   setlistId: string | null;
+  // --- Logistics (drives the AI schedule generator) ---
+  venueName?: string | null;
+  venueLocation?: string | null;
+  /** "HH:MM" local to the venue. */
+  soundcheckTime?: string | null;
+  doorsOpenTime?: string | null;
+  performanceDurationMinutes?: number | null;
+  gearSetupNotes?: string | null;
+  // --- Organizer / technician contact ---
+  organizerName?: string | null;
+  organizerEmail?: string | null;
+  organizerPhone?: string | null;
   bandId?: string | null;
   band?: {
     id: string;
@@ -102,6 +114,17 @@ export interface GigFormData {
   bandMemberIds?: string[];
   setlistId?: string | null;
   bandId?: string | null;
+  // --- Logistics (drive the AI schedule generator) ---
+  venueName?: string;
+  venueLocation?: string;
+  soundcheckTime?: string; // "HH:MM"
+  doorsOpenTime?: string; // "HH:MM"
+  performanceDurationMinutes?: number | null;
+  gearSetupNotes?: string;
+  // --- Organizer / technician contact ---
+  organizerName?: string;
+  organizerEmail?: string;
+  organizerPhone?: string;
 }
 
 // --- Setlists --------------------------------------------------------------

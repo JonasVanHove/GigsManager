@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
+import { GigMessageDrafter } from "./GigMessageDrafter";
 
 export type GigAttachmentItem = {
   id: string;
@@ -370,6 +371,7 @@ export function GigAttachmentsPanel({
             )}
           </div>
         )}
+        <GigMessageDrafter gigId={gigId} isDutch={isDutch} />
       </div>
     </fieldset>
   );

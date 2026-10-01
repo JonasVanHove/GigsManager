@@ -156,6 +156,34 @@ export async function PUT(
             ? new Date(String(body.bookingDate))
             : existing.bookingDate,
         notes: body.notes ? String(body.notes).trim() : null,
+        // --- Logistics (v1.31.0) ---
+        venueName: body.venueName ? String(body.venueName).trim() : null,
+        venueLocation: body.venueLocation ? String(body.venueLocation).trim() : null,
+        soundcheckTime: body.soundcheckTime
+          ? String(body.soundcheckTime).trim().slice(0, 5)
+          : null,
+        doorsOpenTime: body.doorsOpenTime
+          ? String(body.doorsOpenTime).trim().slice(0, 5)
+          : null,
+        performanceDurationMinutes: (() => {
+          const value = Number(body.performanceDurationMinutes);
+          return Number.isFinite(value) && value > 0
+            ? Math.min(1440, Math.round(value))
+            : null;
+        })(),
+        gearSetupNotes: body.gearSetupNotes
+          ? String(body.gearSetupNotes).trim()
+          : null,
+        // --- Organizer contact (v1.31.0) ---
+        organizerName: body.organizerName
+          ? String(body.organizerName).trim()
+          : null,
+        organizerEmail: body.organizerEmail
+          ? String(body.organizerEmail).trim()
+          : null,
+        organizerPhone: body.organizerPhone
+          ? String(body.organizerPhone).trim()
+          : null,
         setlistId: nextSetlistId,
         bandId: body.bandId ? String(body.bandId) : null,
       },

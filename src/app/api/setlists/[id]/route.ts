@@ -10,6 +10,8 @@ type SetlistItemInput = {
   notes?: string;
   chords?: string;
   tuning?: string;
+  keySignature?: string;
+  bpm?: number | string;
   order?: number;
 };
 
@@ -43,6 +45,14 @@ function normalizeItems(items: SetlistItemInput[]) {
       notes: item.notes ? String(item.notes).trim() : null,
       chords: item.chords ? String(item.chords).trim() : null,
       tuning: item.tuning ? String(item.tuning).trim() : null,
+      keySignature: item.keySignature ? String(item.keySignature).trim() : null,
+      // Reject nonsense BPM early: "120" and 120 are both valid, "abc" is not.
+      bpm: (() => {
+        const parsed = Number(item.bpm);
+        return Number.isFinite(parsed) && parsed > 0 && parsed < 400
+          ? Math.round(parsed)
+          : null;
+      })(),
       order: Number.isInteger(item.order) ? Number(item.order) : index + 1,
     }))
     .filter((item) => item.title || item.notes || item.chords || item.tuning);

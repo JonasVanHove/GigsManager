@@ -3,6 +3,33 @@ import { normalizeCapo, getCapoDifference } from "./capo-utils";
 
 export type OptimizationCriteria = "bpm-flow" | "harmonic-keys" | "minimize-capo" | "balanced";
 
+/**
+ * Result shape of the Groq setlist flow analysis
+ * (POST /api/setlists/[id]/ai-analyze).
+ */
+export interface FlowWarning {
+  fromIndex: number;
+  toIndex: number;
+  fromTitle: string;
+  toTitle: string;
+  severity: "info" | "warning";
+  message: string;
+}
+
+export interface FlowSuggestion {
+  description: string;
+  move: Array<{ itemId: string; toIndex: number }>;
+}
+
+export interface FlowAnalysis {
+  overallScore: number;
+  headline: string;
+  energyArc: string[];
+  pacing: string[];
+  keyWarnings: FlowWarning[];
+  suggestions: FlowSuggestion[];
+}
+
 export interface FlowOptimizationResult<T> {
   optimizedItems: T[];
   explanations: string[];

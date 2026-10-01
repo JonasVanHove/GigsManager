@@ -19,7 +19,7 @@ import {
   isKnownSpecialBlock,
   normalizeSpecialBlockKey,
 } from "@/lib/setlist-special-blocks";
-import { optimizeSetlistFlow, type OptimizationCriteria } from "@/lib/setlist-flow";
+import { optimizeSetlistFlow, type OptimizationCriteria, type FlowAnalysis } from "@/lib/setlist-flow";
 import { areCaposEqual, normalizeCapo, formatCapo } from "@/lib/capo-utils";
 import { useOfflineSongs, useOfflineSetlists } from "@/lib/offline/hooks";
 import {
@@ -57,6 +57,9 @@ type ApiSetlistItem = {
   notes: string | null;
   chords: string | null;
   tuning: string | null;
+  /** Added in v1.31.0 so the AI flow analysis has real key/tempo data. */
+  keySignature?: string | null;
+  bpm?: number | null;
 };
 
 type ApiSongRow = {
@@ -245,6 +248,17 @@ const createSpecialItem = (label: string): DraftItem => ({
 
 const cloneItem = (item: DraftItem): DraftItem => ({ ...item });
 
+/**
+ * DraftItem.tempo is a free-text field (it also holds "120 bpm" or tempo marks
+ * pulled from a song's notes). Only a clean number is persisted as BPM.
+ */
+const parseBpm = (tempo: string | undefined | null): number | null => {
+  const match = String(tempo || "").match(/\d{2,3}/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return value >= 40 && value <= 300 ? value : null;
+};
+
 type TranslateFn = (key: string) => string;
 
 const resolveSpecialBlockLabel = (label: string, t: TranslateFn): string => {
@@ -371,6 +385,8 @@ export default function SetlistsTab() {
   const [uploadingAttachment, setUploadingAttachment] = useState<string | null>(null);
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [flowAnalysis, setFlowAnalysis] = useState<FlowAnalysis | null>(null);
+  const [flowAnalysing, setFlowAnalysing] = useState(false);
   const [convertingItemId, setConvertingItemId] = useState<string | null>(null);
   const [includeTuningNotes, setIncludeTuningNotes] = useState(false);
   const [setlistListCollapsed, setSetlistListCollapsed] = useState(false);
@@ -710,8 +726,8 @@ export default function SetlistsTab() {
                   label: item.title || "",
                   artist: "",
                   tuning: item.tuning || "Onbekend",
-                  key: item.chords || "",
-                  tempo: "",
+                  key: item.keySignature || item.chords || "",
+                  tempo: item.bpm ? String(item.bpm) : "",
                   notitie: item.notes || "",
                   specialLabel: item.type === "note" ? item.title || "" : "",
                   expanded: false,
@@ -1039,6 +1055,15 @@ export default function SetlistsTab() {
    * inherited); everything else is added as a standalone entry with no songId,
    * because forcing an unverified link would attach the wrong song data.
    */
+
+
+  /**
+   * Merges reviewed import rows into the current draft.
+   *
+   * High-confidence matches become real song links (so chords/tuning/notes are
+   * inherited); everything else is added as a standalone entry with no songId,
+   * because forcing an unverified link would attach the wrong song data.
+   */
   const applyImportedItems = useCallback(
     (imported: ReviewedImportItem[]) => {
       const newItems: DraftItem[] = imported.map((row) =>
@@ -1097,6 +1122,8 @@ export default function SetlistsTab() {
         notes: item.kind === "song" ? item.notitie || null : item.notitie || null,
         chords: item.kind === "song" ? item.key || null : null,
         tuning: item.kind === "song" ? item.tuning || null : null,
+        keySignature: item.kind === "song" ? item.key || null : null,
+        bpm: item.kind === "song" ? parseBpm(item.tempo) : null,
         order: index + 1,
       })),
       gigIds: nextDraft.gigIds,
@@ -1212,6 +1239,59 @@ export default function SetlistsTab() {
     }
   }, [getAccessToken, newDate, newLocation, newName, selectSetlist, session?.user, toast, t]);
 
+  /**
+   * Runs the Groq flow analysis against the SAVED setlist. Pending edits are
+   * flushed first, otherwise the model would analyse a running order the user
+   * cannot see.
+   */
+  const runFlowAnalysis = useCallback(async () => {
+    if (!draft || flowAnalysing) return;
+    setFlowAnalysing(true);
+    try {
+      if (savingState === "dirty") {
+        await saveDraft(draft, draftVersionRef.current);
+      }
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch(`/api/setlists/${draft.id}/ai-analyze`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Analysis failed");
+      setFlowAnalysis(body.analysis ?? null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setFlowAnalysing(false);
+    }
+  }, [draft, flowAnalysing, getAccessToken, savingState, saveDraft, toast]);
+
+  /** Applies one of the AI's proposed reorderings to the draft. */
+  const applyFlowSuggestion = useCallback(
+    (moves: Array<{ itemId: string; toIndex: number }>) => {
+      updateDraftItems((items) => {
+        const known = new Set(items.map((item) => item.id));
+        const next = items.filter((item) => known.has(item.id));
+        // Highest target index first, so an earlier move cannot shift the
+        // destination of a later one.
+        for (const move of [...moves].sort((a, b) => b.toIndex - a.toIndex)) {
+          const from = next.findIndex((item) => item.id === move.itemId);
+          if (from === -1) continue;
+          const to = Math.max(0, Math.min(next.length - 1, move.toIndex));
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved);
+        }
+        return next;
+      });
+      setFlowAnalysis(null);
+      toast.success(
+        isDutch ? "Nieuwe volgorde toegepast" : "New running order applied"
+      );
+    },
+    [isDutch, toast, updateDraftItems]
+  );
+
   const duplicateSetlist = useCallback(async () => {
     if (!draft || !session?.user) return;
     try {
@@ -1238,6 +1318,8 @@ export default function SetlistsTab() {
             notes: item.notitie || null,
             chords: item.key || null,
             tuning: item.tuning || null,
+            keySignature: item.key || null,
+            bpm: parseBpm(item.tempo),
             order: index + 1,
           })),
         }),
@@ -2417,6 +2499,106 @@ export default function SetlistsTab() {
                 {/* Song list column - expands dynamically */}
                 <section className="flex-1 min-w-0 flex flex-col space-y-3 h-full min-h-0">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:p-3 dark:border-slate-800 dark:bg-slate-900/60 shrink-0">
+                    {flowAnalysis && (
+                      <div className="mb-3 space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-800/60 dark:bg-amber-950/20">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                              {flowAnalysis.headline}
+                            </p>
+                            <p className="mt-1 text-2xl font-bold text-amber-700 dark:text-amber-400">
+                              {flowAnalysis.overallScore}
+                              <span className="text-sm font-medium">/100</span>
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFlowAnalysis(null)}
+                            aria-label={isDutch ? "Sluiten" : "Close"}
+                            className="shrink-0 rounded-lg p-1.5 text-slate-500 transition hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                          >
+                            <Icons.X className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {flowAnalysis.energyArc.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                              {isDutch ? "Energieboog" : "Energy arc"}
+                            </p>
+                            <ul className="mt-1 space-y-1">
+                              {flowAnalysis.energyArc.map((line, i) => (
+                                <li key={i} className="text-sm text-slate-700 dark:text-slate-200">{line}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {flowAnalysis.pacing.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                              {isDutch ? "Tempo & opbouw" : "Pacing"}
+                            </p>
+                            <ul className="mt-1 space-y-1">
+                              {flowAnalysis.pacing.map((line, i) => (
+                                <li key={i} className="text-sm text-slate-700 dark:text-slate-200">{line}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {flowAnalysis.keyWarnings.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                              {isDutch ? "Toonsoort-overgangen" : "Key transitions"}
+                            </p>
+                            <ul className="mt-1 space-y-1.5">
+                              {flowAnalysis.keyWarnings.map((warning, i) => (
+                                <li
+                                  key={i}
+                                  className={`rounded-lg border px-2.5 py-1.5 text-sm ${
+                                    warning.severity === "warning"
+                                      ? "border-amber-300 bg-amber-100/60 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200"
+                                      : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200"
+                                  }`}
+                                >
+                                  <span className="font-medium">
+                                    {warning.fromTitle} &rarr; {warning.toTitle}
+                                  </span>
+                                  {warning.message ? `: ${warning.message}` : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {flowAnalysis.suggestions.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                              {isDutch ? "Voorstellen" : "Suggestions"}
+                            </p>
+                            <ul className="mt-1 space-y-1.5">
+                              {flowAnalysis.suggestions.map((suggestion, i) => (
+                                <li
+                                  key={i}
+                                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-900/60"
+                                >
+                                  <span className="min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200">
+                                    {suggestion.description}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyFlowSuggestion(suggestion.move)}
+                                    className="shrink-0 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+                                  >
+                                    {isDutch ? "Toepassen" : "Apply"}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                       <button type="button" onClick={() => addSpecial("PAUZE")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.pause')}</button>
                       <button type="button" onClick={() => addSpecial("BIS")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.bis')}</button>
@@ -2424,6 +2606,10 @@ export default function SetlistsTab() {
                       <button type="button" onClick={() => setShowImportModal(true)} className="min-w-0 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 hover:bg-violet-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1">
                         <Icons.Sparkles className="h-3 w-3" />
                         {isDutch ? "Importeren" : "Import"}
+                      </button>
+                      <button type="button" onClick={() => void runFlowAnalysis()} disabled={flowAnalysing || !draft || draft.items.length === 0} className="min-w-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 hover:bg-amber-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1">
+                        {flowAnalysing ? <Icons.Spinner className="h-3 w-3 animate-spin" /> : <Icons.Zap className="h-3 w-3" />}
+                        {flowAnalysing ? (isDutch ? "Analyseren..." : "Analysing...") : (isDutch ? "Flow & energie" : "Flow & energy")}
                       </button>
                       <button type="button" onClick={() => addSpecial(window.prompt(t('setlists.customBlockLabel')) || "")} className="min-w-0 rounded-full border border-slate-300 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200 dark:hover:bg-slate-800">{t('setlists.customBlock')}</button>
                       <label className="min-w-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 cursor-pointer flex items-center gap-1 hover:bg-amber-100 hover:scale-105 active:scale-95 transition-all duration-200">

@@ -497,6 +497,26 @@ function toGigData(body: any, userId: string) {
     bandPaidDate: body.bandPaidDate ? new Date(String(body.bandPaidDate)) : null,
     bookingDate: body.bookingDate ? new Date(String(body.bookingDate)) : new Date(),
     notes: body.notes ? String(body.notes).trim() : null,
+    // --- Logistics (v1.31.0) ---
+    venueName: body.venueName ? String(body.venueName).trim() : null,
+    venueLocation: body.venueLocation ? String(body.venueLocation).trim() : null,
+    soundcheckTime: body.soundcheckTime
+      ? String(body.soundcheckTime).trim().slice(0, 5)
+      : null,
+    doorsOpenTime: body.doorsOpenTime
+      ? String(body.doorsOpenTime).trim().slice(0, 5)
+      : null,
+    performanceDurationMinutes: (() => {
+      const value = Number(body.performanceDurationMinutes);
+      return Number.isFinite(value) && value > 0
+        ? Math.min(1440, Math.round(value))
+        : null;
+    })(),
+    gearSetupNotes: body.gearSetupNotes ? String(body.gearSetupNotes).trim() : null,
+    // --- Organizer contact (v1.31.0) ---
+    organizerName: body.organizerName ? String(body.organizerName).trim() : null,
+    organizerEmail: body.organizerEmail ? String(body.organizerEmail).trim() : null,
+    organizerPhone: body.organizerPhone ? String(body.organizerPhone).trim() : null,
     setlistId: body.setlistId ? String(body.setlistId) : null,
     bandId: body.bandId ? String(body.bandId) : null,
     userId,

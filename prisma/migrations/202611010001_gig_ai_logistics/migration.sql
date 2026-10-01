@@ -1,4 +1,4 @@
-﻿-- AlterTable
+-- AlterTable
 ALTER TABLE "Gig"
   ADD COLUMN     "aiSchedule" TEXT,
   ADD COLUMN     "aiScheduleAt" TIMESTAMP(3),

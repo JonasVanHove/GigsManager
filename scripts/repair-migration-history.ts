@@ -22,7 +22,7 @@
  * `npm run db:migrate:repair` and then `npm run db:migrate:deploy`.
  */
 import "dotenv/config";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
@@ -189,8 +189,19 @@ async function main(): Promise<void> {
 
     console.log("   🔧 Migraties markeren als applied …");
     const { execFileSync } = await import("node:child_process");
+
+    // Invoke the Prisma CLI through node directly instead of `npx`.
+    // On Windows `npx` is `npx.cmd`, which `execFileSync` cannot spawn without
+    // a shell — that failed with ENOENT and left the migration un-resolved.
+    const prismaCli = path.join(ROOT, "node_modules", "prisma", "build", "index.js");
+    if (!existsSync(prismaCli)) {
+      throw new Error(
+        `Prisma CLI not found at ${prismaCli}. Run npm install before using --apply.`
+      );
+    }
+
     for (const name of resolvable) {
-      execFileSync("npx", ["prisma", "migrate", "resolve", "--applied", name], {
+      execFileSync(process.execPath, [prismaCli, "migrate", "resolve", "--applied", name], {
         stdio: "inherit",
         cwd: ROOT,
       });

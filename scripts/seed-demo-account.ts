@@ -1501,6 +1501,42 @@ function parseCliFlags(): Set<string> {
   return flags;
 }
 
+/**
+ * Cheap pre-flight schema check.
+ *
+ * Returns a human-readable description of the first column this script needs
+ * that the database does not have, or null when everything is in place. Kept
+ * deliberately small and hardcoded: this only has to cover the columns the
+ * seeder writes, and `prisma migrate status` would need the CLI to be spawned.
+ */
+async function findMissingSchemaColumn(prisma: PrismaClient): Promise<string | null> {
+  const required: Array<{ table: string; column: string }> = [
+    { table: "GigAttachment", column: "id" },
+    { table: "Gig", column: "aiSchedule" },
+    { table: "SetlistItem", column: "keySignature" },
+    { table: "SetlistItem", column: "bpm" },
+  ];
+
+  try {
+    for (const { table, column } of required) {
+      const rows: unknown = await prisma.$queryRawUnsafe(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = $3",
+        "public",
+        table,
+        column
+      );
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return `${table}.${column}`;
+      }
+    }
+    return null;
+  } catch {
+    // If we cannot verify (locked down introspection, RLS on metadata, ...)
+    // assume the schema is fine and let the real seed surface any problem.
+    return null;
+  }
+}
+
 async function main(): Promise<void> {
   const flags = parseCliFlags();
   const dryRun = flags.has("--dry-run") || flags.has("--dry");
@@ -1543,15 +1579,44 @@ async function main(): Promise<void> {
       return;
     }
 
+    /*
+     * Pre-flight: when the schema is behind the client, seeding deletes the
+     * account and then fails halfway, which leaves you with NO demo account at
+     * all. Checking first means a broken database aborts before anything is
+     * destroyed.
+     */
+    const schemaProblem = await findMissingSchemaColumn(prisma);
+    if (schemaProblem) {
+      console.error(`\n   ❌ Het database-schema is niet up-to-date: ${schemaProblem}`);
+      console.error(
+        "      De seed zou falen nadat het bestaande account is verwijderd, dus hij is hier afgebroken.\n" +
+          "      Draai eerst:\n" +
+          "        npm run db:migrate:repair\n" +
+          "        npm run db:migrate:deploy\n"
+      );
+      process.exit(1);
+    }
+
+    let resetDone = false;
     if (existing) {
       console.log(`   🧹 Bestaand demo-account verwijderen (${existing.id}) …`);
       await removeDemoAccount(prisma, existing.id);
+      resetDone = true;
       console.log("      Verwijderd — andere accounts zijn niet aangeraakt.");
     }
 
     console.log("   🌱 Demo-account aanmaken …");
-    await seedPlan(prisma, plan);
-    console.log("      Aangemaakt.");
+    try {
+      await seedPlan(prisma, plan);
+      console.log("      Aangemaakt.");
+    } catch (seedError) {
+      if (resetDone) {
+        console.error("\n   ❌ Seeden mislukt NADAT het account was verwijderd.");
+        console.error("      Er is nu (nog) geen demo-account. Details:\n");
+        console.error(seedError instanceof Error ? seedError.message : seedError);
+      }
+      throw seedError;
+    }
 
     if (!skipAuth) {
       console.log("   🔐 Supabase auth-account controleren …");

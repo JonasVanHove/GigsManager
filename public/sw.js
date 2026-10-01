@@ -1,14 +1,40 @@
 // Service Worker for GigsManager
 // Provides offline support and intelligent caching strategies
 
-const CACHE_NAME = 'gigs-manager-v1.31.0';
-const STATIC_CACHE = 'gigs-manager-static-v3';
-const DYNAMIC_CACHE = 'gigs-manager-dynamic-v3';
-const LONG_TERM_CACHE = 'gigs-manager-longterm-v3';
+const CACHE_NAME = 'gigs-manager-v1.31.1';
+// Every cache is derived from CACHE_NAME so a single version bump invalidates
+// all of them. They used to be pinned at "-v3", which meant bumping CACHE_NAME
+// alone left stale JS/CSS/HTML in those caches forever.
+const STATIC_CACHE = `${CACHE_NAME}-static`;
+const DYNAMIC_CACHE = `${CACHE_NAME}-dynamic`;
+const LONG_TERM_CACHE = `${CACHE_NAME}-longterm`;
 // Repertoire API responses (stale-while-revalidate, token-scoped keys).
-const REPERTOIRE_CACHE = 'gigs-manager-repertoire-v1';
+const REPERTOIRE_CACHE = `${CACHE_NAME}-repertoire`;
 // Explicitly pinned attachment assets ("Offline Opslaan").
-const OFFLINE_CACHE = 'gigs-manager-offline-v1';
+const OFFLINE_CACHE = `${CACHE_NAME}-offline`;
+
+/**
+ * Caches written by earlier releases. Their names are not derived from
+ * CACHE_NAME, so they can never be matched by the keep-list below — they are
+ * removed explicitly, otherwise a user stays stuck on an old bundle.
+ */
+const LEGACY_CACHE_NAMES = [
+  'gigs-manager-static-v1', 'gigs-manager-static-v2', 'gigs-manager-static-v3',
+  'gigs-manager-dynamic-v1', 'gigs-manager-dynamic-v2', 'gigs-manager-dynamic-v3',
+  'gigs-manager-longterm-v1', 'gigs-manager-longterm-v2', 'gigs-manager-longterm-v3',
+  'gigs-manager-repertoire-v1',
+  'gigs-manager-offline-v1',
+];
+
+/** Cache names that belong to the currently running worker. */
+const ACTIVE_CACHES = new Set([
+  CACHE_NAME,
+  STATIC_CACHE,
+  DYNAMIC_CACHE,
+  LONG_TERM_CACHE,
+  REPERTOIRE_CACHE,
+  OFFLINE_CACHE,
+]);
 
 /**
  * Builds a cache-key request scoped to the authorization token. Repertoire
@@ -58,36 +84,50 @@ self.addEventListener('install', (event) => {
       } catch (err) {
         console.warn('SW: install caching skipped:', err);
       }
+
+      // skipWaiting MUST be awaited inside waitUntil, otherwise the new worker
+      // can sit in "waiting" while the old one keeps serving stale bundles.
+      await self.skipWaiting();
     })()
   );
-  self.skipWaiting();
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activating...');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (
-            cacheName !== CACHE_NAME &&
-            cacheName !== STATIC_CACHE &&
-            cacheName !== DYNAMIC_CACHE &&
-            cacheName !== LONG_TERM_CACHE &&
-            cacheName !== REPERTOIRE_CACHE &&
-            cacheName !== OFFLINE_CACHE
-          ) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).catch((err) => {
-      console.warn('SW: cache cleanup failed:', err);
-    })
+    (async () => {
+      try {
+        const cacheNames = await caches.keys();
+        // Explicit legacy names are removed even if a future cache name happens
+        // to collide with the prefix, so upgrades from <= v1.31.0 are reliable.
+        const stale = cacheNames.filter(
+          (cacheName) =>
+            LEGACY_CACHE_NAMES.includes(cacheName) ||
+            (!ACTIVE_CACHES.has(cacheName) && cacheName.startsWith('gigs-manager'))
+        );
+
+        await Promise.all(
+          stale.map(async (cacheName) => {
+            console.log('SW: deleting stale cache:', cacheName);
+            try {
+              await caches.delete(cacheName);
+            } catch (err) {
+              console.warn('SW: failed to delete cache', cacheName, err);
+            }
+          })
+        );
+
+        console.log(`SW: active after cleanup (${cacheNames.length - stale.length} kept, ${stale.length} deleted)`);
+      } catch (err) {
+        console.warn('SW: cache cleanup failed:', err);
+      }
+
+      // Control existing tabs immediately so the next navigation already uses
+      // this worker's (fresh) caches.
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 // Fetch event - implement caching strategies

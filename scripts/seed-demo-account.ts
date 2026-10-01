@@ -1467,11 +1467,49 @@ async function verifyPlan(prisma: PrismaClient, userId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
+/**
+ * Collects CLI flags from every place they can legitimately arrive.
+ *
+ * npm (>=7) strips unknown flags out of `process.argv` and re-exposes them as
+ * `npm_config_<flag>` environment variables — verified on npm 11, where BOTH
+ * `npm run db:seed:demo -- --reset` and `npm run db:seed:demo --reset` arrive
+ * with an empty argv. Reading argv alone therefore silently ignores --reset
+ * when the script is started through npm, which is exactly how it is meant to
+ * be run. Direct invocation (`npx tsx scripts/seed-demo-account.ts --reset`)
+ * does put the flag in argv, so both sources are supported.
+ */
+function parseCliFlags(): Set<string> {
+  const flags = new Set<string>();
+
+  for (const arg of process.argv.slice(2)) {
+    // Accept both "--reset" and "--reset=false" / "--no-reset".
+    const match = arg.match(/^--([a-z][a-z0-9-]*)(?:=(.*))?$/i);
+    if (!match) continue;
+    const [, name, value] = match;
+    if (value === "false" || value === "0") continue;
+    flags.add(`--${name.toLowerCase()}`);
+  }
+
+  // `npm_config_dry_run` -> --dry-run (npm replaces "-" with "_").
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!key.startsWith("npm_config_")) continue;
+    if (value === "" || value === "false" || value === "0") continue;
+    const name = key.slice("npm_config_".length).toLowerCase().replace(/_/g, "-");
+    flags.add(`--${name}`);
+  }
+
+  return flags;
+}
+
 async function main(): Promise<void> {
-  const flags = new Set(process.argv.slice(2));
+  const flags = parseCliFlags();
   const dryRun = flags.has("--dry-run") || flags.has("--dry");
   const reset = flags.has("--reset");
   const skipAuth = flags.has("--skip-auth");
+
+  if (reset) {
+    console.log("   ♻️  --reset: het bestaande demo-account wordt verwijderd en opnieuw opgebouwd.\n");
+  }
 
   console.log("🎪 GigsManager — demo account seeder\n");
 

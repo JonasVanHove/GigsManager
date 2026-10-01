@@ -222,3 +222,73 @@ altijd falen. De werkende variant `keep-alive.yml` (pingt de
 `/api/health`-endpoint, echte `SELECT 1`) blijft ongewijzigd.
 
 
+
+---
+
+## Migratie-drift herstellen (`prisma migrate deploy` faalt met "column already exists")
+
+### Symptoom
+
+```
+Error: P3018
+A migration failed to apply. New migrations cannot be applied before the error is recovered.
+```
+
+of directer:
+
+```
+error: column "overviewViewMode" of relation "UserSettings" already exists
+```
+
+### Oorzaak
+
+De database is op een gegeven moment bijgewerkt met `prisma db push` (of een
+migratie is halverwege gefaald). Daardoor bestaan de kolommen al, maar staan ze
+niet als "applied" in `_prisma_migrations`. `migrate deploy` probeert ze opnieuw
+uit te voeren, faalt, en markeert de migratie als *gestart maar niet afgerond*.
+Vanaf dat moment blokkeert die ene migratie **alle** volgende migraties.
+
+### Diagnose (read-only, veilig om te draaien)
+
+```
+npm run db:migrate:repair
+```
+
+Dit script:
+
+1. leest `_prisma_migrations` (kent ook half uitgevoerde en teruggedraaide regels);
+2. leest per migratie de SQL en bepaalt welke tabellen/kolommen hij zou toevoegen;
+3. toont per migratie `=` (bestaat al) of `+` (ontbreekt);
+4. markeert **alleen** migraties als applied wanneer álles al bestaat.
+
+Het script schrijft nooit schema — alleen de migratie-historie, en alleen in
+`--apply`-modus.
+
+### Oplossen
+
+```
+npm run db:migrate:repair -- --apply   # markeert de reeds aanwezige migraties
+npm run db:migrate:deploy              # voert de echte, ontbrekende migraties uit
+```
+
+### Handmatige sequentie (als je geen script wilt gebruiken)
+
+Draai dit **in deze volgorde** — alleen migraties waarvan je hebt bevestigd dat de
+kolommen al bestaan:
+
+```
+npx prisma migrate resolve --applied 202609080001_custom_nav_tabs
+npx prisma migrate resolve --applied 202609090001_overview_view_mode
+npx prisma migrate deploy
+```
+
+Voor de migraties van v1.30.0 / v1.31.0 is resolve **niet** nodig: die kolommen
+bestaan nog niet en moeten daadwerkelijk worden toegepast.
+
+### Let op
+
+- `migrate resolve --applied` zegt Prisma "deze migratie is al uitgevoerd". Doe
+  dat alleen als je zeker weet dat de objecten bestaan; anders sluit je die
+  migratie permanent uit.
+- Twee migraties achter elkaar in dezelfde map mag niet — Prisma sorteert op mapnaam.
+- Gebruik nooit `migrate reset` op een productiedatabase: die wist alle data.

@@ -15,9 +15,17 @@ type DemoState = "signing-in" | "error";
 
 export default function DemoLoginPage() {
   const router = useRouter();
+  // The login flow is inherently client-only (Supabase session, redirect).
+  // Rendering it only after mount keeps the first paint byte-identical to the
+  // server HTML, which is what React hydration errors #418/#423 are about.
+  const [isMounted, setIsMounted] = useState(false);
   const [state, setState] = useState<DemoState>("signing-in");
   const [message, setMessage] = useState<string>("Inloggen op de demo-omgeving…");
   const started = useRef(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     // StrictMode double-invokes effects in dev; the ref keeps it to one login.
@@ -82,7 +90,7 @@ export default function DemoLoginPage() {
         <p className="text-sm text-slate-500">Live voorbeeld met gigs, setlists, gages en financiën.</p>
       </div>
 
-      {state === "signing-in" ? (
+      {!isMounted || state === "signing-in" ? (
         <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-slate-300 backdrop-blur">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/25 border-t-white" />
           {message}

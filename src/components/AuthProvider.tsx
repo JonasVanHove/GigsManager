@@ -46,12 +46,20 @@ export const AuthContext = React.createContext<AuthContextType | undefined>(
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
-  const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window !== "undefined") {
-      return hasStoredSupabaseToken();
+  // Must stay deterministic across server and client. Seeding this from
+  // localStorage (`hasStoredSupabaseToken()`) made the very first client
+  // render disagree with the server HTML whenever a session was stored —
+  // which is always the case right after /demo logs a visitor in and
+  // redirects to /app — producing React hydration errors #418/#423.
+  // The token check now runs in an effect below, after hydration.
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    // No stored token means there is definitively nothing to restore, so skip
+    // the brief loading state instead of flashing a spinner for nobody.
+    if (!hasStoredSupabaseToken()) {
+      setIsLoading(false);
     }
-    return true;
-  });
+  }, []);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
   const accessTokenFreshUntilRef = useRef<number>(0);

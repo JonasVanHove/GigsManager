@@ -1,6 +1,6 @@
 {
   "name": "gig-manager",
-  "version": "1.31.0",
+  "version": "1.31.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -21,6 +21,8 @@
     "db:seed:demo": "tsx scripts/seed-demo-account.ts",
     "db:seed:demo:reset": "tsx scripts/seed-demo-account.ts --reset",
     "db:seed:demo:dry": "tsx scripts/seed-demo-account.ts --dry-run",
+    "db:migrate:repair": "tsx scripts/repair-migration-history.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "release": "node scripts/bump-version.js patch",

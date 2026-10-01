@@ -10,7 +10,9 @@ import { supabaseClient } from "@/lib/supabase-client";
 import { useTranslation } from "react-i18next";
 import LoadingSpinner from "./LoadingSpinner";
 import XAIConfirmationModal from "./XAIConfirmationModal";
+import { Icons } from "./Icons";
 import OptimizeFlowModal from "./OptimizeFlowModal";
+import { SetlistImportModal, type ReviewedImportItem } from "./SetlistImportModal";
 import FullscreenMediaViewer from "./FullscreenMediaViewer";
 import {
   getSpecialBlockTranslationKey,
@@ -307,6 +309,7 @@ const normalizeGigOptions = (payload: unknown): GigOption[] => {
 export default function SetlistsTab() {
   const { session, getAccessToken } = useAuth();
   const { locale, settings } = useSettings();
+  const isDutch = locale.startsWith("nl");
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -367,6 +370,7 @@ export default function SetlistsTab() {
   const [itemAttachments, setItemAttachments] = useState<Map<string, Array<{ id: string; url: string; type: string; title?: string }>>>(new Map());
   const [uploadingAttachment, setUploadingAttachment] = useState<string | null>(null);
   const [showSongPicker, setShowSongPicker] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [convertingItemId, setConvertingItemId] = useState<string | null>(null);
   const [includeTuningNotes, setIncludeTuningNotes] = useState(false);
   const [setlistListCollapsed, setSetlistListCollapsed] = useState(false);
@@ -1027,6 +1031,39 @@ export default function SetlistsTab() {
     } : current);
     setSavingState("dirty");
   }, []);
+
+  /**
+   * Merges reviewed import rows into the current draft.
+   *
+   * High-confidence matches become real song links (so chords/tuning/notes are
+   * inherited); everything else is added as a standalone entry with no songId,
+   * because forcing an unverified link would attach the wrong song data.
+   */
+  const applyImportedItems = useCallback(
+    (imported: ReviewedImportItem[]) => {
+      const newItems: DraftItem[] = imported.map((row) =>
+        row.kind === "special"
+          ? { ...createSpecialItem(row.title), notitie: row.notitie }
+          : {
+              id: crypto.randomUUID(),
+              kind: "song",
+              songId: row.songId,
+              label: row.title,
+              artist: "",
+              tuning: "",
+              key: "",
+              tempo: "",
+              notitie: row.notitie,
+              specialLabel: "",
+              expanded: false,
+            }
+      );
+
+      if (newItems.length === 0) return;
+      updateDraftItems((items) => [...items, ...newItems]);
+    },
+    [updateDraftItems]
+  );
 
   const selectSetlist = useCallback((setlist: StoredSetlist) => {
     draftVersionRef.current += 1;
@@ -2384,6 +2421,10 @@ export default function SetlistsTab() {
                       <button type="button" onClick={() => addSpecial("PAUZE")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.pause')}</button>
                       <button type="button" onClick={() => addSpecial("BIS")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.bis')}</button>
                       <button type="button" onClick={() => addSpecial("BINDTEKST")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.bindtekst')}</button>
+                      <button type="button" onClick={() => setShowImportModal(true)} className="min-w-0 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 hover:bg-violet-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1">
+                        <Icons.Sparkles className="h-3 w-3" />
+                        {isDutch ? "Importeren" : "Import"}
+                      </button>
                       <button type="button" onClick={() => addSpecial(window.prompt(t('setlists.customBlockLabel')) || "")} className="min-w-0 rounded-full border border-slate-300 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200 dark:hover:bg-slate-800">{t('setlists.customBlock')}</button>
                       <label className="min-w-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 cursor-pointer flex items-center gap-1 hover:bg-amber-100 hover:scale-105 active:scale-95 transition-all duration-200">
                         <input type="checkbox" checked={includeTuningNotes} onChange={(e) => handleTuningToggle(e.target.checked)} className="sr-only" />
@@ -2733,6 +2774,22 @@ export default function SetlistsTab() {
             </div>
           </div>
         </div>
+      )}
+
+      {showImportModal && (
+        <SetlistImportModal
+          isDutch={isDutch}
+          onClose={() => setShowImportModal(false)}
+          onConfirm={(imported) => {
+            applyImportedItems(imported);
+            setShowImportModal(false);
+            toast.success(
+              isDutch
+                ? `${imported.length} items toegevoegd`
+                : `${imported.length} items added`
+            );
+          }}
+        />
       )}
 
       {showSongPicker && convertingItemId && (

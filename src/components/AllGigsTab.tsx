@@ -834,7 +834,7 @@ export default function AllGigsTab({
         <div className="space-y-4">
           <div className="grid gap-4 grid-cols-1">
             {visibleGigs.map((gig, idx) => (
-              <div key={gig.id} className={`animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
+              <div key={gig.id} className={`min-w-0 animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
                 <GigCard
                   gig={gig}
                   onEdit={onEdit}
@@ -908,11 +908,11 @@ export default function AllGigsTab({
                         </td>
 
                         {/* Event & Artist */}
-                        <td className="px-4 py-3">
-                          <div className="font-semibold text-slate-900 dark:text-white">
+                        <td className="min-w-0 max-w-[16rem] px-4 py-3">
+                          <div className="break-words font-semibold text-slate-900 dark:text-white">
                             {gig.eventName}
                           </div>
-                          <div className="mt-0.5 flex items-center gap-1.5">
+                          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
                             <BandTag name={gig.performers} variant={gig.band?.color ? "solid" : "soft"} color={gig.band?.color} />
                             {gig.numberOfMusicians > 1 && (
                               <span className="text-xs text-slate-500">

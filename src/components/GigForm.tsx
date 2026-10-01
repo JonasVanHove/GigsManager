@@ -9,6 +9,7 @@ import { PhotoAnnotationEditor } from "./PhotoAnnotationEditor";
 import { useSettings } from "./SettingsProvider";
 import { hasGigFormChanges } from "@/lib/gig-form-dirty-state";
 import { useModalLock } from "@/hooks/useModalLock";
+import { GigAttachmentsPanel } from "./GigAttachmentsPanel";
 
 interface BandMemberOption {
   id: string;
@@ -1063,6 +1064,9 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                     <label className={labelCls}>Notes</label>
                     <textarea rows={2} className={inputCls} placeholder="Any additional notes..." value={form.notes} onChange={(e) => set("notes", e.target.value)} />
                   </fieldset>
+
+                  {/* Attachments + Groq summary only exist for a saved gig. */}
+                  {gig && <GigAttachmentsPanel gigId={gig.id} isDutch={isDutch} />}
                 </div>
               )}
             </div>

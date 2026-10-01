@@ -2209,7 +2209,7 @@ export default function Dashboard() {
                             overviewViewMode === "compact" ? (
                               <div className="space-y-2">
                                 {activeGigs.map((gig, idx) => (
-                                  <div key={gig.id} className={`animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
+                                  <div key={gig.id} className={`min-w-0 animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
                                     <OverviewCompactRow gig={gig} onEdit={handleEditGig} />
                                   </div>
                                 ))}
@@ -2217,7 +2217,7 @@ export default function Dashboard() {
                             ) : (
                             <div className={effectiveWideView ? "grid gap-4 lg:grid-cols-1 2xl:grid-cols-2" : "grid gap-5 xl:grid-cols-2 2xl:grid-cols-3"}>
                               {activeGigs.map((gig, idx) => (
-                                <div key={gig.id} className={`animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
+                                <div key={gig.id} className={`min-w-0 animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
                                   <GigCard
                                     gig={gig}
                                     onEdit={handleEditGig}
@@ -2278,7 +2278,7 @@ export default function Dashboard() {
                             overviewViewMode === "compact" ? (
                               <div className="space-y-2">
                                 {handledGigs.map((gig, idx) => (
-                                  <div key={gig.id} className={`animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
+                                  <div key={gig.id} className={`min-w-0 animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
                                     <OverviewCompactRow gig={gig} onEdit={handleEditGig} isHandled />
                                   </div>
                                 ))}
@@ -2286,7 +2286,7 @@ export default function Dashboard() {
                             ) : (
                             <div className={effectiveWideView ? "grid gap-4 lg:grid-cols-1 2xl:grid-cols-2" : "grid gap-5 xl:grid-cols-2 2xl:grid-cols-3"}>
                               {handledGigs.map((gig, idx) => (
-                                <div key={gig.id} className={`animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
+                                <div key={gig.id} className={`min-w-0 animate-fade-in animate-stagger-${Math.min(idx + 1, 10)}`}>
                                   <GigCard
                                     gig={gig}
                                     onEdit={handleEditGig}

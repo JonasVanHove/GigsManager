@@ -112,7 +112,7 @@ const GigCard = memo(function GigCard({
   const bandStyles = useMemo(() => getBandColorStyles(gig.performers, gig.band?.color), [gig.performers, gig.band?.color]);
 
   return (
-    <div className={`group overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
+    <div className={`group w-full max-w-full overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
       gig.managerInstantPayment
         ? 'surface-card border-slate-300/80 bg-slate-100/60 backdrop-blur dark:border-slate-600/60 dark:bg-slate-800/50 dark:backdrop-blur'
         : isSelected
@@ -127,7 +127,7 @@ const GigCard = memo(function GigCard({
       borderColor: gig.band?.color ? bandStyles.soft.borderColor : undefined
     }}>
       {/* -- Header ------------------------------------------------------ */}
-      <div className={`flex items-start justify-between divider-subtle border-b transition-colors px-3 py-3 sm:px-5 sm:py-4`}>
+      <div className={`flex min-w-0 items-start justify-between divider-subtle border-b transition-colors px-3 py-3 sm:px-5 sm:py-4`}>
         {/* Left side: Checkbox + Event info (clickable to expand/collapse) */}
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {onSelect && (
@@ -154,8 +154,8 @@ const GigCard = memo(function GigCard({
             }}
             className="min-w-0 flex-1 text-left transition-opacity hover:opacity-80"
           >
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="min-w-0 max-w-full break-words text-lg font-semibold text-slate-900 dark:text-cyan-300 sm:truncate">
               {gig.eventName}
             </h3>
             {gig.isCharity && (
@@ -214,7 +214,7 @@ const GigCard = memo(function GigCard({
               }`}
             />
           </div>
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tablet:text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs tablet:text-sm text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
               <Icons.Calendar className="h-4 w-4 shrink-0" />
               <span className="hidden tablet:inline">{formattedDate}</span>
@@ -281,7 +281,7 @@ const GigCard = memo(function GigCard({
       {effectiveIsExpanded && (
         <div className="animate-expand">
           {/* -- Financial breakdown ------------------------------------------ */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 px-3 py-4 text-sm sm:grid-cols-4 sm:px-5 border-b border-slate-100 dark:border-slate-700/50 animate-fade-in">
+          <div className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-2 px-3 py-4 text-sm sm:grid-cols-4 sm:px-5 border-b border-slate-100 dark:border-slate-700/50 animate-fade-in">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Performance
@@ -376,7 +376,7 @@ const GigCard = memo(function GigCard({
                 Claims{" "}
               </p>
               <div className="mt-1.5 space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   {gig.claimPerformanceFee ? (
                     <svg className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                       <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
@@ -390,7 +390,7 @@ const GigCard = memo(function GigCard({
                     Performance
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   {gig.claimTechnicalFee ? (
                     <Icons.Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                   ) : (

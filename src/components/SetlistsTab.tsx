@@ -258,6 +258,16 @@ const parseBpm = (tempo: string | undefined | null): number | null => {
   const value = Number(match[0]);
   return value >= 40 && value <= 300 ? value : null;
 };
+/** DraftItem -> POST /api/setlists item payload (single source of truth). */
+const toItemPayload = (item: DraftItem) => ({
+  type: item.kind === "song" ? "song" : "note",
+  title: item.kind === "song" ? item.label : item.specialLabel,
+  notes: item.notitie || null,
+  chords: item.kind === "song" ? item.key || null : null,
+  tuning: item.kind === "song" ? item.tuning || null : null,
+  keySignature: item.kind === "song" ? item.key || null : null,
+  bpm: item.kind === "song" ? parseBpm(item.tempo) : null,
+});
 
 type TranslateFn = (key: string) => string;
 
@@ -1048,14 +1058,80 @@ export default function SetlistsTab() {
     setSavingState("dirty");
   }, []);
 
-  /**
-   * Merges reviewed import rows into the current draft.
-   *
-   * High-confidence matches become real song links (so chords/tuning/notes are
-   * inherited); everything else is added as a standalone entry with no songId,
-   * because forcing an unverified link would attach the wrong song data.
-   */
+  const selectSetlist = useCallback((setlist: StoredSetlist) => {
+    draftVersionRef.current += 1;
+    setSelectedId(setlist.id);
+    setDraft(JSON.parse(JSON.stringify(setlist)));
+    setSavingState("saved");
+    setShowPerformanceMode(false);
+    setActiveItemId(null);
+    // Auto-collapse sidebar on mobile when setlist is selected
+    setSidebarCollapsed(true);
+  }, []);
 
+  /**
+   * Creates a setlist from reviewed import rows, for when no setlist is open.
+   *
+   * Without this, importing from the empty state looked successful but did
+   * nothing: `updateDraftItems` is a no-op while `draft` is null, so the
+   * imported songs vanished.
+   */
+  const createSetlistFromImport = useCallback(
+    async (draftItems: DraftItem[]) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error(t('setlists.failedToCreateSetlist'));
+
+      const fallbackTitle = isDutch ? "Geïmporteerde setlist" : "Imported setlist";
+      const response = await fetch("/api/setlists", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: fallbackTitle,
+          description: serializeSetlistMeta({
+            datum: null,
+            locatie: "",
+            notities: "",
+            status: "concept",
+            pauseOnTuningChange: false,
+          }),
+          items: draftItems.map(toItemPayload),
+        }),
+      });
+
+      if (!response.ok) throw new Error(t('setlists.failedToCreateSetlist'));
+
+      const created = (await response.json()) as {
+        id: string;
+        title?: string;
+        description?: string | null;
+        createdAt: string;
+        updatedAt: string;
+      };
+      const meta = parseSetlistMeta(created.description);
+      const next: StoredSetlist = {
+        id: created.id,
+        userId: session?.user?.id ?? "",
+        naam: created.title || fallbackTitle,
+        datum: meta.datum,
+        locatie: meta.locatie,
+        gigIds: [],
+        items: draftItems,
+        notities: meta.notities,
+        status: meta.status,
+        pauseOnTuningChange: meta.pauseOnTuningChange,
+        bandId: null,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      };
+
+      setSetlists((prev) => [next, ...prev]);
+      selectSetlist(next);
+    },
+    [getAccessToken, isDutch, selectSetlist, session?.user?.id, t]
+  );
 
   /**
    * Merges reviewed import rows into the current draft.
@@ -1065,7 +1141,7 @@ export default function SetlistsTab() {
    * because forcing an unverified link would attach the wrong song data.
    */
   const applyImportedItems = useCallback(
-    (imported: ReviewedImportItem[]) => {
+    async (imported: ReviewedImportItem[]) => {
       const newItems: DraftItem[] = imported.map((row) =>
         row.kind === "special"
           ? { ...createSpecialItem(row.title), notitie: row.notitie }
@@ -1085,21 +1161,23 @@ export default function SetlistsTab() {
       );
 
       if (newItems.length === 0) return;
-      updateDraftItems((items) => [...items, ...newItems]);
-    },
-    [updateDraftItems]
-  );
 
-  const selectSetlist = useCallback((setlist: StoredSetlist) => {
-    draftVersionRef.current += 1;
-    setSelectedId(setlist.id);
-    setDraft(JSON.parse(JSON.stringify(setlist)));
-    setSavingState("saved");
-    setShowPerformanceMode(false);
-    setActiveItemId(null);
-    // Auto-collapse sidebar on mobile when setlist is selected
-    setSidebarCollapsed(true);
-  }, []);
+      // No setlist open (e.g. a brand-new account): create one and put the
+      // imported songs straight into it.
+      if (!draft) {
+        await createSetlistFromImport(newItems);
+      } else {
+        updateDraftItems((items) => [...items, ...newItems]);
+      }
+
+      toast.success(
+        isDutch
+          ? `${newItems.length} items toegevoegd`
+          : `${newItems.length} items added`
+      );
+    },
+    [createSetlistFromImport, draft, isDutch, toast, updateDraftItems]
+  );
 
   const saveDraft = useCallback(async (nextDraft: StoredSetlist, version: number) => {
     if (!session?.user) return;
@@ -2374,9 +2452,27 @@ export default function SetlistsTab() {
             <div className="flex min-h-full flex-col items-center justify-center p-6 sm:p-8 text-center">
               <div className="text-4xl sm:text-5xl">🎼</div>
               <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{setlists.length === 0 ? t('setlists.noSetlists') : t('setlists.noSelection')}</div>
-              <button type="button" onClick={() => setShowCreateModal(true)} className="mt-6 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-                {t('setlists.newSetlist')}
-              </button>
+
+              {setlists.length === 0 && (
+                <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                  {isDutch
+                    ? "Plak je setlist of upload een foto — de nummers worden herkend en gekoppeld aan je repertoire."
+                    : "Paste your setlist or upload a photo — the songs are recognised and linked to your repertoire."}
+                </p>
+              )}
+
+              {/* Import is the fastest way in: an empty setlist gives the band
+                  nothing to build on, while most players already have a
+                  printed setlist somewhere. */}
+              <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row">
+                <button type="button" onClick={() => setShowImportModal(true)} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 sm:w-auto">
+                  <Icons.Sparkles className="h-4 w-4" />
+                  {isDutch ? "Setlist importeren" : "Import a setlist"}
+                </button>
+                <button type="button" onClick={() => setShowCreateModal(true)} className="flex min-h-[44px] w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
+                  {t('setlists.newSetlist')}
+                </button>
+              </div>
               {/* Mobile toggle button when no setlist selected */}
               {sidebarCollapsed && (
                 <button
@@ -2966,14 +3062,15 @@ export default function SetlistsTab() {
         <SetlistImportModal
           isDutch={isDutch}
           onClose={() => setShowImportModal(false)}
-          onConfirm={(imported) => {
-            applyImportedItems(imported);
+          onConfirm={async (imported) => {
             setShowImportModal(false);
-            toast.success(
-              isDutch
-                ? `${imported.length} items toegevoegd`
-                : `${imported.length} items added`
-            );
+            try {
+              // applyImportedItems shows its own toast, and creates a setlist
+              // when none is open yet.
+              await applyImportedItems(imported);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : String(error));
+            }
           }}
         />
       )}

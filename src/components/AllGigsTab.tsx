@@ -979,20 +979,37 @@ export default function AllGigsTab({
                                 <Icons.ListView className="h-4 w-4" />
                               </button>
                             )}
-                            {/* Keeps the notes/AI action reachable in the compact
-                                table view too, not just the card grid. */}
+                            {/* Compact table view has no room for a labelled badge, so the same
+                                trigger is an icon button that still reflects
+                                whether the gig has notes. */}
                             <button
                               onClick={() => setQuickNotesGig(gig)}
-                              title={isDutch ? "Notities & stand van zaken" : "Notes & AI summary"}
+                              title={
+                                gig.notes
+                                  ? isDutch
+                                    ? "Notities & stand van zaken"
+                                    : "Notes & AI summary"
+                                  : isDutch
+                                    ? "Notitie toevoegen"
+                                    : "Add a note"
+                              }
                               aria-label={
                                 isDutch
                                   ? `Notities & stand van zaken: ${gig.eventName}`
                                   : `Notes & AI summary: ${gig.eventName}`
                               }
-                              data-testid="gig-quick-notes-button"
-                              className="rounded-lg p-1.5 text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/40"
+                              data-testid="gig-quick-notes-trigger"
+                              className={`rounded-lg p-1.5 transition hover:bg-brand-50 dark:hover:bg-brand-950/40 ${
+                                gig.notes
+                                  ? "text-brand-600 dark:text-brand-300"
+                                  : "text-slate-400 hover:text-brand-600 dark:text-slate-500 dark:hover:text-brand-300"
+                              }`}
                             >
-                              <Icons.Sparkles className="h-4 w-4" />
+                              {gig.notes ? (
+                                <Icons.Document className="h-4 w-4" />
+                              ) : (
+                                <Icons.Plus className="h-4 w-4" />
+                              )}
                             </button>
                             {onDuplicate && (
                               <button

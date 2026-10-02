@@ -12,19 +12,14 @@ export const GROQ_MODELS = {
   /**
    * Text models, tried in order.
    *
-   * Groq retires models on its own schedule and answers a retired id with 404 /
-   * "model_not_found" at request time, not at configuration time. The last two
-   * entries are legacy ids that have been unavailable for a while; they are kept
-   * deliberately cheap to try so an account that is still pinned to an older
-   * deployment keeps working instead of losing every AI feature at once.
+   * Only currently-supported ids live here. Groq retires models on its own
+   * schedule and answers a retired id with 404 / "model_not_found" at request
+   * time, not at configuration time — but keeping already-decommissioned ids in
+   * the list only adds failed round-trips before every request eventually
+   * reaches a model that works. `callGroq` still walks the chain, so a
+   * retirement degrades quality instead of breaking every AI feature at once.
    */
-  text: [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
-  ] as const,
+  text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] as const,
   /**
    * Vision models, tried in order. Used for setlist OCR and reading attached
    * gig photos. If every candidate is unavailable there is no text fallback —
@@ -76,13 +71,22 @@ export function isModelUnavailable(status: number, body: string): boolean {
 /**
  * Turns a Groq failure into a message a user can act on, instead of the raw
  * JSON error blob the API returns.
+ *
+ * `attempted` is every model the chain walked through. When more than one was
+ * tried and none answered, the problem is the whole chain rather than the last
+ * model, and saying so saves the reader from chasing a single retired id.
  */
 export function describeGroqFailure(
   status: number,
   body: string,
-  model: string
+  model: string,
+  attempted: readonly string[] = []
 ): string {
   const lower = body.toLowerCase();
+  const exhaustedChain =
+    attempted.length > 1 &&
+    attempted.includes(model) &&
+    isModelUnavailable(status, body);
 
   if (status === 401 || lower.includes("invalid api key")) {
     return "AI is not configured correctly: the GROQ_API_KEY was rejected by Groq. Check the key in your environment settings.";
@@ -92,6 +96,11 @@ export function describeGroqFailure(
   }
   if (status === 413 || lower.includes("context length") || lower.includes("too long")) {
     return "The document is too large for the AI to process in one go. Try attaching fewer or smaller files.";
+  }
+  if (exhaustedChain) {
+    return `None of the configured Groq models responded (tried: ${attempted.join(
+      ", "
+    )}). Every model in the chain looks retired or unavailable to this key. Update GROQ_MODELS in src/lib/groq.ts to a model your account can access.`;
   }
   if (isModelUnavailable(status, body)) {
     return `The AI model "${model}" is no longer available on this Groq account. Update GROQ_MODELS in src/lib/groq.ts to a model your key can access.`;
@@ -232,6 +241,8 @@ export async function callGroq(
 
   try {
     let lastFailure: { status: number; body: string; model: string } | null = null;
+    // Models that were actually tried and failed, in order.
+    const attempted: string[] = [];
 
     for (const candidate of candidates) {
       let attempt: Attempt;
@@ -276,9 +287,27 @@ export async function callGroq(
       if (!canRetry) break;
     }
 
+    // Record what the chain actually walked through, so an exhausted chain can be
+    // reported as such instead of blaming whichever model happened to be last.
     const failure = lastFailure ?? { status: 502, body: "", model: candidates[0] };
+    if (lastFailure) attempted.push(failure.model);
+
+    const message = describeGroqFailure(
+      failure.status,
+      failure.body,
+      failure.model,
+      attempted
+    );
+    if (attempted.length > 1) {
+      console.error(
+        `[groq] No model in the ${family} chain answered. Tried: ${attempted.join(
+          ", "
+        )}. Last status: ${failure.status}.`
+      );
+    }
+
     throw new GroqError(
-      describeGroqFailure(failure.status, failure.body, failure.model),
+      message,
       failure.status >= 400 && failure.status < 600 ? failure.status : 502
     );
   } finally {

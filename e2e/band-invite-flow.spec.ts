@@ -129,7 +129,7 @@ test('accepting an invitation from the QR link shows the band and joins', async 
 
     // Accepting syncs the shared gigs and lands the user on their dashboard.
     await joinPage.waitForURL('**/app**', { timeout: 60_000 });
-    await expect(joinPage.getByTestId('gig-quick-notes-button').first()).toBeVisible({
+    await expect(joinPage.getByTestId('gig-quick-notes-trigger').first()).toBeVisible({
       timeout: 60_000,
     });
     await joinPage.close();

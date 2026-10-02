@@ -201,6 +201,48 @@ const GigCard = memo(function GigCard({
                 {isDutch ? "Notities (pending)" : "Notes (pending)"}
               </span>
             )}
+            {/* Notes live here, in the always-visible header, rather than in a
+                full-width action row: the badge is the affordance, and it stays
+                reachable whether or not the card is expanded. */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowQuickNotes(true);
+              }}
+              title={
+                localNotes
+                  ? isDutch
+                    ? "Notities & stand van zaken"
+                    : "Notes & AI summary"
+                  : isDutch
+                    ? "Notitie toevoegen"
+                    : "Add a note"
+              }
+              aria-label={
+                isDutch
+                  ? `Notities & stand van zaken: ${gig.eventName}`
+                  : `Notes & AI summary: ${gig.eventName}`
+              }
+              data-testid="gig-quick-notes-trigger"
+              className={`badge badge-enter min-h-[28px] cursor-pointer transition hover:underline ${
+                localNotes
+                  ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  : "border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
+              }`}
+            >
+              {localNotes ? (
+                <>
+                  <Icons.Document className="h-3 w-3 shrink-0" />
+                  {isDutch ? "Notitie" : "Note"}
+                </>
+              ) : (
+                <>
+                  <Icons.Plus className="h-3 w-3 shrink-0" />
+                  {isDutch ? "Notitie" : "Note"}
+                </>
+              )}
+            </button>
             {gig.managerInstantPayment && (
               <>
                 <span className="inline-flex tablet:hidden items-center shrink-0 p-1 rounded-md text-amber-700 dark:text-amber-300 badge-enter" title="Manager pays">
@@ -285,31 +327,8 @@ const GigCard = memo(function GigCard({
       </div>
 
       {/* -- Quick notes & AI summary --------------------------------------
-          Its own row rather than another icon in the actions cluster: the
-          label is what makes it findable on a phone, and it stays reachable
-          whether or not the card is expanded. */}
-      <div className="px-4 pb-3.5">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowQuickNotes(true);
-          }}
-          title={isDutch ? "Notities & stand van zaken" : "Notes & AI summary"}
-          aria-label={
-            isDutch
-              ? `Notities & stand van zaken: ${gig.eventName}`
-              : `Notes & AI summary: ${gig.eventName}`
-          }
-          data-testid="gig-quick-notes-button"
-          className="touch-target flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70 dark:border-brand-800/70 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40"
-        >
-          <Icons.Sparkles className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 truncate">
-            {isDutch ? "Notities & stand van zaken" : "Notes & AI summary"}
-          </span>
-        </button>
-      </div>
+          The trigger is the Notes badge in the header above; this row is gone
+          so the card face stays compact. */}
 
       {/* Collapsible content */}
       {effectiveIsExpanded && (
@@ -563,16 +582,8 @@ const GigCard = memo(function GigCard({
           </span>
         )}
 
-        {/* Notes badge - shown for all gigs */}
-        {localNotes && (
-          <span
-            className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs text-slate-500 dark:text-slate-400"
-            title={localNotes}
-          >
-            <Icons.Document className="h-3 w-3 shrink-0" />
-            Note
-          </span>
-        )}
+        {/* Notes badge moved to the header (see gig-quick-notes-trigger); showing it
+            again down here would duplicate the control. */}
       </div>
         </div>
       )}

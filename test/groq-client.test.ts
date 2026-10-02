@@ -41,14 +41,51 @@ describe("groq model registry", () => {
     expect(GROQ_MODELS.text).toContain("llama-3.1-8b-instant");
   });
 
-  it("keeps the full legacy text chain in order", () => {
+  it("only lists currently supported models", () => {
+    // Retired ids were dropped in v1.33.2: keeping them only costs a failed
+    // round-trip per request before the chain reaches a model that works.
     expect(GROQ_MODELS.text).toEqual([
       "llama-3.3-70b-versatile",
       "llama-3.1-8b-instant",
-      "llama3-70b-8192",
-      "llama3-8b-8192",
-      "mixtral-8x7b-32768",
     ]);
+    expect(GROQ_MODELS.vision).toEqual([
+      "llama-3.2-11b-vision-preview",
+      "llama-3.2-90b-vision-preview",
+    ]);
+
+    for (const family of ["text", "vision"] as const) {
+      for (const model of GROQ_MODELS[family]) {
+        expect(model).not.toMatch(/mixtral|llama3-/);
+      }
+    }
+  });
+
+  it("reports an exhausted chain instead of blaming the last model", () => {
+    const message = describeGroqFailure(
+      404,
+      '{"error":{"code":"model_not_found","message":"model not found"}}',
+      "llama-3.1-8b-instant",
+      ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    );
+    expect(message).toMatch(/none of the configured groq models/i);
+    expect(message).toContain("llama-3.3-70b-versatile");
+    expect(message).toContain("llama-3.1-8b-instant");
+  });
+
+  it("blames a single model when only one was tried", () => {
+    const message = describeGroqFailure(404, "model_not_found", "llama-3.3-70b-versatile", [
+      "llama-3.3-70b-versatile",
+    ]);
+    expect(message).toMatch(/no longer available/i);
+    expect(message).not.toMatch(/none of the configured/i);
+  });
+
+  it("prefers auth and rate-limit guidance over the chain message", () => {
+    const attempted = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+    expect(describeGroqFailure(401, "invalid api key", "llama-3.1-8b-instant", attempted))
+      .toMatch(/GROQ_API_KEY/);
+    expect(describeGroqFailure(429, "rate limit exceeded", "llama-3.1-8b-instant", attempted))
+      .toMatch(/rate-limiting/i);
   });
 
   it("has at least two vision candidates", () => {

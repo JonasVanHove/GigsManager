@@ -22,7 +22,7 @@ async function openDrawer(page: import('@playwright/test').Page) {
       // Placeholder already gone — the button wait below surfaces real failures.
     });
 
-  const trigger = page.getByTestId('gig-quick-notes-button').first();
+  const trigger = page.getByTestId('gig-quick-notes-trigger').first();
   await trigger.waitFor({ state: 'visible', timeout: 60_000 });
   await trigger.click();
   await expect(page.getByTestId('gig-quick-notes-modal')).toBeVisible();
@@ -83,7 +83,7 @@ test.describe('Gig quick notes modal', () => {
     await page.getByTestId('gig-quick-notes-close').click();
     await expect(page.getByTestId('gig-quick-notes-modal')).toHaveCount(0);
 
-    await page.getByTestId('gig-quick-notes-button').first().click();
+    await page.getByTestId('gig-quick-notes-trigger').first().click();
     await expect(page.getByTestId('gig-quick-notes-modal')).toBeVisible();
     await expect(page.getByTestId('gig-quick-notes-input')).toHaveValue(updated);
 
@@ -95,13 +95,62 @@ test.describe('Gig quick notes modal', () => {
     });
   });
 
+  test('the notes badge opens the drawer and has no full-width action row', async ({
+    page,
+  }) => {
+    await openDrawer(page);
+
+    // v1.33.2 replaced the prominent full-width button row with the Notes
+    // badge, so the old trigger must be gone.
+    await expect(page.getByTestId('gig-quick-notes-button')).toHaveCount(0);
+
+    const badge = page.getByTestId('gig-quick-notes-trigger').first();
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveCSS('cursor', 'pointer');
+
+    // The badge is a real control for assistive tech, not a bare span.
+    await expect(badge).toHaveAttribute('aria-label', /notities|notes/i);
+  });
+
+  test('the badge reflects whether the gig has notes', async ({ page }) => {
+    await openDrawer(page);
+
+    const input = page.getByTestId('gig-quick-notes-input');
+    const original = await input.inputValue();
+    const badge = page.getByTestId('gig-quick-notes-trigger').first();
+    const hasNotes = original.trim().length > 0;
+    const addTitle = /add a note|notitie toevoegen/i;
+
+    // Before: the badge advertises "add" when there is nothing saved yet.
+    if (!hasNotes) {
+      await expect(badge).toHaveAttribute('title', addTitle);
+    }
+
+    // Save a note, close, and the badge should flip to the "has notes" state.
+    await input.fill('E2E badge note');
+    await page.getByTestId('gig-quick-notes-save').click();
+    await expect(page.getByTestId('gig-quick-notes-saved')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('gig-quick-notes-close').click();
+
+    await expect(page.getByTestId('gig-quick-notes-trigger').first()).not.toHaveAttribute(
+      'title',
+      addTitle
+    );
+
+    // Restore so the suite stays idempotent.
+    await page.getByTestId('gig-quick-notes-trigger').first().click();
+    await page.getByTestId('gig-quick-notes-input').fill(original);
+    await page.getByTestId('gig-quick-notes-save').click();
+    await expect(page.getByTestId('gig-quick-notes-saved')).toBeVisible({ timeout: 30_000 });
+  });
+
   test('closes via the close button and via Escape', async ({ page }) => {
     await openDrawer(page);
 
     await page.getByTestId('gig-quick-notes-close').click();
     await expect(page.getByTestId('gig-quick-notes-modal')).toHaveCount(0);
 
-    await page.getByTestId('gig-quick-notes-button').first().click();
+    await page.getByTestId('gig-quick-notes-trigger').first().click();
     await expect(page.getByTestId('gig-quick-notes-modal')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('gig-quick-notes-modal')).toHaveCount(0);

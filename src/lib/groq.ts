@@ -11,25 +11,24 @@
 /**
  * Model registry.
  *
- * Each family has exactly ONE primary model. Fallbacks live in `fallback` and
- * are only reached when the primary answers "model not found" — most often
- * because the account/key lost access to that model. Keeping the primary list
- * at one entry means the common case is a single request, and an unavailable
- * primary degrades to the fallback instead of killing every AI feature.
+ * Text has exactly ONE active model: llama-3.3-70b-versatile (or whatever
+ * GROQ_MODEL_NAME points at). There is deliberately no automatic text fallback
+ * — an account whose key cannot reach llama-3.1-8b-instant just produced a
+ * second failed request and a confusing trace, while the user-facing error was
+ * identical either way. When the single model is unavailable, the caller gets
+ * one clear, actionable message instead of a retry that cannot help.
  *
- * `GROQ_MODEL_NAME` (if set) overrides the text primary at runtime, which is
- * the escape hatch for keys that only have access to a different model.
+ * `GROQ_MODEL_NAME` is the escape hatch for keys scoped to a different model.
  */
 export const GROQ_MODELS = {
   text: ["llama-3.3-70b-versatile"] as const,
   vision: ["llama-3.2-11b-vision-preview"] as const,
   /**
-   * Defensive fallbacks, tried only after the primary was rejected as
-   * unavailable. These are best-effort: a key may not have access to them
-   * either, which is handled as a clean, actionable error rather than a trace.
+   * Vision keeps a fallback: OCR quality drops noticeably between the two
+   * preview models, and a vision request is already expensive, so a second
+   * attempt is worth it when the primary is rejected as unavailable.
    */
   fallback: {
-    text: ["llama-3.1-8b-instant"] as const,
     vision: ["llama-3.2-90b-vision-preview"] as const,
   },
 } as const;
@@ -48,11 +47,16 @@ export function preferredModel(family: GroqModelFamily): string {
   return GROQ_MODELS[family][0];
 }
 
-/** Primary first, then the defensive fallbacks, without duplicates. */
+/**
+ * Models to try, primary first.
+ *
+ * Text resolves to a single element: a successful call never triggers a second
+ * request, and an unavailable one is reported rather than retried.
+ */
 export function candidatesFor(family: GroqModelFamily): string[] {
-  return Array.from(
-    new Set([preferredModel(family), ...GROQ_MODELS.fallback[family]])
-  );
+  const fallbacks =
+    family === "vision" ? GROQ_MODELS.fallback.vision : ([] as readonly string[]);
+  return Array.from(new Set([preferredModel(family), ...fallbacks]));
 }
 
 /**

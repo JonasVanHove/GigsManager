@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, requireOwnedGigOr404 } from "@/lib/auth-helpers";
+import { extractImageText, isOcrEligible } from "@/lib/attachment-ocr";
 
 /** Attachments are small documents/photos — cap the payload defensively. */
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8 MB
@@ -123,7 +124,32 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(attachment, { status: 201 });
+    // Read the image once, here, and cache the text on the row. Later
+    // "State of Play" summaries then reuse it instead of paying for vision on
+    // every call. Deliberately non-fatal: if Groq is down the upload still
+    // succeeded, and the next summary can read the image directly.
+    let extractedText: string | null = null;
+    if (isOcrEligible(normalizedMime)) {
+      extractedText = await extractImageText(buffer, normalizedMime);
+      if (extractedText) {
+        try {
+          await prisma.gigAttachment.update({
+            where: { id: attachment.id },
+            data: { extractedText },
+          });
+        } catch (persistError) {
+          console.warn(
+            "[gig-attachments] OCR succeeded but could not be persisted:",
+            persistError
+          );
+        }
+      }
+    }
+
+    return NextResponse.json(
+      { ...attachment, extractedText },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("POST /api/gigs/[id]/attachments error:", err);
     return NextResponse.json(
@@ -159,10 +185,19 @@ export async function GET(
         fileSize: true,
         order: true,
         uploadedAt: true,
+        // Needed only to derive the flag below; the text itself is never sent
+        // to the client (it can be 12k characters per attachment).
+        extractedText: true,
       },
     });
 
-    return NextResponse.json(attachments);
+    // The UI only needs to know whether the image was read, not what it said.
+    const withOcrFlag = attachments.map(({ extractedText, ...rest }) => ({
+      ...rest,
+      hasExtractedText: Boolean(extractedText && extractedText.trim().length > 0),
+    }));
+
+    return NextResponse.json(withOcrFlag);
   } catch (err) {
     console.error("GET /api/gigs/[id]/attachments error:", err);
     return NextResponse.json(

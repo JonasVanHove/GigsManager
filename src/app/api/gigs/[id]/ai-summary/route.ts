@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { callGroq, GroqError, isGroqConfigured, parseModelJson } from "@/lib/groq";
 import { extractPdfText } from "@/lib/document-text";
+import { toInlineImage } from "@/lib/attachment-ocr";
 import { requireAuth, requireOwnedGigOr404 } from "@/lib/auth-helpers";
 
 export const runtime = "nodejs";
@@ -12,18 +13,32 @@ const MAX_EXTRACTED_CHARS = 12_000;
 const MAX_IMAGES_PER_SUMMARY = 4;
 
 /**
- * Builds the multimodal user message. Images are inlined as data URLs (the
- * attachment rows may hold either a storage URL or a raw data URL) so the
- * vision model can actually read them.
+ * Builds the multimodal user message.
+ *
+ * Attachments live in Supabase Storage and are stored as remote URLs, but Groq
+ * only accepts inline `data:` payloads. `toInlineImage` downloads and encodes
+ * them; a row that already holds a data URL is passed straight through.
+ *
+ * Images that already have cached OCR text are skipped here — their text is
+ * already in the prompt as a document block, so re-sending the pixels would
+ * duplicate the same content in one request.
  */
-function buildUserContent(
+async function buildUserContent(
   prompt: string,
   imageLabels: string[],
   images: Array<{ id: string; url: string }>
 ) {
-  const usable = images
-    .slice(0, MAX_IMAGES_PER_SUMMARY)
-    .filter((img) => img.url.startsWith("data:image/"))
+  const capped = images.slice(0, MAX_IMAGES_PER_SUMMARY);
+
+  const inlined = await Promise.all(
+    capped.map(async (img) => ({
+      id: img.id,
+      url: await toInlineImage(img.url),
+    }))
+  );
+
+  const usable = inlined
+    .filter((img): img is { id: string; url: string } => Boolean(img.url))
     .map((img) => ({
       type: "image_url" as const,
       image_url: { url: img.url },
@@ -31,9 +46,13 @@ function buildUserContent(
 
   if (usable.length === 0) return prompt;
 
+  const includedIds = new Set(
+    inlined.filter((img) => img.url).map((img) => img.id)
+  );
+  const labels = imageLabels.slice(0, includedIds.size);
   const label =
-    imageLabels.length > 0
-      ? `\n\nThe images below were attached as: ${imageLabels.join(", ")}.`
+    labels.length > 0
+      ? `\n\nThe images below were attached as: ${labels.join(", ")}.`
       : "\n\nThe images below are attached documents.";
 
   return [
@@ -201,7 +220,7 @@ export async function POST(
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: buildUserContent(
+          content: await buildUserContent(
             `${context}\n\n${USER_PROMPT_SHAPE}`,
             imageParts,
             attachments.filter((a) => a.type === "image" && !a.extractedText)

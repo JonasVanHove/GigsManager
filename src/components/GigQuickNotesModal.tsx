@@ -13,6 +13,8 @@ type Attachment = {
   type: "pdf" | "image" | string;
   title: string | null;
   mimeType: string | null;
+  /** Set by the API when vision OCR produced text for this image. */
+  hasExtractedText?: boolean;
 };
 
 type Summary = {
@@ -73,6 +75,9 @@ export default function GigQuickNotesModal({
         saveFailed: "Opslaan mislukt",
         documents: "Documenten",
         documentsEmpty: "Geen documenten bijgevoegd.",
+        ocrDone: "Tekst is uit deze afbeelding gelezen en wordt meegenomen in de samenvatting.",
+        ocrNone: "Geen leesbare tekst gevonden. De afbeelding wordt bij het samenvatten alsnog visueel gelezen.",
+        ocrNoneLabel: "geen tekst",
         loading: "Laden...",
         generate: "Stand van zaken genereren",
         regenerating: "Bezig met genereren...",
@@ -93,6 +98,9 @@ export default function GigQuickNotesModal({
         saveFailed: "Could not save",
         documents: "Documents",
         documentsEmpty: "No documents attached.",
+        ocrDone: "Text was read from this image and is included in the summary.",
+        ocrNone: "No readable text found. The image is still read visually when summarising.",
+        ocrNoneLabel: "no text",
         loading: "Loading...",
         generate: "Generate state of play",
         regenerating: "Generating...",
@@ -322,6 +330,25 @@ async function handleSave() {
                     >
                       {attachment.title || attachment.id}
                     </span>
+                    {attachment.type === "image" &&
+                      (attachment.hasExtractedText ? (
+                        <span
+                          data-testid={`quick-notes-ocr-done-${attachment.id}`}
+                          title={copy.ocrDone}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        >
+                          <Icons.Check className="h-2.5 w-2.5" />
+                          OCR
+                        </span>
+                      ) : (
+                        <span
+                          data-testid={`quick-notes-ocr-none-${attachment.id}`}
+                          title={copy.ocrNone}
+                          className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                        >
+                          {copy.ocrNoneLabel}
+                        </span>
+                      ))}
                   </li>
                 ))}
               </ul>

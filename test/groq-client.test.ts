@@ -38,14 +38,18 @@ describe("groq model registry", () => {
     expect(GROQ_MODELS.text[0]).toBe("llama-3.3-70b-versatile");
   });
 
-  it("keeps llama-3.1-8b-instant as a defensive fallback, not a primary", () => {
-    // v1.33.3: one primary per family; fallbacks are only reached when the
-    // primary is rejected as unavailable.
+  it("uses a single text model with no automatic fallback", () => {
+    // v1.34.0: llama-3.1-8b-instant is no longer retried automatically. Keys
+    // without access to it were paying a second failing request for nothing.
     expect(GROQ_MODELS.text).not.toContain("llama-3.1-8b-instant");
-    expect(GROQ_MODELS.fallback.text).toContain("llama-3.1-8b-instant");
-    expect(candidatesFor("text")).toEqual([
-      "llama-3.3-70b-versatile",
-      "llama-3.1-8b-instant",
+    expect("text" in GROQ_MODELS.fallback).toBe(false);
+    expect(candidatesFor("text")).toEqual(["llama-3.3-70b-versatile"]);
+  });
+
+  it("still falls back for vision, where a second attempt pays off", () => {
+    expect(candidatesFor("vision")).toEqual([
+      "llama-3.2-11b-vision-preview",
+      "llama-3.2-90b-vision-preview",
     ]);
   });
 
@@ -83,7 +87,6 @@ describe("groq model registry", () => {
     const all = [
       ...GROQ_MODELS.text,
       ...GROQ_MODELS.vision,
-      ...GROQ_MODELS.fallback.text,
       ...GROQ_MODELS.fallback.vision,
     ];
     for (const model of all) {
@@ -237,18 +240,41 @@ describe("callGroq model fallback", () => {
     expect(body.model).toBe("llama-3.3-70b-versatile");
   });
 
-  it("retries with the fallback when the preferred model is gone", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        groqResponse(404, { error: { code: "model_not_found" } })
-      )
-      .mockResolvedValueOnce(okResponse("from fallback"));
+  it("does NOT retry a text call on another model", async () => {
+    // v1.34.0: text is single-model. A retired primary surfaces one clear
+    // message instead of a second request that cannot succeed.
+    fetchMock.mockResolvedValue(
+      groqResponse(404, { error: { code: "model_not_found" } })
+    );
+    await expect(
+      callGroq([{ role: "user", content: "hi" }], { family: "text" })
+    ).rejects.toThrow(/does not have access/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 
+  it("succeeds on exactly one call when the text model works", async () => {
+    fetchMock.mockResolvedValueOnce(okResponse("hello"));
     const out = await callGroq([{ role: "user", content: "hi" }], { family: "text" });
-    expect(out).toBe("from fallback");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const second = JSON.parse(fetchMock.mock.calls[1][1].body);
-    expect(second.model).toBe("llama-3.1-8b-instant");
+    expect(out).toBe("hello");
+    // No secondary request, ever.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces a clean message when the single text model lacks access", async () => {
+    // The real-world shape: a 400 invalid_request_error saying the model is
+    // not enabled. It must not surface as a raw trace.
+    fetchMock.mockResolvedValue(
+      groqResponse(400, {
+        error: {
+          code: "invalid_request_error",
+          message: "The model llama-3.3-70b-versatile is not enabled for your organization",
+        },
+      })
+    );
+    await expect(
+      callGroq([{ role: "user", content: "hi" }])
+    ).rejects.toThrow(/does not have access/i);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("does NOT retry on an auth failure", async () => {
@@ -279,21 +305,20 @@ describe("callGroq model fallback", () => {
     expect(fetchMock).toHaveBeenCalledTimes(candidatesFor("vision").length);
   });
 
-  it("falls back when the primary is not enabled for the key", async () => {
-    // The real-world shape: a 400 invalid_request_error saying the model is
-    // not enabled, which must not surface as a raw trace.
+  it("falls back for vision when the primary is not enabled for the key", async () => {
+    // Vision keeps its fallback: a second attempt is worth it there.
     fetchMock
       .mockResolvedValueOnce(
         groqResponse(400, {
           error: {
             code: "invalid_request_error",
-            message: "The model llama-3.3-70b-versatile is not enabled for your organization",
+            message: "The model llama-3.2-11b-vision-preview is not enabled for your organization",
           },
         })
       )
       .mockResolvedValueOnce(okResponse("served by fallback"));
 
-    const result = await callGroq([{ role: "user", content: "hi" }]);
+    const result = await callGroq([{ role: "user", content: "hi" }], { family: "vision" });
     expect(result).toBe("served by fallback");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

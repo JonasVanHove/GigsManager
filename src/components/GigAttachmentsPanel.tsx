@@ -16,6 +16,8 @@ export type GigAttachmentItem = {
   mimeType: string | null;
   fileSize: number | null;
   uploadedAt: string;
+  /** Set by the API when vision OCR produced text for this image. */
+  hasExtractedText?: boolean;
 };
 
 export type GigSummary = {
@@ -87,6 +89,9 @@ export function GigAttachmentsPanel({
         questions: "Openstaande vragen",
         cached: "Samengevat op",
         remove: "Verwijderen",
+        ocrDone: "Tekst is uit deze afbeelding gelezen en wordt meegenomen in de samenvatting.",
+        ocrNone: "Geen leesbare tekst gevonden. De afbeelding wordt bij het samenvatten alsnog visueel gelezen.",
+        ocrNoneLabel: "geen tekst",
       }
     : {
         title: "Documents & AI summary",
@@ -98,6 +103,9 @@ export function GigAttachmentsPanel({
         questions: "Unresolved questions",
         cached: "Summarized on",
         remove: "Remove",
+        ocrDone: "Text was read from this image and is included in the summary.",
+        ocrNone: "No readable text found. The image is still read visually when summarising.",
+        ocrNoneLabel: "no text",
       };
 
   const load = useCallback(async () => {
@@ -290,6 +298,27 @@ export function GigAttachmentsPanel({
                     {formatBytes(attachment.fileSize)}
                   </span>
                 ) : null}
+                {/* v1.34.0: tells the user whether the photo/contract was
+                    actually read, so a blank OCR result is not a mystery. */}
+                {attachment.type === "image" &&
+                  (attachment.hasExtractedText ? (
+                    <span
+                      data-testid={`attachment-ocr-done-${attachment.id}`}
+                      title={copy.ocrDone}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    >
+                      <Icons.Check className="h-2.5 w-2.5" />
+                      OCR
+                    </span>
+                  ) : (
+                    <span
+                      data-testid={`attachment-ocr-none-${attachment.id}`}
+                      title={copy.ocrNone}
+                      className="inline-flex shrink-0 items-center rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                    >
+                      {copy.ocrNoneLabel}
+                    </span>
+                  ))}
                 <button
                   type="button"
                   onClick={() => void handleRemove(attachment.id)}

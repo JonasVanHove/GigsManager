@@ -292,6 +292,69 @@ export async function PUT(
 
 // DELETE /api/gigs/:id
 
+/**
+ * Partial update for the handful of fields that are edited outside the gig
+ * form (currently just `notes`, from the quick-notes drawer).
+ *
+ * PUT is a full replace: it assigns every column from the request body, so a
+ * `{ notes }`-only payload would blank the event name, date and fees. Anything
+ * saving a single field must use PATCH.
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: any };
+
+  try {
+    const existing = await prisma.gig.findUnique({ where: { id: params.id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Gig not found" }, { status: 404 });
+    }
+    if (existing.userId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const data: Prisma.GigUpdateInput = {};
+
+    // `null` clears the note, an empty/whitespace string is treated the same.
+    if ("notes" in body) {
+      const notes = body.notes ? String(body.notes).trim() : "";
+      data.notes = notes.length > 0 ? notes : null;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { error: "No supported fields to update" },
+        { status: 400 }
+      );
+    }
+
+    const gig = await prisma.gig.update({
+      where: { id: params.id },
+      data,
+    });
+    invalidateCache(`${user.id}:gigs`);
+
+    return NextResponse.json({ gig });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return NextResponse.json({ error: "Gig not found" }, { status: 404 });
+    }
+    console.error(`[PATCH /api/gigs/${params.id}]`, error);
+    return NextResponse.json(
+      { error: "Failed to update gig" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

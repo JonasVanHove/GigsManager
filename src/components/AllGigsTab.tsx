@@ -3,6 +3,7 @@
 import { useState, useMemo, useDeferredValue, useEffect, useCallback } from "react";
 import type { Gig } from "@/types";
 import GigCard from "./GigCard";
+import GigQuickNotesModal from "./GigQuickNotesModal";
 import BandTag from "./BandTag";
 import { useSettings } from "./SettingsProvider";
 import { Icons } from "./Icons";
@@ -62,6 +63,9 @@ export default function AllGigsTab({
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  // The compact table view renders its own rows, so it opens the quick-notes
+  // drawer itself instead of going through <GigCard>.
+  const [quickNotesGig, setQuickNotesGig] = useState<Gig | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("date-asc");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [globalExpandState, setGlobalExpandState] = useState<boolean | undefined>(undefined);
@@ -975,6 +979,21 @@ export default function AllGigsTab({
                                 <Icons.ListView className="h-4 w-4" />
                               </button>
                             )}
+                            {/* Keeps the notes/AI action reachable in the compact
+                                table view too, not just the card grid. */}
+                            <button
+                              onClick={() => setQuickNotesGig(gig)}
+                              title={isDutch ? "Notities & stand van zaken" : "Notes & AI summary"}
+                              aria-label={
+                                isDutch
+                                  ? `Notities & stand van zaken: ${gig.eventName}`
+                                  : `Notes & AI summary: ${gig.eventName}`
+                              }
+                              data-testid="gig-quick-notes-button"
+                              className="rounded-lg p-1.5 text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/40"
+                            >
+                              <Icons.Sparkles className="h-4 w-4" />
+                            </button>
                             {onDuplicate && (
                               <button
                                 onClick={() => onDuplicate(gig)}
@@ -1023,6 +1042,14 @@ export default function AllGigsTab({
             </div>
           )}
         </div>
+      )}
+
+      {quickNotesGig && (
+        <GigQuickNotesModal
+          gig={quickNotesGig}
+          isDutch={isDutch}
+          onClose={() => setQuickNotesGig(null)}
+        />
       )}
     </div>
   );

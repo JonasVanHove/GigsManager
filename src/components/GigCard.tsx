@@ -10,6 +10,7 @@ import {
 import { getBandColorStyles } from "@/lib/preferences";
 import { getLocalNotes } from "@/lib/notes-store";
 import BandTag from "./BandTag";
+import GigQuickNotesModal from "./GigQuickNotesModal";
 import { Icons } from "./Icons";
 import { useSettings } from "./SettingsProvider";
 
@@ -54,6 +55,10 @@ const GigCard = memo(function GigCard({
   // Charity gigs start collapsed, others start expanded, but can be overridden by global state
   const [isExpanded, setIsExpanded] = useState(!gig.isCharity);
   const [hasPendingNotes, setHasPendingNotes] = useState(false);
+  // Local overlay so the card reflects a note saved in the drawer without
+  // waiting for a full list refetch.
+  const [localNotes, setLocalNotes] = useState<string | null>(gig.notes);
+  const [showQuickNotes, setShowQuickNotes] = useState(false);
   const { locale } = useSettings();
   const isDutch = locale.startsWith("nl");
   
@@ -277,6 +282,33 @@ const GigCard = memo(function GigCard({
             </button>
           )}
         </div>
+      </div>
+
+      {/* -- Quick notes & AI summary --------------------------------------
+          Its own row rather than another icon in the actions cluster: the
+          label is what makes it findable on a phone, and it stays reachable
+          whether or not the card is expanded. */}
+      <div className="px-4 pb-3.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowQuickNotes(true);
+          }}
+          title={isDutch ? "Notities & stand van zaken" : "Notes & AI summary"}
+          aria-label={
+            isDutch
+              ? `Notities & stand van zaken: ${gig.eventName}`
+              : `Notes & AI summary: ${gig.eventName}`
+          }
+          data-testid="gig-quick-notes-button"
+          className="touch-target flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70 dark:border-brand-800/70 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40"
+        >
+          <Icons.Sparkles className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 truncate">
+            {isDutch ? "Notities & stand van zaken" : "Notes & AI summary"}
+          </span>
+        </button>
       </div>
 
       {/* Collapsible content */}
@@ -532,10 +564,10 @@ const GigCard = memo(function GigCard({
         )}
 
         {/* Notes badge - shown for all gigs */}
-        {gig.notes && (
+        {localNotes && (
           <span
             className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs text-slate-500 dark:text-slate-400"
-            title={gig.notes}
+            title={localNotes}
           >
             <Icons.Document className="h-3 w-3 shrink-0" />
             Note
@@ -543,6 +575,15 @@ const GigCard = memo(function GigCard({
         )}
       </div>
         </div>
+      )}
+
+      {showQuickNotes && (
+        <GigQuickNotesModal
+          gig={{ ...gig, notes: localNotes }}
+          isDutch={isDutch}
+          onNotesSaved={setLocalNotes}
+          onClose={() => setShowQuickNotes(false)}
+        />
       )}
     </div>
   );

@@ -26,7 +26,9 @@ async function openGigForm(page: import('@playwright/test').Page) {
   await editButton.click();
 
   const tabs = page.getByTestId('gig-form-tabs');
-  await expect(tabs).toBeVisible({ timeout: 15_000 });
+  // Generous: the dialog mounts after the gigs fetch, and a fully loaded CI
+  // box running every project in parallel can push this well past 15s.
+  await expect(tabs).toBeVisible({ timeout: 45_000 });
   return tabs;
 }
 

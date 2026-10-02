@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
+import { AI_BOX } from "@/lib/ai-ui";
 
 type MessageKind = "rider" | "arrival" | "thankyou";
 
@@ -131,13 +132,13 @@ export function GigMessageDrafter({ gigId, isDutch, className = "" }: GigMessage
       </button>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <p className={`${AI_BOX} mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300`}>
           {error}
         </p>
       )}
 
       {message && (
-        <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/60">
+        <div className={`${AI_BOX} mt-3 space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/60`}>
           <div className="flex items-center justify-between gap-2">
             <span className="badge badge-neutral shrink-0">
               {message.channel === "whatsapp"
@@ -151,7 +152,7 @@ export function GigMessageDrafter({ gigId, isDutch, className = "" }: GigMessage
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {copy.subject}
               </p>
-              <p className="mt-0.5 text-sm font-medium text-slate-800 dark:text-slate-100">
+              <p className="mt-0.5 break-words text-sm font-medium text-slate-800 [overflow-wrap:anywhere] dark:text-slate-100">
                 {message.subject}
               </p>
             </div>

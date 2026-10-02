@@ -22,6 +22,7 @@ import {
 import { optimizeSetlistFlow, type OptimizationCriteria, type FlowAnalysis } from "@/lib/setlist-flow";
 import { areCaposEqual, normalizeCapo, formatCapo } from "@/lib/capo-utils";
 import { useOfflineSongs, useOfflineSetlists } from "@/lib/offline/hooks";
+import { AI_BOX } from "@/lib/ai-ui";
 import {
   getPinnedSetlistIds,
   getPinnedSetlists,
@@ -2596,7 +2597,7 @@ export default function SetlistsTab() {
                 <section className="flex-1 min-w-0 flex flex-col space-y-3 h-full min-h-0">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 sm:p-3 dark:border-slate-800 dark:bg-slate-900/60 shrink-0">
                     {flowAnalysis && (
-                      <div className="mb-3 space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-800/60 dark:bg-amber-950/20">
+                      <div className={`${AI_BOX} mb-3 space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-800/60 dark:bg-amber-950/20`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -2624,7 +2625,7 @@ export default function SetlistsTab() {
                             </p>
                             <ul className="mt-1 space-y-1">
                               {flowAnalysis.energyArc.map((line, i) => (
-                                <li key={i} className="text-sm text-slate-700 dark:text-slate-200">{line}</li>
+                                <li key={i} className="break-words text-sm text-slate-700 [overflow-wrap:anywhere] dark:text-slate-200">{line}</li>
                               ))}
                             </ul>
                           </div>
@@ -2637,7 +2638,7 @@ export default function SetlistsTab() {
                             </p>
                             <ul className="mt-1 space-y-1">
                               {flowAnalysis.pacing.map((line, i) => (
-                                <li key={i} className="text-sm text-slate-700 dark:text-slate-200">{line}</li>
+                                <li key={i} className="break-words text-sm text-slate-700 [overflow-wrap:anywhere] dark:text-slate-200">{line}</li>
                               ))}
                             </ul>
                           </div>
@@ -2678,7 +2679,7 @@ export default function SetlistsTab() {
                                   key={i}
                                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 dark:border-slate-700 dark:bg-slate-900/60"
                                 >
-                                  <span className="min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200">
+                                  <span className="min-w-0 flex-1 break-words text-sm text-slate-700 [overflow-wrap:anywhere] dark:text-slate-200">
                                     {suggestion.description}
                                   </span>
                                   <button

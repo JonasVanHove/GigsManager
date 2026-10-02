@@ -1,8 +1,7 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   callGroq,
-  GROQ_MODELS,
   GroqError,
   isGroqConfigured,
   parseModelJson,
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest) {
             ],
           },
         ],
-        { model: GROQ_MODELS.vision, temperature: 0, maxTokens: 2000 }
+        { family: "vision", temperature: 0, maxTokens: 2000 }
       );
 
       const ocrParsed = parseModelJson<{ text?: string }>(ocrRaw);
@@ -158,7 +157,7 @@ export async function POST(request: NextRequest) {
           content: `${rawText.slice(0, 8000)}\n\nConvert this setlist to JSON items.`,
         },
       ],
-      { model: GROQ_MODELS.text, json: true, temperature: 0, maxTokens: 2500 }
+      { family: "text", json: true, temperature: 0, maxTokens: 2500 }
     );
 
     const parsed = parseModelJson<{ items?: RawItem[] }>(parsedRaw);

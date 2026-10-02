@@ -11,6 +11,7 @@ import { hasGigFormChanges } from "@/lib/gig-form-dirty-state";
 import { useModalLock } from "@/hooks/useModalLock";
 import { GigAttachmentsPanel } from "./GigAttachmentsPanel";
 import { GigScheduleHelper } from "./GigScheduleHelper";
+import { AI_BOX_TEXT } from "@/lib/ai-ui";
 
 interface BandMemberOption {
   id: string;
@@ -663,7 +664,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
 
           <form id="gig-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
             {error && (
-              <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-2.5 text-sm text-red-700 dark:text-red-400">
+              <div className={`${AI_BOX_TEXT} mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 px-4 py-2.5 text-sm text-red-700 dark:text-red-400`}>
                 {error}
               </div>
             )}

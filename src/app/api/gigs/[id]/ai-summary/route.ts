@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { callGroq, GROQ_MODELS, GroqError, isGroqConfigured, parseModelJson } from "@/lib/groq";
+import { callGroq, GroqError, isGroqConfigured, parseModelJson } from "@/lib/groq";
 import { extractPdfText } from "@/lib/document-text";
 import { requireAuth, requireOwnedGigOr404 } from "@/lib/auth-helpers";
 
@@ -212,7 +212,7 @@ export async function POST(
         json: true,
         temperature: 0.2,
         maxTokens: 1400,
-        model: imageParts.length > 0 ? GROQ_MODELS.vision : GROQ_MODELS.text,
+        family: imageParts.length > 0 ? "vision" : "text",
       }
     );
 

@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
+import { AI_BOX } from "@/lib/ai-ui";
 import type { GigFormData } from "@/types";
 
 type ScheduleStep = {
@@ -118,13 +119,13 @@ export function GigScheduleHelper({
       </button>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <p className={`${AI_BOX} mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300`}>
           {error}
         </p>
       )}
 
       {schedule && (
-        <div className="mt-3 space-y-3">
+        <div className={`${AI_BOX} mt-3 space-y-3`}>
           {cached && (
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isDutch
@@ -134,7 +135,7 @@ export function GigScheduleHelper({
           )}
 
           {schedule.headline && (
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+            <p className="break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] dark:text-white">
               {schedule.headline}
             </p>
           )}
@@ -148,12 +149,12 @@ export function GigScheduleHelper({
                 <span className="w-14 shrink-0 font-mono text-sm font-semibold text-brand-600 dark:text-brand-400">
                   {step.time}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">
+                <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">
+                  <span className="block break-words text-sm font-medium text-slate-800 [overflow-wrap:anywhere] dark:text-slate-100">
                     {step.label}
                   </span>
                   {step.detail && (
-                    <span className="mt-0.5 block text-xs text-slate-600 dark:text-slate-400">
+                    <span className="mt-0.5 block break-words text-xs text-slate-600 [overflow-wrap:anywhere] dark:text-slate-400">
                       {step.detail}
                     </span>
                   )}
@@ -169,7 +170,7 @@ export function GigScheduleHelper({
               </p>
               <ul className="mt-1 space-y-0.5">
                 {schedule.assumptions.map((assumption, i) => (
-                  <li key={i} className="text-xs text-slate-500 dark:text-slate-400">
+                  <li key={i} className="break-words text-xs text-slate-500 [overflow-wrap:anywhere] dark:text-slate-400">
                     - {assumption}
                   </li>
                 ))}

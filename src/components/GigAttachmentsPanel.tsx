@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
 import { GigMessageDrafter } from "./GigMessageDrafter";
+import { AI_BOX, AI_BOX_TEXT } from "@/lib/ai-ui";
 
 export type GigAttachmentItem = {
   id: string;
@@ -247,7 +248,7 @@ export function GigAttachmentsPanel({
         </div>
 
         {uploadError && (
-          <p className="text-xs font-medium text-red-700 dark:text-red-400">
+          <p className={`${AI_BOX_TEXT} text-xs font-medium text-red-700 dark:text-red-400`}>
             {uploadError}
           </p>
         )}
@@ -304,7 +305,7 @@ export function GigAttachmentsPanel({
         )}
 
         {summaryError && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-950/30 dark:text-red-400">
+          <p className={`${AI_BOX} rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-950/30 dark:text-red-400`}>
             {summaryError}
           </p>
         )}
@@ -317,8 +318,8 @@ export function GigAttachmentsPanel({
         )}
 
         {summary && (
-          <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/60 p-3 dark:border-brand-800/60 dark:bg-brand-950/20">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          <div className={`${AI_BOX} space-y-3 rounded-xl border border-brand-200 bg-brand-50/60 p-3 dark:border-brand-800/60 dark:bg-brand-950/20`}>
+            <p className="break-words text-sm font-semibold text-slate-900 [overflow-wrap:anywhere] dark:text-white">
               {summary.headline}
             </p>
 

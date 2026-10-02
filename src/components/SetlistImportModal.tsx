@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useRef, useState } from "react";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
+import { AI_BOX, AI_BOX_PRE, AI_SHEET } from "@/lib/ai-ui";
 
 /** Mirrors the shape returned by POST /api/setlists/parse. */
 export type ParsedImportItem = {
@@ -184,7 +185,7 @@ export function SetlistImportModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="modal-sheet sm:max-w-3xl"
+        className={`${AI_SHEET} modal-sheet sm:max-w-3xl`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -260,7 +261,7 @@ export function SetlistImportModal({
           )}
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400">
+            <p className={`${AI_BOX} rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-400`}>
               {error}
             </p>
           )}
@@ -306,7 +307,7 @@ export function SetlistImportModal({
                   <summary className="cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300">
                     {isDutch ? "Gelezen tekst" : "Read text"}
                   </summary>
-                  <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-xs text-slate-600 dark:text-slate-300">
+                  <pre className={`${AI_BOX_PRE} mt-2 max-h-40 overflow-x-auto overflow-y-auto text-xs text-slate-600 dark:text-slate-300`}>
                     {rawText}
                   </pre>
                 </details>
@@ -335,7 +336,7 @@ export function SetlistImportModal({
                         className="field !py-1.5 text-sm"
                       />
                       {row.notitie && (
-                        <p className="mt-1 truncate text-xs text-brand-600 dark:text-brand-400">
+                        <p className="mt-1 block break-words text-xs text-brand-600 [overflow-wrap:anywhere] dark:text-brand-400">
                           {row.notitie}
                         </p>
                       )}

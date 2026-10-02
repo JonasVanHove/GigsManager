@@ -35,6 +35,36 @@ export function isLandingLanguage(value: unknown): value is LandingLanguage {
   return value === "en" || value === "nl" || value === "fr";
 }
 
+/**
+ * Best-effort guess of the visitor's language from browser preferences.
+ *
+ * Used only where there is no stored preference yet (the /join screen, which
+ * someone usually reaches cold from a QR scan). Regional tags collapse to
+ * their base language, so nl-BE and nl-NL both resolve to Dutch.
+ *
+ * Returns null during SSR and when nothing matches, so callers can fall back to
+ * the default without producing a hydration mismatch.
+ */
+export function detectBrowserLanguage(): LandingLanguage | null {
+  // Guarded on `navigator` only: the function never touches `window`, and
+  // checking it would make this untestable outside a browser environment.
+  if (typeof navigator === "undefined") return null;
+
+  const candidates: string[] = [];
+
+  if (Array.isArray(navigator.languages) && navigator.languages.length > 0) {
+    candidates.push(...navigator.languages);
+  }
+  if (navigator.language) candidates.push(navigator.language);
+
+  for (const raw of candidates) {
+    const base = String(raw).toLowerCase().split("-")[0];
+    if (isLandingLanguage(base)) return base;
+  }
+
+  return null;
+}
+
 export function readStoredLanguage(): LandingLanguage | null {
   if (typeof window === "undefined") return null;
 
@@ -87,6 +117,21 @@ const en = {
     features: "Features",
     language: "Language",
     selectLanguage: "Select language",
+  },
+  join: {
+    title: "Join a band",
+    subtitle: "Enter the 6-character code your band leader sent you.",
+    codeLabel: "Invite code",
+    cta: "Accept & Join",
+    checking: "Checking code...",
+    joining: "Joining...",
+    invitedTo: "You've been invited to join",
+    invitedSuffix: "!",
+    alreadyMember: "You're already a member of this band.",
+    goToDashboard: "Go to my dashboard",
+    invalidCode: "That code doesn't look right. It is 6 letters or digits.",
+    unknownCode: "We could not find a band with that code.",
+    needAccount: "Sign in first, then open this link again to join.",
   },
   hero: {
     badge: "Built for live music professionals",
@@ -271,6 +316,21 @@ const nl: LandingCopy = {
     language: "Taal",
     selectLanguage: "Kies een taal",
   },
+  join: {
+    title: "Ga mee met een band",
+    subtitle: "Voer de code van 6 tekens in die je bandleider stuurde.",
+    codeLabel: "Uitnodigingscode",
+    cta: "Accepteren en meedoen",
+    checking: "Code controleren...",
+    joining: "Bezig met toevoegen...",
+    invitedTo: "Je bent uitgenodigd om mee te doen met",
+    invitedSuffix: "!",
+    alreadyMember: "Je bent al lid van deze band.",
+    goToDashboard: "Naar mijn dashboard",
+    invalidCode: "Deze code klopt niet. Het zijn 6 letters of cijfers.",
+    unknownCode: "We konden geen band vinden met deze code.",
+    needAccount: "Log eerst in en open deze link daarna opnieuw.",
+  },
   hero: {
     badge: "Gemaakt voor professionals uit de muziek",
     titleLead: "Beheer je optredens,",
@@ -439,6 +499,21 @@ const fr: LandingCopy = {
     features: "Fonctionnalités",
     language: "Langue",
     selectLanguage: "Choisir une langue",
+  },
+  join: {
+    title: "Rejoindre un groupe",
+    subtitle: "Saisissez le code à 6 caractères envoyé par votre chef de groupe.",
+    codeLabel: "Code d'invitation",
+    cta: "Accepter et rejoindre",
+    checking: "Vérification du code...",
+    joining: "Ajout en cours...",
+    invitedTo: "Vous avez été invité à rejoindre",
+    invitedSuffix: "!",
+    alreadyMember: "Vous êtes déjà membre de ce groupe.",
+    goToDashboard: "Aller à mon tableau de bord",
+    invalidCode: "Ce code semble incorrect. Il comporte 6 lettres ou chiffres.",
+    unknownCode: "Aucun groupe ne correspond à ce code.",
+    needAccount: "Connectez-vous d'abord, puis rouvrez ce lien pour rejoindre.",
   },
   hero: {
     badge: "Conçu pour les professionnels de la musique",

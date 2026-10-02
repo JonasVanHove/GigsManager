@@ -66,19 +66,26 @@ export default function BandInviteModal({
       };
 
   const fetchInvite = useCallback(
-    async (regenerate = false) => {
+    async (mode: "initial" | "regenerate") => {
       setLoading(true);
       setError("");
       try {
         const token = await getAccessToken();
         if (!token) return;
-        const res = await fetch("/api/bands/invite", {
+
+        // Regeneration has its own endpoint so the old code is invalidated
+        // server-side rather than being reused.
+        const url =
+          mode === "regenerate"
+            ? `/api/bands/${bandId}/regenerate-invite`
+            : "/api/bands/invite";
+        const res = await fetch(url, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ bandId, regenerate }),
+          body: JSON.stringify(mode === "regenerate" ? {} : { bandId }),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || copy.failed);
@@ -108,7 +115,7 @@ export default function BandInviteModal({
   );
 
   useEffect(() => {
-    void fetchInvite(false);
+    void fetchInvite("initial");
   }, [fetchInvite]);
 
   useEffect(() => {
@@ -225,7 +232,7 @@ return (
 
               <button
                 type="button"
-                onClick={() => void fetchInvite(true)}
+                onClick={() => void fetchInvite("regenerate")}
                 data-testid="band-invite-regenerate"
                 className="touch-target flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
               >

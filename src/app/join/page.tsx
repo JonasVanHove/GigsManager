@@ -4,7 +4,10 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { Icons } from "@/components/Icons";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useAuth } from "@/components/AuthProvider";
+import { LandingLanguageProvider } from "@/components/LandingLanguageProvider";
+import { useLandingLanguage } from "@/lib/landing-i18n";
 import { AI_BOX, AI_BOX_TEXT } from "@/lib/ai-ui";
 
 type InvitePreview = {
@@ -25,6 +28,7 @@ function JoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { getAccessToken, session, isLoading } = useAuth();
+  const { copy: t } = useLandingLanguage();
 
   const initialCode = normalizeCode(searchParams.get("code") || "");
   const [code, setCode] = useState(initialCode);
@@ -34,18 +38,8 @@ function JoinContent() {
   const [error, setError] = useState("");
 
   const copy = {
-    title: "Join a band",
-    subtitle: "Enter the 6-character code your band leader sent you.",
-    codeLabel: "Invite code",
-    cta: "Accept & Join",
-    checking: "Checking code...",
-    joining: "Joining...",
-    invited: (band: string) => `You've been invited to join ${band}!`,
-    already: "You're already a member of this band.",
-    goToDashboard: "Go to my dashboard",
-    invalid: "That code doesn't look right. It is 6 letters or digits.",
-    unknown: "We could not find a band with that code.",
-    needAccount: "Sign in first, then open this link again to join.",
+    ...t.join,
+    invited: (band: string) => `${t.join.invitedTo} ${band}${t.join.invitedSuffix}`,
   };
 
   const loadPreview = useCallback(
@@ -54,7 +48,7 @@ function JoinContent() {
       setPreview(null);
       if (value.length !== CODE_LENGTH) return;
       if (!CODE_PATTERN.test(value)) {
-        setError(copy.invalid);
+        setError(copy.invalidCode);
         return;
       }
 
@@ -67,12 +61,12 @@ function JoinContent() {
         });
         const body = await res.json().catch(() => null);
         if (!res.ok) {
-          setError(body?.error || copy.unknown);
+          setError(body?.error || copy.unknownCode);
           return;
         }
         setPreview(body as InvitePreview);
       } catch {
-        setError(copy.unknown);
+        setError(copy.unknownCode);
       } finally {
         setPreviewing(false);
       }
@@ -102,12 +96,12 @@ function JoinContent() {
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(body?.error || copy.unknown);
+        setError(body?.error || copy.unknownCode);
         return;
       }
       router.push("/app");
     } catch {
-      setError(copy.unknown);
+      setError(copy.unknownCode);
     } finally {
       setJoining(false);
     }
@@ -118,6 +112,9 @@ function JoinContent() {
 return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-10 text-white">
       <div className="w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-end gap-2">
+          <LanguageSwitcher />
+        </div>
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600">
             <Icons.Users className="h-6 w-6" />
@@ -184,7 +181,7 @@ return (
                 {copy.invited(preview.band.name)}
               </p>
               {preview.alreadyMember && (
-                <p className="mt-1 text-xs text-slate-300">{copy.already}</p>
+                <p className="mt-1 text-xs text-slate-300">{copy.alreadyMember}</p>
               )}
             </div>
           )}
@@ -218,14 +215,18 @@ return (
 
 export default function JoinPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-slate-950">
-          <LoadingSpinner size="lg" message="Loading..." />
-        </div>
-      }
-    >
-      <JoinContent />
-    </Suspense>
+    // detectBrowser: someone scanning a band QR usually has no stored
+    // preference, so fall back to what their browser asks for (nl-BE -> nl).
+    <LandingLanguageProvider detectBrowser>
+      <Suspense
+        fallback={
+          <div className="flex min-h-screen items-center justify-center bg-slate-950">
+            <LoadingSpinner size="lg" message="Loading..." />
+          </div>
+        }
+      >
+        <JoinContent />
+      </Suspense>
+    </LandingLanguageProvider>
   );
 }

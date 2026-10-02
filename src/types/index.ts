@@ -10,6 +10,7 @@ export interface Gig {
   managerPerforms: boolean;
   isCharity: boolean; // whether this is a charity/pro bono performance
   isTentative: boolean; // provisional booking, not yet definitive
+  isFinancialHidden?: boolean; // hide fees/payouts from bandmates shared on this gig
   performanceFee: number;
   performanceFeeUnknown: boolean; // true when fee is still unknown
   technicalFee: number;
@@ -91,6 +92,7 @@ export interface GigFormData {
   managerPerforms: boolean;
   isCharity: boolean; // whether this is a charity/pro bono performance
   isTentative: boolean; // provisional booking, not yet definitive
+  isFinancialHidden?: boolean; // hide fees/payouts from bandmates shared on this gig
   performanceFee: number;
   performanceFeeUnknown: boolean; // true when fee is still unknown
   technicalFee: number;

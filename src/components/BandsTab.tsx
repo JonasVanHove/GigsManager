@@ -9,6 +9,7 @@ import { supabaseClient } from "@/lib/supabase-client";
 import { useTranslation } from "react-i18next";
 import BandLogoFrame from "./BandLogoFrame";
 import BandInviteModal from "./BandInviteModal";
+import ToggleSwitch from "./ToggleSwitch";
 import Avatar from "./Avatar";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
@@ -18,6 +19,8 @@ interface Band {
   name: string;
   logoUrl?: string | null;
   color?: string | null;
+  /** Whether bandmates may edit gigs they are shared on. */
+  canMembersEdit?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,7 +71,12 @@ export default function BandsTab() {
   const [showForm, setShowForm] = useState(false);
   const [editingBand, setEditingBand] = useState<Band | null>(null);
   const [expandedBandId, setExpandedBandId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", logoUrl: "", color: "#bfdbfe" });
+  const [formData, setFormData] = useState({
+    name: "",
+    logoUrl: "",
+    color: "#bfdbfe",
+    canMembersEdit: false,
+  });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // Which band's invite dialog is open, if any.
@@ -251,7 +259,12 @@ export default function BandsTab() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ id: editingBand.id, logoUrl: formData.logoUrl || null, color: formData.color }),
+          body: JSON.stringify({
+            id: editingBand.id,
+            logoUrl: formData.logoUrl || null,
+            color: formData.color,
+            canMembersEdit: formData.canMembersEdit,
+          }),
         });
 
         if (!response.ok) throw new Error(t('bands.errorSave'));
@@ -274,7 +287,7 @@ export default function BandsTab() {
       setShowForm(false);
       setEditingBand(null);
       setExpandedBandId(null);
-      setFormData({ name: "", logoUrl: "", color: "#bfdbfe" });
+      setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false });
       setLogoPreview(null);
       loadBands();
     } catch (error) {
@@ -284,7 +297,12 @@ export default function BandsTab() {
 
   const handleEdit = (band: Band) => {
     setEditingBand(band);
-    setFormData({ name: band.name, logoUrl: band.logoUrl || "", color: band.color || "#bfdbfe" });
+    setFormData({
+      name: band.name,
+      logoUrl: band.logoUrl || "",
+      color: band.color || "#bfdbfe",
+      canMembersEdit: Boolean(band.canMembersEdit),
+    });
     setLogoPreview(band.logoUrl || null);
     setExpandedBandId(band.id);
   };
@@ -292,7 +310,7 @@ export default function BandsTab() {
   const handleCancelEdit = () => {
     setEditingBand(null);
     setExpandedBandId(null);
-    setFormData({ name: "", logoUrl: "", color: "#bfdbfe" });
+    setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false });
     setLogoPreview(null);
   };
 
@@ -370,7 +388,7 @@ export default function BandsTab() {
         <button
           onClick={() => {
             setEditingBand(null);
-            setFormData({ name: "", logoUrl: "", color: "#bfdbfe" });
+            setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false });
             setLogoPreview(null);
             setShowForm(true);
           }}
@@ -484,13 +502,36 @@ export default function BandsTab() {
               </div>
             </div>
 
+            {/* Only meaningful when editing: a brand new band has no members
+                to grant anything to yet. */}
+            {editingBand && (
+              <ToggleSwitch
+                id="band-can-members-edit"
+                testId="band-can-members-edit"
+                checked={formData.canMembersEdit}
+                onChange={(next) =>
+                  setFormData((prev) => ({ ...prev, canMembersEdit: next }))
+                }
+                label={
+                  language === "nl"
+                    ? "Leden mogen optredens bewerken"
+                    : "Allow members to edit gigs"
+                }
+                description={
+                  language === "nl"
+                    ? "Leden zien standaard alleen gedeelde optredens. Met deze aan mogen ze die ook aanpassen."
+                    : "Members can see gigs they are shared on. Turn this on to let them edit those gigs too."
+                }
+              />
+            )}
+
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setShowForm(false);
                   setEditingBand(null);
-                  setFormData({ name: "", logoUrl: "", color: "#6366f1" });
+                  setFormData({ name: "", logoUrl: "", color: "#6366f1", canMembersEdit: false });
                   setLogoPreview(null);
                 }}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"

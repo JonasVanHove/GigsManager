@@ -10,6 +10,7 @@ import { useSettings } from "./SettingsProvider";
 import { hasGigFormChanges } from "@/lib/gig-form-dirty-state";
 import { useModalLock } from "@/hooks/useModalLock";
 import { GigAttachmentsPanel } from "./GigAttachmentsPanel";
+import ToggleSwitch from "./ToggleSwitch";
 import { GigScheduleHelper } from "./GigScheduleHelper";
 import { AI_BOX_TEXT } from "@/lib/ai-ui";
 
@@ -52,6 +53,7 @@ function getEmptyForm(): GigFormData {
     managerPerforms: true,
     isCharity: false,
     isTentative: false,
+    isFinancialHidden: false,
     performanceFee: 0,
     performanceFeeUnknown: false,
     technicalFee: 0,
@@ -96,6 +98,7 @@ function gigToFormData(gig: Gig): GigFormData {
     managerPerforms: gig.managerPerforms ?? true,
     isCharity: gig.isCharity ?? false,
     isTentative: gig.isTentative ?? false,
+    isFinancialHidden: gig.isFinancialHidden ?? false,
     performanceFee: gig.performanceFee,
     performanceFeeUnknown: gig.performanceFeeUnknown ?? false,
     technicalFee: gig.technicalFee,
@@ -961,6 +964,27 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                   <span className="text-sm font-medium text-purple-900 dark:text-purple-300">Charity / Pro Bono Performance</span>
                 </label>
                 <p className="mt-2 ml-6 text-xs text-purple-700 dark:text-purple-400">Check this if this is a free performance for a good cause. Compensation will be $0 and payment dates will automatically be set to the performance date.</p>
+              </div>
+
+              {/* Band sharing visibility. Bandmates normally see the money —
+                  transparent terms are the point — so this is an opt-out. */}
+              <div className="mb-4">
+                <ToggleSwitch
+                  id="gig-hide-financials"
+                  testId="gig-hide-financials"
+                  checked={Boolean(form.isFinancialHidden)}
+                  onChange={(next) => set("isFinancialHidden", next)}
+                  label={
+                    isDutch
+                      ? "Financiële details verbergen voor bandleden"
+                      : "Hide financial details from band members"
+                  }
+                  description={
+                    isDutch
+                      ? "Bandleden zien standaard afspraken en bedragen. Met deze aan zien ze alleen datum, locatie en tijden."
+                      : "Band members normally see the agreed fees. With this on they only see date, venue and times."
+                  }
+                />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

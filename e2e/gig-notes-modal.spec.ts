@@ -144,6 +144,66 @@ test.describe('Gig quick notes modal', () => {
     await expect(page.getByTestId('gig-quick-notes-saved')).toBeVisible({ timeout: 30_000 });
   });
 
+  test('the drawer renders as a global overlay, not inside the card', async ({
+    page,
+  }) => {
+    await openDrawer(page);
+
+    const modal = page.getByTestId('gig-quick-notes-modal');
+    const backdrop = page.getByTestId('gig-quick-notes-backdrop');
+
+    // v1.33.3: portalled to <body> so no ancestor overflow/stacking context can
+    // clip it to the gig card. The portal root is the backdrop; the dialog is
+    // its child.
+    const backdropParent = await backdrop.evaluate((el) => el.parentElement?.tagName ?? '');
+    expect(backdropParent).toBe('BODY');
+
+    const isInsideCard = await modal.evaluate((el) =>
+      Boolean(el.closest('[data-testid="gig-card"]'))
+    );
+    expect(isInsideCard).toBe(false);
+
+    // High z-index fixed overlay covering the whole viewport.
+    const styles = await backdrop.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { position: cs.position, zIndex: cs.zIndex };
+    });
+    expect(styles.position).toBe('fixed');
+    expect(Number(styles.zIndex)).toBeGreaterThanOrEqual(9999);
+
+    // Bottom sheet on mobile: full width, capped height, rounded top.
+    const box = await modal.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThan(0);
+    expect(box!.x).toBeLessThanOrEqual(1);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(MOBILE.width + 1);
+    expect(box!.height).toBeLessThanOrEqual(MOBILE.height);
+
+    const radius = await modal.evaluate(
+      (el) => getComputedStyle(el).borderTopLeftRadius
+    );
+    expect(parseFloat(radius)).toBeGreaterThan(0);
+  });
+
+  test('the drawer is scrollable and stays inside the viewport', async ({ page }) => {
+    await openDrawer(page);
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    // Every interactive control must be reachable inside the sheet.
+    const save = page.getByTestId('gig-quick-notes-save');
+    const generate = page.getByTestId('gig-quick-notes-generate');
+    for (const control of [save, generate]) {
+      await control.scrollIntoViewIfNeeded();
+      await expect(control).toBeVisible();
+      const box = await control.boundingBox();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(MOBILE.width + 1);
+    }
+  });
+
   test('closes via the close button and via Escape', async ({ page }) => {
     await openDrawer(page);
 

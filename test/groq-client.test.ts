@@ -6,6 +6,7 @@ import {
   isModelUnavailable,
   parseModelJson,
   preferredModel,
+  candidatesFor,
 } from "@/lib/groq";
 
 /**
@@ -37,26 +38,56 @@ describe("groq model registry", () => {
     expect(GROQ_MODELS.text[0]).toBe("llama-3.3-70b-versatile");
   });
 
-  it("falls back to llama-3.1-8b-instant for text", () => {
-    expect(GROQ_MODELS.text).toContain("llama-3.1-8b-instant");
-  });
-
-  it("only lists currently supported models", () => {
-    // Retired ids were dropped in v1.33.2: keeping them only costs a failed
-    // round-trip per request before the chain reaches a model that works.
-    expect(GROQ_MODELS.text).toEqual([
+  it("keeps llama-3.1-8b-instant as a defensive fallback, not a primary", () => {
+    // v1.33.3: one primary per family; fallbacks are only reached when the
+    // primary is rejected as unavailable.
+    expect(GROQ_MODELS.text).not.toContain("llama-3.1-8b-instant");
+    expect(GROQ_MODELS.fallback.text).toContain("llama-3.1-8b-instant");
+    expect(candidatesFor("text")).toEqual([
       "llama-3.3-70b-versatile",
       "llama-3.1-8b-instant",
     ]);
-    expect(GROQ_MODELS.vision).toEqual([
-      "llama-3.2-11b-vision-preview",
-      "llama-3.2-90b-vision-preview",
-    ]);
+  });
 
-    for (const family of ["text", "vision"] as const) {
-      for (const model of GROQ_MODELS[family]) {
-        expect(model).not.toMatch(/mixtral|llama3-/);
-      }
+  it("honours GROQ_MODEL_NAME as the text primary", () => {
+    const original = process.env.GROQ_MODEL_NAME;
+    try {
+      process.env.GROQ_MODEL_NAME = "llama-3.1-8b-instant";
+      expect(preferredModel("text")).toBe("llama-3.1-8b-instant");
+      expect(candidatesFor("text")[0]).toBe("llama-3.1-8b-instant");
+
+      // Vision is never overridden: a text model cannot read an image.
+      expect(preferredModel("vision")).toBe("llama-3.2-11b-vision-preview");
+    } finally {
+      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
+      else process.env.GROQ_MODEL_NAME = original;
+    }
+  });
+
+  it("ignores a blank GROQ_MODEL_NAME", () => {
+    const original = process.env.GROQ_MODEL_NAME;
+    try {
+      process.env.GROQ_MODEL_NAME = "   ";
+      expect(preferredModel("text")).toBe("llama-3.3-70b-versatile");
+    } finally {
+      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
+      else process.env.GROQ_MODEL_NAME = original;
+    }
+  });
+
+  it("only lists currently supported models", () => {
+    // Retired ids were dropped in v1.33.2; v1.33.3 split primary from fallback.
+    expect(GROQ_MODELS.text).toEqual(["llama-3.3-70b-versatile"]);
+    expect(GROQ_MODELS.vision).toEqual(["llama-3.2-11b-vision-preview"]);
+
+    const all = [
+      ...GROQ_MODELS.text,
+      ...GROQ_MODELS.vision,
+      ...GROQ_MODELS.fallback.text,
+      ...GROQ_MODELS.fallback.vision,
+    ];
+    for (const model of all) {
+      expect(model).not.toMatch(/mixtral|llama3-/);
     }
   });
 
@@ -76,8 +107,20 @@ describe("groq model registry", () => {
     const message = describeGroqFailure(404, "model_not_found", "llama-3.3-70b-versatile", [
       "llama-3.3-70b-versatile",
     ]);
-    expect(message).toMatch(/no longer available/i);
+    // model_not_found means the key cannot use it, so the access-scoped
+    // message is the accurate one here.
+    expect(message).toMatch(/does not have access/i);
     expect(message).not.toMatch(/none of the configured/i);
+  });
+
+  it("still reports a retirement when no access wording is present", () => {
+    const message = describeGroqFailure(
+      404,
+      '{"error":{"code":"model_decommissioned","message":"the requested model is decommissioned"}}',
+      "llama-3.3-70b-versatile",
+      ["llama-3.3-70b-versatile"]
+    );
+    expect(message).toMatch(/no longer available/i);
   });
 
   it("prefers auth and rate-limit guidance over the chain message", () => {
@@ -88,9 +131,30 @@ describe("groq model registry", () => {
       .toMatch(/rate-limiting/i);
   });
 
-  it("has at least two vision candidates", () => {
-    expect(GROQ_MODELS.vision.length).toBeGreaterThanOrEqual(2);
+  it("has a vision primary plus a defensive fallback", () => {
     expect(GROQ_MODELS.vision[0]).toBe("llama-3.2-11b-vision-preview");
+    expect(GROQ_MODELS.fallback.vision).toEqual(["llama-3.2-90b-vision-preview"]);
+  });
+
+  it("explains a missing key permission instead of leaking the trace", () => {
+    const message = describeGroqFailure(
+      400,
+      '{"error":{"code":"invalid_request_error","message":"The model llama-3.1-8b-instant is not enabled for your organization"}}',
+      "llama-3.1-8b-instant"
+    );
+    expect(message).toMatch(/does not have access/i);
+    expect(message).toContain("GROQ_MODEL_NAME");
+    expect(message).not.toContain("invalid_request_error");
+    expect(message).not.toContain('{"error"');
+  });
+
+  it("recognises a 404 model_not_found as an access problem", () => {
+    const message = describeGroqFailure(
+      404,
+      '{"error":{"code":"model_not_found","message":"model not found"}}',
+      "llama-3.3-70b-versatile"
+    );
+    expect(message).toMatch(/does not have access/i);
   });
 });
 
@@ -207,10 +271,31 @@ describe("callGroq model fallback", () => {
     fetchMock.mockResolvedValue(
       groqResponse(404, { error: { code: "model_not_found" } })
     );
+    // model_not_found is an access-scope problem, so the actionable
+    // "enable it or set GROQ_MODEL_NAME" guidance is what surfaces.
     await expect(
       callGroq([{ role: "user", content: "hi" }], { family: "vision" })
-    ).rejects.toThrow(/no longer available/i);
-    expect(fetchMock).toHaveBeenCalledTimes(GROQ_MODELS.vision.length);
+    ).rejects.toThrow(/does not have access/i);
+    expect(fetchMock).toHaveBeenCalledTimes(candidatesFor("vision").length);
+  });
+
+  it("falls back when the primary is not enabled for the key", async () => {
+    // The real-world shape: a 400 invalid_request_error saying the model is
+    // not enabled, which must not surface as a raw trace.
+    fetchMock
+      .mockResolvedValueOnce(
+        groqResponse(400, {
+          error: {
+            code: "invalid_request_error",
+            message: "The model llama-3.3-70b-versatile is not enabled for your organization",
+          },
+        })
+      )
+      .mockResolvedValueOnce(okResponse("served by fallback"));
+
+    const result = await callGroq([{ role: "user", content: "hi" }]);
+    expect(result).toBe("served by fallback");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("honours an explicit model and skips the chain", async () => {

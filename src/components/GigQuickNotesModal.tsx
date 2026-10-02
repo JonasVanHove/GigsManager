@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Gig } from "@/types";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
@@ -42,6 +43,11 @@ export default function GigQuickNotesModal({
   onClose,
 }: GigQuickNotesModalProps) {
   const { getAccessToken } = useAuth();
+
+  // The dialog is portalled to <body>, so it must wait for the client before
+  // touching the DOM — on the server there is no body to portal into.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const [notes, setNotes] = useState(gig.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -187,9 +193,14 @@ async function handleSave() {
 
   const isDirty = notes.trim() !== (gig.notes ?? "").trim();
 
-  return (
+  if (!mounted || typeof document === "undefined") return null;
+
+  // Rendered into <body> so the dialog escapes any ancestor with `overflow`,
+  // `transform` or a stacking context — inside a gig card those clipped the
+  // sheet to the card box and put it behind sibling cards.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 backdrop-blur-md sm:items-center sm:px-4 sm:py-4 modal-backdrop-enter"
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4 modal-backdrop-enter"
       onClick={onClose}
       data-testid="gig-quick-notes-backdrop"
     >
@@ -199,7 +210,9 @@ async function handleSave() {
         aria-label={copy.title}
         data-testid="gig-quick-notes-modal"
         onClick={(e) => e.stopPropagation()}
-        className={`modal-sheet-mobile ${AI_SHEET} max-h-[92vh] w-full overflow-y-auto overflow-x-hidden rounded-t-2xl border border-slate-200/60 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/95 sm:max-w-lg sm:rounded-2xl modal-content-enter`}
+        // Mobile: bottom sheet, full width, scrollable, rounded top.
+        // Desktop (>=sm): centred dialog with a max width.
+        className={`${AI_SHEET} flex w-full max-h-[90vh] flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-white shadow-2xl modal-sheet-mobile modal-content-enter sm:max-h-[85vh] sm:max-w-lg sm:rounded-xl dark:border-slate-700/50 dark:bg-slate-900`}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-slate-200/70 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/95">
@@ -224,7 +237,7 @@ async function handleSave() {
             <Icons.X className="h-5 w-5" />
           </button>
         </div>
-<div className="space-y-4 px-4 py-4">
+<div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4">
           {/* -- Notes ---------------------------------------------------- */}
           <div className="min-w-0">
             <label
@@ -411,6 +424,7 @@ async function handleSave() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

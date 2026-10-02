@@ -8,32 +8,51 @@
  * Required env var: GROQ_API_KEY
  */
 
+/**
+ * Model registry.
+ *
+ * Each family has exactly ONE primary model. Fallbacks live in `fallback` and
+ * are only reached when the primary answers "model not found" — most often
+ * because the account/key lost access to that model. Keeping the primary list
+ * at one entry means the common case is a single request, and an unavailable
+ * primary degrades to the fallback instead of killing every AI feature.
+ *
+ * `GROQ_MODEL_NAME` (if set) overrides the text primary at runtime, which is
+ * the escape hatch for keys that only have access to a different model.
+ */
 export const GROQ_MODELS = {
+  text: ["llama-3.3-70b-versatile"] as const,
+  vision: ["llama-3.2-11b-vision-preview"] as const,
   /**
-   * Text models, tried in order.
-   *
-   * Only currently-supported ids live here. Groq retires models on its own
-   * schedule and answers a retired id with 404 / "model_not_found" at request
-   * time, not at configuration time — but keeping already-decommissioned ids in
-   * the list only adds failed round-trips before every request eventually
-   * reaches a model that works. `callGroq` still walks the chain, so a
-   * retirement degrades quality instead of breaking every AI feature at once.
+   * Defensive fallbacks, tried only after the primary was rejected as
+   * unavailable. These are best-effort: a key may not have access to them
+   * either, which is handled as a clean, actionable error rather than a trace.
    */
-  text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] as const,
-  /**
-   * Vision models, tried in order. Used for setlist OCR and reading attached
-   * gig photos. If every candidate is unavailable there is no text fallback —
-   * a text model cannot read an image — so the caller gets an explicit,
-   * actionable error instead of a silent empty result.
-   */
-  vision: ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"] as const,
+  fallback: {
+    text: ["llama-3.1-8b-instant"] as const,
+    vision: ["llama-3.2-90b-vision-preview"] as const,
+  },
 } as const;
 
-export type GroqModelFamily = keyof typeof GROQ_MODELS;
+export type GroqModelFamily = "text" | "vision";
 
-/** The model a family prefers when everything is healthy. */
+/**
+ * The model a family prefers when everything is healthy, honouring the
+ * `GROQ_MODEL_NAME` override for text calls.
+ */
 export function preferredModel(family: GroqModelFamily): string {
+  if (family === "text") {
+    const override = process.env.GROQ_MODEL_NAME?.trim();
+    if (override) return override;
+  }
   return GROQ_MODELS[family][0];
+}
+
+/** Primary first, then the defensive fallbacks, without duplicates. */
+export function candidatesFor(family: GroqModelFamily): string[] {
+  return Array.from(
+    new Set([preferredModel(family), ...GROQ_MODELS.fallback[family]])
+  );
 }
 
 /**
@@ -61,11 +80,42 @@ export function isModelUnavailable(status: number, body: string): boolean {
       lower.includes("does not exist") ||
       lower.includes("no longer") ||
       lower.includes("invalid model") ||
-      lower.includes("not available"));
+      // Access scoping: keys can be granted per model, and Groq phrases the
+      // rejection as "not enabled for your organization" / "does not have
+      // access" rather than as a 404. Both are still worth walking the chain
+      // for, because the next candidate may well be available.
+      lower.includes("not available") ||
+      lower.includes("not enabled") ||
+      lower.includes("does not have access") ||
+      lower.includes("no access to"));
   // Groq answers unknown model ids with either a bare 400 or a 400 carrying
   // `code: "invalid_request_error"` plus a descriptive message. Either way the
   // message has to mention the model, so an unrelated 400 never burns the chain.
   return status === 400 && looksLikeBadModelId;
+}
+
+/**
+ * True when the failure means "this key cannot use this model", which is a
+ * different problem from "Groq is unhealthy".
+ *
+ * Groq reports a few distinct shapes for it: a 404 with `model_not_found`, and
+ * a 400 `invalid_request_error` saying the model is not enabled/available for
+ * the account. The second one is the common real-world case — keys get scoped
+ * per model — and it used to surface as a raw trace.
+ */
+export function isModelAccessDenied(status: number, body: string): boolean {
+  if (!isModelUnavailable(status, body)) return false;
+  const lower = body.toLowerCase();
+  return (
+    lower.includes("access") ||
+    lower.includes("permission") ||
+    lower.includes("not enabled") ||
+    lower.includes("not available for") ||
+    lower.includes("does not have access") ||
+    lower.includes("not authorized") ||
+    lower.includes("invalid_request_error") ||
+    lower.includes("model_not_found")
+  );
 }
 
 /**
@@ -101,6 +151,9 @@ export function describeGroqFailure(
     return `None of the configured Groq models responded (tried: ${attempted.join(
       ", "
     )}). Every model in the chain looks retired or unavailable to this key. Update GROQ_MODELS in src/lib/groq.ts to a model your account can access.`;
+  }
+  if (isModelAccessDenied(status, body)) {
+    return `Your Groq key does not have access to "${model}", so AI features cannot run. Enable this model for your account at console.groq.com, or set GROQ_MODEL_NAME in the environment to a model your key can reach.`;
   }
   if (isModelUnavailable(status, body)) {
     return `The AI model "${model}" is no longer available on this Groq account. Update GROQ_MODELS in src/lib/groq.ts to a model your key can access.`;
@@ -231,7 +284,7 @@ export async function callGroq(
 
   const candidates: string[] = explicitModel
     ? [explicitModel]
-    : [...GROQ_MODELS[family]];
+    : candidatesFor(family);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);

@@ -3,6 +3,7 @@ import { getOrCreateUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { invalidateCache } from "@/lib/cache";
+import { resolveMemberUserId } from "@/lib/band-invites";
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -106,6 +107,27 @@ export async function PATCH(
           .filter((band: string) => band.length > 0)
       : undefined;
 
+    // Ownership check: this handler previously updated by id alone, so any
+    // authenticated user could rewrite another account's member record.
+    const currentMember = await prisma.bandMember.findUnique({
+      where: { id: params.id },
+      select: { id: true, userId: true },
+    });
+    if (!currentMember) {
+      return NextResponse.json({ error: "Band member not found" }, { status: 404 });
+    }
+    if (currentMember.userId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Re-link on e-mail change: claim an existing account with the new address,
+    // and keep the member unclaimed if nobody has registered with it yet.
+    const nextEmail = email !== undefined ? email?.trim() || null : undefined;
+    const resolvedUserId =
+      nextEmail !== undefined
+        ? await resolveMemberUserId(params.id, nextEmail, user.id)
+        : currentMember.userId;
+
     const bandMember = await prisma.bandMember.update({
       where: { id: params.id },
       data: {
@@ -113,10 +135,12 @@ export async function PATCH(
         ...(email !== undefined && { email: email?.trim() || null }),
         ...(phone !== undefined && { phone: phone?.trim() || null }),
         ...(notes !== undefined && { notes: notes?.trim() || null }),
+        ...(body.isLeader !== undefined && { isLeader: Boolean(body.isLeader) }),
         ...(avatarUrl !== undefined && {
           avatarUrl: typeof avatarUrl === "string" && avatarUrl.trim() ? avatarUrl.trim() : null,
         }),
         ...(bands !== undefined && { bands }),
+        ...(resolvedUserId !== currentMember.userId && { userId: resolvedUserId }),
       },
     });
 

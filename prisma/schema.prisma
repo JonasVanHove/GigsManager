@@ -67,6 +67,9 @@ model Gig {
   organizerEmail             String?
   organizerPhone             String?
   bandId                     String?         // Direct link to band
+  /// Bandmates normally see the money (fees, bonuses), because transparent
+  /// terms are the point of sharing. The owner can opt a specific gig out.
+  isFinancialHidden          Boolean         @default(false)
   setlist                    Setlist?        @relation(fields: [setlistId], references: [id])
   user                       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   band                       bands?          @relation(fields: [bandId], references: [id])
@@ -306,15 +309,23 @@ model BandMember {
   phone     String?
   notes     String?
   avatarUrl String?
-  userId    String
+  /// Nullable: a member is created as an unclaimed record (an invitation)
+  /// and only gains a userId once someone registers with that email address.
+  userId    String?
+  /// Whether this member may administer the band (manage invites, members and
+  /// whether fellow members may edit gigs). Exactly one leader per band is the
+  /// intended shape, but the model does not enforce it.
+  isLeader  Boolean         @default(false)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
   bands     String[]        @default([])
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   gigs      GigBandMember[]
 
   @@unique([userId, name])
   @@index([userId])
+  /// Claiming an invitation looks a member up by email, so this needs an index.
+  @@index([email])
 }
 
 model GigBandMember {
@@ -490,6 +501,11 @@ model bands {
   userId    String
   logoUrl   String?
   color     String?   @default("#6366f1") // Default accent color
+  /// Short alphanumeric code used by the /join flow. Null until generated.
+  inviteCode String?  @unique
+  /// Band leader's switch: when false, linked members may read shared gigs but
+  /// cannot edit them. Owners are never affected by this flag.
+  canMembersEdit Boolean @default(false)
   createdAt DateTime? @default(now()) @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @db.Timestamptz(6)
   setlists  Setlist[]

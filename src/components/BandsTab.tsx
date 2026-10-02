@@ -8,6 +8,7 @@ import { Icons } from "./Icons";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useTranslation } from "react-i18next";
 import BandLogoFrame from "./BandLogoFrame";
+import BandInviteModal from "./BandInviteModal";
 import Avatar from "./Avatar";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
@@ -70,6 +71,8 @@ export default function BandsTab() {
   const [formData, setFormData] = useState({ name: "", logoUrl: "", color: "#bfdbfe" });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  // Which band's invite dialog is open, if any.
+  const [inviteBand, setInviteBand] = useState<Band | null>(null);
 
   const loadBands = useCallback(async () => {
     try {
@@ -682,6 +685,18 @@ export default function BandsTab() {
                           {renderMemberEmptyState()}
                         </div>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => setInviteBand(band)}
+                        data-testid="band-invite-button"
+                        className="touch-target mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70 dark:border-brand-800/70 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40"
+                      >
+                        <Icons.Plus className="h-4 w-4 shrink-0" />
+                        {language === "nl"
+                          ? "Uitnodigings-QR genereren"
+                          : "Generate invite QR code"}
+                      </button>
                     </div>
                   </>
                 )}
@@ -689,6 +704,15 @@ export default function BandsTab() {
             );
           })}
         </div>
+      )}
+
+      {inviteBand && (
+        <BandInviteModal
+          bandId={inviteBand.id}
+          bandName={inviteBand.name}
+          isDutch={language === "nl"}
+          onClose={() => setInviteBand(null)}
+        />
       )}
     </div>
   );

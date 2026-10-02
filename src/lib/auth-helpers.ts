@@ -5,6 +5,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { claimUnclaimedMembersForUser } from "@/lib/band-invites";
 
 export function getUserIdFromHeader(
   request: NextRequest
@@ -53,6 +54,11 @@ export async function getOrCreateUser(
       },
     });
   }
+
+  // A bandmate is usually invited by e-mail long before they have an account,
+  // so their member row sits unclaimed. Claim it here — this runs on the first
+  // authenticated request after sign-up, and is a no-op for everyone else.
+  await claimUnclaimedMembersForUser(user.id, user.email);
 
   return user;
 }

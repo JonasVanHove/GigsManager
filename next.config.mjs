@@ -37,6 +37,13 @@ const nextConfig = {
         protocol: "https",
         hostname: "**.gravatar.com",
       },
+      // Fallback avatars for band members without a photo are generated
+      // initials from DiceBear. Without this the whole Bands tab crashed with
+      // "Invalid src prop ... hostname api.dicebear.com is not configured".
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+      },
     ],
     formats: ["image/webp", "image/avif"],
     // Optimize images by default

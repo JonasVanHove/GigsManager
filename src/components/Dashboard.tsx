@@ -1407,6 +1407,7 @@ export default function Dashboard() {
                 <button
                   key={tab}
                   type="button"
+                  data-testid={`nav-tab-${tab}`}
                   onClick={() => handleTabChange(tab)}
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
                     selectedTab === tab
@@ -1422,6 +1423,7 @@ export default function Dashboard() {
               <div className="relative" ref={workspaceMenuRef}>
                 <button
                   type="button"
+                  data-testid="workspace-menu-button"
                   onClick={() => setShowWorkspaceMenu((open) => !open)}
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
                     workspaceTabs.includes(selectedTab) && !getPrimaryNavTabs(settings).includes(selectedTab)
@@ -1450,6 +1452,7 @@ export default function Dashboard() {
                         <button
                           key={tab}
                           type="button"
+                          data-testid={`workspace-tab-${tab}`}
                           onClick={() => {
                             setShowWorkspaceMenu(false);
                             handleTabChange(tab);
@@ -1751,6 +1754,7 @@ export default function Dashboard() {
                   {getPrimaryNavTabs(settings).slice(1).map((tab) => (
                     <button
                       key={tab}
+                      data-testid={`mobile-nav-tab-${tab}`}
                       onClick={() => {
                         setShowMobileMenu(false);
                         handleTabChange(tab);
@@ -1892,6 +1896,7 @@ export default function Dashboard() {
                       </button>
 
                       <button
+                        data-testid="mobile-nav-tab-bands"
                         onClick={() => {
                           setShowMobileMenu(false);
                           handleTabChange("bands");

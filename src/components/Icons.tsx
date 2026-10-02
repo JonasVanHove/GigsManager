@@ -35,6 +35,13 @@ export const Icons = {
     </svg>
   ),
 
+  Refresh: (props: IconProps) => (
+    <svg {...iconDefaults} {...props}>
+      <path d="M16.023 9.348h4.992V4.356M2.985 19.644V14.69h4.992" />
+      <path d="M20.02 9.348a8.25 8.25 0 0 0-13.803-3.7L2.985 9.348m0 0a8.25 8.25 0 0 0 13.803 3.7l4.232-4.234" />
+    </svg>
+  ),
+
   X: (props: IconProps) => (
     <svg {...iconDefaults} {...props}>
       <path d="M6 18L18 6M6 6l12 12" />

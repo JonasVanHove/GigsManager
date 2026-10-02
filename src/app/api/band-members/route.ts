@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateGigFinancials } from "@/lib/calculations";
 import { getOrCreateUser } from "@/lib/auth-helpers";
+import { resolveMemberUserId } from "@/lib/band-invites";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
 import { isDbConnectionError, getErrorStatusCode, formatErrorResponse } from "@/lib/error-detection";
@@ -257,6 +258,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    // If that e-mail already belongs to a GigsManager account, link the member
+    // to it so the bandmate immediately sees their gigs. Otherwise the row
+    // stays unclaimed until they sign up with the same address.
+    const resolvedUserId = await resolveMemberUserId(null, email, user.id);
+
     // Create band member
     const bandMember = await prisma.bandMember.create({
       data: {
@@ -265,8 +271,9 @@ export async function POST(req: NextRequest) {
         phone: phone?.trim() || null,
         notes: notes?.trim() || null,
         avatarUrl: typeof avatarUrl === "string" && avatarUrl.trim() ? avatarUrl.trim() : null,
+        isLeader: Boolean(body.isLeader),
         bands,
-        userId: user.id,
+        userId: resolvedUserId,
       },
     });
     

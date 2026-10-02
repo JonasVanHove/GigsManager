@@ -338,13 +338,26 @@ export async function GET(request: NextRequest) {
         where: { userId },
         select: { id: true, name: true, color: true },
       });
+
+      // Gigs the user plays on, resolved through their own BandMember rows.
+      // Imported dynamically to match this file's safe-import style.
+      const sharing = await import("@/lib/band-sharing");
+      const sharedGigIds = await sharing.findSharedGigIds(userId);
+      const memberCanEdit = await sharing.canBandmateEdit(userId);
+
+      // Owner OR participant. Empty shared set keeps the previous single-clause
+      // shape so the common case does not change query plans.
+      const visibilityFilter =
+        sharedGigIds.size > 0
+          ? { OR: [{ userId }, { id: { in: [...sharedGigIds] } }] }
+          : { userId };
       
       const result = await safeMeasureAsync(
         "GET /api/gigs [DB QUERY]",
         async () => {
           console.log("[GET /api/gigs] Starting findMany...");
           const gigs = await prisma.gig.findMany({
-            where: { userId },
+            where: visibilityFilter,
             orderBy: { date: "desc" },
             take,
             skip,
@@ -360,21 +373,27 @@ export async function GET(request: NextRequest) {
           });
           console.log("[GET /api/gigs] findMany returned", gigs.length, "gigs");
           
-          // Fallback: match band by name if bandId is not set
+          // Fallback: match band by name if bandId is not set, then strip the
+          // fields this viewer is not allowed to see.
           const gigsWithBandFallback = gigs.map((gig) => {
-            if (!gig.band && gig.performers) {
-              const matchedBand = allBands.find(
-                (band) => band.name.toLowerCase() === gig.performers.trim().toLowerCase()
-              );
-              if (matchedBand) {
-                return { ...gig, band: matchedBand };
-              }
-            }
-            return gig;
+            const enriched =
+              !gig.band && gig.performers
+                ? (() => {
+                    const matchedBand = allBands.find(
+                      (band) => band.name.toLowerCase() === gig.performers.trim().toLowerCase()
+                    );
+                    return matchedBand ? { ...gig, band: matchedBand } : gig;
+                  })()
+                : gig;
+
+            return sharing.redactGigForBandmate(enriched, {
+              isOwner: gig.userId === userId,
+              canEdit: memberCanEdit,
+            });
           });
           
           console.log("[GET /api/gigs] Starting count...");
-          const count = await prisma.gig.count({ where: { userId } });
+          const count = await prisma.gig.count({ where: visibilityFilter });
           console.log("[GET /api/gigs] count returned:", count);
           
           return [gigsWithBandFallback, count];

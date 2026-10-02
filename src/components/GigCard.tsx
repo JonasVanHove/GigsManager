@@ -258,6 +258,8 @@ const GigCard = memo(function GigCard({
           <button
             onClick={() => onEdit(gig)}
             title={isDutch ? "Bewerken" : "Edit"}
+            aria-label={isDutch ? `Bewerken: ${gig.eventName}` : `Edit: ${gig.eventName}`}
+            data-testid="edit-performance-button"
             className="rounded-lg p-2 text-slate-500 transition-all duration-200 hover:bg-brand-100/60 hover:text-brand-600 dark:hover:bg-brand-900/30 dark:text-slate-300 dark:hover:text-brand-300"
           >
             <Icons.Edit className="h-4 w-4 shrink-0" />

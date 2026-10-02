@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   GROQ_MODELS,
   callGroq,
@@ -41,6 +41,16 @@ describe("groq model registry", () => {
     expect(GROQ_MODELS.text).toContain("llama-3.1-8b-instant");
   });
 
+  it("keeps the full legacy text chain in order", () => {
+    expect(GROQ_MODELS.text).toEqual([
+      "llama-3.3-70b-versatile",
+      "llama-3.1-8b-instant",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
+      "mixtral-8x7b-32768",
+    ]);
+  });
+
   it("has at least two vision candidates", () => {
     expect(GROQ_MODELS.vision.length).toBeGreaterThanOrEqual(2);
     expect(GROQ_MODELS.vision[0]).toBe("llama-3.2-11b-vision-preview");
@@ -56,6 +66,22 @@ describe("isModelUnavailable", () => {
     expect(isModelUnavailable(400, '{"error":{"code":"model_not_found"}}')).toBe(true);
     expect(isModelUnavailable(400, "This model has been decommissioned")).toBe(true);
     expect(isModelUnavailable(400, "invalid model for this key")).toBe(true);
+  });
+
+  it("detects invalid_request_error when it names the model", () => {
+    expect(
+      isModelUnavailable(
+        400,
+        '{"error":{"code":"invalid_request_error","message":"The model llama-3.3-70b-versatile is not available"}}'
+      )
+    ).toBe(true);
+  });
+
+  it("does not treat an unrelated 400 as a model problem", () => {
+    expect(
+      isModelUnavailable(400, '{"error":{"code":"invalid_request_error","message":"messages is required"}}')
+    ).toBe(false);
+    expect(isModelUnavailable(400, '{"error":{"code":"invalid_request_error","message":"max_tokens too large"}}')).toBe(false);
   });
 
   it("does not treat auth, rate limit or 5xx as a model problem", () => {

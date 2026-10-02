@@ -262,6 +262,8 @@ const OverviewCompactRow = ({
       <button
         onClick={() => onEdit(gig)}
         title="Edit performance"
+        aria-label={`Edit performance: ${gig.eventName}`}
+        data-testid="edit-performance-button"
         className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
       >
         <Icons.Edit className="h-4 w-4" />

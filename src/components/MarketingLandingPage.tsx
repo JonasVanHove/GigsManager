@@ -75,6 +75,17 @@ function LandingContent() {
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [authTimeout, setAuthTimeout] = useState(false);
+  // Landing nav collapses below `sm`; the hamburger owns the overflow links.
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // A resize past the breakpoint would otherwise leave the panel open behind
+  // the restored desktop nav.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const onChange = () => mq.matches && setMobileMenuOpen(false);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   // Zero-flash: redirect authenticated users to /app instantly
   useEffect(() => {
@@ -128,6 +139,7 @@ function LandingContent() {
           <div className="flex items-center gap-2 sm:gap-3">
             <a
               href="/demo"
+              data-testid="landing-nav-live-demo"
               className="hidden text-sm font-medium text-slate-500 transition hover:text-white sm:inline"
             >
               {copy.nav.liveDemo}
@@ -141,7 +153,8 @@ function LandingContent() {
                   80
                 );
               }}
-              className="text-sm font-medium text-slate-500 transition hover:text-white"
+              data-testid="landing-nav-log-in"
+              className="hidden text-sm font-medium text-slate-500 transition hover:text-white sm:inline"
             >
               {copy.nav.logIn}
             </button>
@@ -153,12 +166,84 @@ function LandingContent() {
                   80
                 );
               }}
-              className="rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110 active:brightness-95"
+              data-testid="landing-nav-get-started"
+              className="hidden rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-500/20 transition hover:shadow-brand-500/30 hover:brightness-110 active:brightness-95 sm:inline-block"
             >
               {copy.nav.getStarted}
             </button>
+
+            {/* Below `sm` the logo plus three actions no longer fit, so the
+                secondary links move into this disclosure panel. */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="landing-mobile-menu"
+              aria-label={mobileMenuOpen ? copy.nav.closeMenu : copy.nav.menu}
+              data-testid="landing-menu-button"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10 hover:text-white sm:hidden"
+            >
+              {mobileMenuOpen ? (
+                <Icons.X className="h-5 w-5" />
+              ) : (
+                <Icons.Menu className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div
+            id="landing-mobile-menu"
+            data-testid="landing-mobile-menu"
+            className="border-t border-white/5 bg-slate-950/95 px-4 pb-4 pt-2 backdrop-blur-2xl sm:hidden"
+          >
+            <nav className="flex flex-col gap-1" aria-label={copy.nav.menu}>
+              <a
+                href="/demo"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex min-h-[44px] items-center rounded-xl px-3 text-base font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+              >
+                {copy.nav.liveDemo}
+              </a>
+              <a
+                href="#features"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex min-h-[44px] items-center rounded-xl px-3 text-base font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+              >
+                {copy.nav.features}
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowAuth(true);
+                  setTimeout(
+                    () => document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }),
+                    80
+                  );
+                }}
+                className="flex min-h-[44px] items-center rounded-xl px-3 text-left text-base font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+              >
+                {copy.nav.logIn}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowAuth(true);
+                  setTimeout(
+                    () => document.getElementById("auth-section")?.scrollIntoView({ behavior: "smooth" }),
+                    80
+                  );
+                }}
+                className="mt-1 flex min-h-[44px] items-center justify-center rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-brand-500/20"
+              >
+                {copy.nav.getStarted}
+              </button>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* -- Hero -------------------------------------------------------- */}
@@ -211,14 +296,14 @@ function LandingContent() {
                     80
                   );
                 }}
-                className="group inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 px-8 py-4 text-base font-bold text-white shadow-xl shadow-brand-500/25 transition-all hover:shadow-brand-500/40 hover:brightness-110 active:brightness-95"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-600 px-6 py-4 text-base font-bold text-white shadow-xl shadow-brand-500/25 transition-all hover:shadow-brand-500/40 hover:brightness-110 active:brightness-95 sm:w-auto sm:px-8"
               >
                 {copy.hero.primaryCta}
                 <Icons.ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
               <a
                 href="/demo"
-                className="group inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-slate-200 backdrop-blur-sm transition hover:bg-white/10 hover:text-white"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-base font-semibold text-slate-200 backdrop-blur-sm transition hover:bg-white/10 hover:text-white sm:w-auto sm:px-8"
               >
                 <Icons.Sparkles className="h-4 w-4 text-brand-400" />
                 {copy.hero.demoCta}
@@ -226,7 +311,7 @@ function LandingContent() {
               </a>
               <a
                 href="#features"
-                className="inline-flex items-center gap-2 rounded-2xl px-4 py-4 text-base font-semibold text-slate-500 transition hover:text-white"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-base font-semibold text-slate-500 transition hover:text-white sm:w-auto"
               >
                 {copy.hero.featuresCta}
                 <Icons.ChevronDown className="h-4 w-4" />

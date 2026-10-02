@@ -987,6 +987,8 @@ export default function AllGigsTab({
                             <button
                               onClick={() => onEdit(gig)}
                               title={isDutch ? "Bewerken" : "Edit"}
+                              aria-label={isDutch ? `Bewerken: ${gig.eventName}` : `Edit: ${gig.eventName}`}
+                              data-testid="edit-performance-button"
                               className="rounded-lg p-1.5 text-slate-500 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
                             >
                               <Icons.Edit className="h-4 w-4" />

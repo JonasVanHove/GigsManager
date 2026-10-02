@@ -12,12 +12,19 @@ export const GROQ_MODELS = {
   /**
    * Text models, tried in order.
    *
-   * Groq deprecates models on a schedule, and a retired model id answers with
-   * 404 / "model_not_found" rather than failing at configuration time. Keeping a
-   * fallback chain means a deprecation degrades quality instead of breaking
-   * every AI feature in the app.
+   * Groq retires models on its own schedule and answers a retired id with 404 /
+   * "model_not_found" at request time, not at configuration time. The last two
+   * entries are legacy ids that have been unavailable for a while; they are kept
+   * deliberately cheap to try so an account that is still pinned to an older
+   * deployment keeps working instead of losing every AI feature at once.
    */
-  text: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] as const,
+  text: [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768",
+  ] as const,
   /**
    * Vision models, tried in order. Used for setlist OCR and reading attached
    * gig photos. If every candidate is unavailable there is no text fallback —
@@ -35,24 +42,35 @@ export function preferredModel(family: GroqModelFamily): string {
 }
 
 /**
- * True when the failure means "this model id is gone", as opposed to a
+ * True when the failure means "this model id is unusable here", as opposed to a
  * transport, auth or rate-limit problem which a retry would not fix.
+ *
+ * `invalid_request_error` is included because Groq returns that generic code for
+ * several bad-request shapes, and the only one worth falling through on is an
+ * unusable model id. The message check keeps unrelated 400s (bad JSON, missing
+ * field, oversized payload) from burning the whole chain.
  */
 export function isModelUnavailable(status: number, body: string): boolean {
   if (status === 404) return true;
   const lower = body.toLowerCase();
-  return (
+  if (
     lower.includes("model_not_found") ||
     lower.includes("model_decommissioned") ||
-    lower.includes("decommissioned") ||
-    // Groq returns 400 with a descriptive message for unknown model ids.
-    (status === 400 &&
-      (lower.includes("model") &&
-        (lower.includes("not found") ||
-          lower.includes("does not exist") ||
-          lower.includes("no longer") ||
-          lower.includes("invalid model"))))
-  );
+    lower.includes("decommissioned")
+  ) {
+    return true;
+  }
+  const looksLikeBadModelId =
+    lower.includes("model") &&
+    (lower.includes("not found") ||
+      lower.includes("does not exist") ||
+      lower.includes("no longer") ||
+      lower.includes("invalid model") ||
+      lower.includes("not available"));
+  // Groq answers unknown model ids with either a bare 400 or a 400 carrying
+  // `code: "invalid_request_error"` plus a descriptive message. Either way the
+  // message has to mention the model, so an unrelated 400 never burns the chain.
+  return status === 400 && looksLikeBadModelId;
 }
 
 /**

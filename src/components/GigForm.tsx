@@ -19,6 +19,22 @@ interface BandMemberOption {
   bands?: string[];
 }
 
+/**
+ * The gig form is long enough that showing every section at once buries the
+ * fields that matter on a phone. Sections are grouped into four tabs instead
+ * of one endless scroll. The sections themselves are untouched — only their
+ * wrapper visibility changes — so the existing collapsible state, validation
+ * and autosave keep working exactly as before.
+ */
+type GigFormTab = "basic" | "logistics" | "financials" | "ai";
+
+const GIG_FORM_TABS: Array<{ key: GigFormTab; icon: string; label: string; labelNl: string }> = [
+  { key: "basic", icon: "📌", label: "Basic Info", labelNl: "Basisgegevens" },
+  { key: "logistics", icon: "⏱️", label: "Logistics & Times", labelNl: "Logistiek & tijden" },
+  { key: "financials", icon: "💶", label: "Financials", labelNl: "Financieel" },
+  { key: "ai", icon: "🤖", label: "AI & Attachments", labelNl: "AI & bijlagen" },
+];
+
 interface GigFormProps {
   gig?: Gig | null;
   onSubmit: (data: GigFormData) => Promise<void>;
@@ -143,6 +159,10 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   const [concertMode, setConcertMode] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [activeTab, setActiveTab] = useState<GigFormTab>("basic");
+  // Hide a section unless its tab is open. `hidden` beats the element's own
+  // display utility, so it composes with every existing className.
+  const tabVisible = (tab: GigFormTab) => (activeTab === tab ? "" : " hidden");
   const [isMobileView, setIsMobileView] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const initialFormRef = useRef<GigFormData>(gig ? gigToFormData(gig) : getEmptyForm());
@@ -669,7 +689,40 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
             )}
 
-            <fieldset className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+            <div
+              className="surface-card sticky top-0 z-10 mb-5 rounded-2xl p-1"
+              role="tablist"
+              aria-label={isDutch ? "Gigidenschappen" : "Gig details sections"}
+              data-testid="gig-form-tabs"
+            >
+              {/* Four tabs do not fit side by side on a 320-375px screen, so the
+                  strip scrolls horizontally instead of wrapping or clipping. */}
+              <div className="flex gap-1 overflow-x-auto whitespace-nowrap">
+                {GIG_FORM_TABS.map((tab) => {
+                  const isActive = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      data-testid={`gig-form-tab-${tab.key}`}
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                        isActive
+                          ? "bg-brand-600 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      <span aria-hidden>{tab.icon}</span>
+                      <span>{isDutch ? tab.labelNl : tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <fieldset className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("basic")}`}>
               <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">General Details</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -855,7 +908,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
             </fieldset>
 
-            <fieldset className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+            <fieldset className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("basic")}`}>
               <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Date & Time</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -871,7 +924,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
             </fieldset>
 
-            <fieldset className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+            <fieldset className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("basic")}`}>
               <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Venue & Performance</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -899,7 +952,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
             </fieldset>
 
-            <fieldset className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+            <fieldset className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("financials")}`}>
               <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Financials & Payouts</legend>
 
               <div className="mb-4 rounded-lg border border-purple-200 dark:border-purple-700/50 bg-purple-50 dark:bg-purple-950/30 p-3">
@@ -981,7 +1034,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
             </fieldset>
 
-            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/30">
+            <div className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("financials")}`}>
               <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-800 dark:text-slate-200" onClick={() => setShowAdvancedSettings((prev) => !prev)}>
                 <span>Advanced Settings</span>
                 <span className="text-lg text-slate-500">{showAdvancedSettings ? "−" : "+"}</span>
@@ -1007,7 +1060,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               )}
             </div>
 
-            <fieldset className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+            <fieldset className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("financials")}`}>
               <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Payment Status</legend>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 dark:bg-slate-800/50">
@@ -1055,9 +1108,9 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
               </div>
             </fieldset>
 
-            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/30">
+            <div className={`mb-5 rounded-2xl border border-slate-200 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-800/30${tabVisible("financials")}`}>
               <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-slate-800 dark:text-slate-200" onClick={() => setShowAdditionalInfo((prev) => !prev)}>
-                <span>Additional Notes & Info</span>
+                <span>{isDutch ? "Aanvullende betalingen" : "Advance Payments"}</span>
                 <span className="text-lg text-slate-500">{showAdditionalInfo ? "−" : "+"}</span>
               </button>
               {(showAdditionalInfo || !isMobileView) && (
@@ -1079,71 +1132,78 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                       </div>
                     </div>
                   </fieldset>
-
-                  <fieldset className="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/60">
-                    <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Venue &amp; Logistics</legend>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Locale naam" : "Venue name"}</label>
-                        <input className={inputCls} placeholder="Ancienne Belgique" value={form.venueName || ""} onChange={(e) => set("venueName", e.target.value)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Adres" : "Address"}</label>
-                        <input className={inputCls} placeholder="Boulevard Anspach 110, Brussel" value={form.venueLocation || ""} onChange={(e) => set("venueLocation", e.target.value)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Soundcheck" : "Soundcheck"}</label>
-                        <input type="time" className={inputCls} value={form.soundcheckTime || ""} onChange={(e) => set("soundcheckTime", e.target.value)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Deuren open" : "Doors open"}</label>
-                        <input type="time" className={inputCls} value={form.doorsOpenTime || ""} onChange={(e) => set("doorsOpenTime", e.target.value)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Setduur (min)" : "Set length (min)"}</label>
-                        <input
-                          type="number"
-                          min={15}
-                          max={400}
-                          step={5}
-                          className={inputCls}
-                          value={form.performanceDurationMinutes ?? ""}
-                          onChange={(e) => set("performanceDurationMinutes", e.target.value === "" ? null : Math.max(1, Number(e.target.value)))}
-                        />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Organisator" : "Organizer contact"}</label>
-                        <input className={inputCls} placeholder="Jan Peeters" value={form.organizerName || ""} onChange={(e) => set("organizerName", e.target.value)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>E-mail</label>
-                        <input type="email" className={inputCls} placeholder="jan@venue.be" value={form.organizerEmail || ""} onChange={(e) => set("organizerEmail", e.target.value)} />
-                      </div>
-                      <div>
-                        <label className={labelCls}>{isDutch ? "Telefoon" : "Phone"}</label>
-                        <input className={inputCls} placeholder="+32 470 12 34 56" value={form.organizerPhone || ""} onChange={(e) => set("organizerPhone", e.target.value)} />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className={labelCls}>{isDutch ? "Gereedschap / opstelling" : "Gear / rig"}</label>
-                        <textarea rows={2} className={inputCls} placeholder={isDutch ? "2x DI, 1x amp, eigen monitor, 8 kanalen PA" : "2x DI, 1x amp, own monitor, 8-channel PA"} value={form.gearSetupNotes || ""} onChange={(e) => set("gearSetupNotes", e.target.value)} />
-                      </div>
-                    </div>
-                  </fieldset>
-
-                  <fieldset className="mb-0 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
-                    <label className={labelCls}>Notes</label>
-                    <textarea rows={2} className={inputCls} placeholder="Any additional notes..." value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-                  </fieldset>
-
-                  {/* Attachments + Groq summary only exist for a saved gig. */}
-                  {gig && <GigAttachmentsPanel gigId={gig.id} isDutch={isDutch} />}
-
-                  <GigScheduleHelper gigId={gig?.id ?? null} form={form} isDutch={isDutch} />
                 </div>
               )}
             </div>
-          </form>
+
+              {/* Logistics & Times: soundcheck, doors, gear and the smart schedule helper. */}
+              <div className={`mb-5 space-y-4${tabVisible("logistics")}`} data-testid="gig-form-panel-logistics">
+            <fieldset className="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+              <legend className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-200">Venue &amp; Logistics</legend>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className={labelCls}>{isDutch ? "Locale naam" : "Venue name"}</label>
+                <input className={inputCls} placeholder="Ancienne Belgique" value={form.venueName || ""} onChange={(e) => set("venueName", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{isDutch ? "Adres" : "Address"}</label>
+                <input className={inputCls} placeholder="Boulevard Anspach 110, Brussel" value={form.venueLocation || ""} onChange={(e) => set("venueLocation", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{isDutch ? "Soundcheck" : "Soundcheck"}</label>
+                <input type="time" className={inputCls} value={form.soundcheckTime || ""} onChange={(e) => set("soundcheckTime", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{isDutch ? "Deuren open" : "Doors open"}</label>
+                <input type="time" className={inputCls} value={form.doorsOpenTime || ""} onChange={(e) => set("doorsOpenTime", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{isDutch ? "Setduur (min)" : "Set length (min)"}</label>
+                <input
+                  type="number"
+                  min={15}
+                  max={400}
+                  step={5}
+                  className={inputCls}
+                  value={form.performanceDurationMinutes ?? ""}
+                  onChange={(e) => set("performanceDurationMinutes", e.target.value === "" ? null : Math.max(1, Number(e.target.value)))}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>{isDutch ? "Organisator" : "Organizer contact"}</label>
+                <input className={inputCls} placeholder="Jan Peeters" value={form.organizerName || ""} onChange={(e) => set("organizerName", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>E-mail</label>
+                <input type="email" className={inputCls} placeholder="jan@venue.be" value={form.organizerEmail || ""} onChange={(e) => set("organizerEmail", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>{isDutch ? "Telefoon" : "Phone"}</label>
+                <input className={inputCls} placeholder="+32 470 12 34 56" value={form.organizerPhone || ""} onChange={(e) => set("organizerPhone", e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>{isDutch ? "Gereedschap / opstelling" : "Gear / rig"}</label>
+                <textarea rows={2} className={inputCls} placeholder={isDutch ? "2x DI, 1x amp, eigen monitor, 8 kanalen PA" : "2x DI, 1x amp, own monitor, 8-channel PA"} value={form.gearSetupNotes || ""} onChange={(e) => set("gearSetupNotes", e.target.value)} />
+              </div>
+            </div>
+              </fieldset>
+
+                {/* Smart schedule helper closes the logistics panel. */}
+                <GigScheduleHelper gigId={gig?.id ?? null} form={form} isDutch={isDutch} />
+              </div>
+
+              {/* AI & Attachments: documents plus free-form notes. */}
+              <div className={`mb-5 space-y-4${tabVisible("ai")}`} data-testid="gig-form-panel-ai">
+                <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+                  <label className={labelCls}>Notes</label>
+                  <textarea rows={2} className={inputCls} placeholder="Any additional notes..." value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+                </fieldset>
+
+                {/* Attachments + Groq summary only exist for a saved gig. */}
+                {gig && <GigAttachmentsPanel gigId={gig.id} isDutch={isDutch} />}
+              </div>
+            </form>
 
           <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -11,6 +11,7 @@ import { getBandColorStyles } from "@/lib/preferences";
 import { getLocalNotes } from "@/lib/notes-store";
 import BandTag from "./BandTag";
 import GigQuickNotesModal from "./GigQuickNotesModal";
+import StageMode from "./StageMode";
 import { Icons } from "./Icons";
 import { useSettings } from "./SettingsProvider";
 import { useAuth } from "./AuthProvider";
@@ -111,6 +112,8 @@ const GigCard = memo(function GigCard({
   // waiting for a full list refetch.
   const [localNotes, setLocalNotes] = useState<string | null>(gig.notes);
   const [showQuickNotes, setShowQuickNotes] = useState(false);
+  // v1.38.0: Stage Mode — the full-screen on-stage view of the gig's setlist.
+  const [showStageMode, setShowStageMode] = useState(false);
   const { locale } = useSettings();
   const isDutch = locale.startsWith("nl");
 
@@ -444,16 +447,31 @@ const GigCard = memo(function GigCard({
         {/* Actions */}
         <div className="ml-4 flex shrink-0 items-center gap-1">
           {gig.setlistId && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/app?tab=setlists&setlist=${gig.setlistId}`);
-              }}
-              title={isDutch ? "Bekijk setlist" : "View setlist"}
-              className="rounded-lg p-2 text-cyan-600 transition-all duration-200 hover:bg-cyan-100/60 dark:hover:bg-cyan-900/30 dark:text-cyan-300 dark:hover:text-cyan-200"
-            >
-              <Icons.ListView className="h-4 w-4 shrink-0" />
-            </button>
+            <>
+              {/* v1.38.0: Stage Mode — the on-stage view of this setlist. */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowStageMode(true);
+                }}
+                data-testid="stage-mode-button"
+                title={isDutch ? "Podiummodus" : "Stage Mode"}
+                aria-label={isDutch ? "Podiummodus" : "Stage Mode"}
+                className="rounded-lg p-2 text-amber-500 transition-all duration-200 hover:bg-amber-100/60 dark:text-amber-300 dark:hover:bg-amber-900/30"
+              >
+                <Icons.Music className="h-4 w-4 shrink-0" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/app?tab=setlists&setlist=${gig.setlistId}`);
+                }}
+                title={isDutch ? "Bekijk setlist" : "View setlist"}
+                className="rounded-lg p-2 text-cyan-600 transition-all duration-200 hover:bg-cyan-100/60 dark:hover:bg-cyan-900/30 dark:text-cyan-300 dark:hover:text-cyan-200"
+              >
+                <Icons.ListView className="h-4 w-4 shrink-0" />
+              </button>
+            </>
           )}
           {onDuplicate && (
             <button
@@ -846,6 +864,20 @@ const GigCard = memo(function GigCard({
           isDutch={isDutch}
           onNotesSaved={setLocalNotes}
           onClose={() => setShowQuickNotes(false)}
+        />
+      )}
+
+      {/* v1.38.0: Stage Mode renders as a portal-free fixed overlay above the
+          card, so it must stay mounted only while open — it also holds a
+          screen wake lock for as long as it is on screen. */}
+      {showStageMode && gig.setlistId && (
+        <StageMode
+          gigId={gig.id}
+          gigName={gig.eventName}
+          gigVenue={gig.venueName || gig.venueLocation || null}
+          setlistId={gig.setlistId}
+          isDutch={isDutch}
+          onClose={() => setShowStageMode(false)}
         />
       )}
     </div>

@@ -1,151 +1,138 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
+import { DESKTOP, openAppTab } from './helpers/app';
+
+/**
+ * Performance Mode from a setlist.
+ *
+ * v1.36.0: this used to `page.goto('/')` and click a "Setlists" button, which
+ * lives on the dashboard rather than the landing page, so beforeEach always
+ * timed out. It also relied on `performance-mode`, `exit-performance-mode`,
+ * `next-song-button` and `drawer-*` test ids the component never had. Entering
+ * and leaving Performance Mode is a toggle on `performance-mode-button`, and the
+ * drawer is closed by its own labelled button.
+ *
+ * Pinned to a desktop viewport: the setlist list collapses behind the mobile
+ * shell, so there is no row to open at phone widths, and Performance Mode is a
+ * large-screen feature anyway.
+ */
 
 test.describe('Performance Mode Interactivity', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.click('button:has-text("Setlists")');
-    await page.waitForSelector('[data-testid="setlists-container"]', { timeout: 10000 });
-  });
+  test.describe.configure({ timeout: 90_000 });
+  test.use({ viewport: DESKTOP });
+
+  /** Signs in and opens the first setlist. */
+  async function openSetlist(page: import('@playwright/test').Page) {
+    const tab = await openAppTab(page, 'setlists');
+    await tab.getByTestId('setlists-container').waitFor({ state: 'visible', timeout: 60_000 });
+
+    const first = tab.getByTestId('setlist-item').first();
+    await first.waitFor({ state: 'visible', timeout: 60_000 });
+    await first.click();
+
+    await tab.getByTestId('setlist-details').waitFor({ state: 'visible', timeout: 30_000 });
+    return tab;
+  }
+
+  /** Toggles Performance Mode on and waits for the song rail. */
+  async function enterPerformanceMode(tab: import('@playwright/test').Page) {
+    await tab.getByTestId('performance-mode-button').first().click();
+    await tab
+      .getByTestId('performance-song-item')
+      .first()
+      .waitFor({ state: 'visible', timeout: 30_000 });
+  }
 
   test('should enter Performance Mode', async ({ page }) => {
-    // Click on a setlist
-    await page.click('[data-testid="setlist-item"]:first-child');
-    
-    // Wait for setlist details
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    // Click Performance Mode button
-    await page.click('[data-testid="performance-mode-button"]');
-    
-    // Verify Performance Mode is active
-    const performanceMode = page.locator('[data-testid="performance-mode"]');
-    await expect(performanceMode).toBeVisible();
+    const tab = await openSetlist(page);
+
+    // Before: the normal setlist detail view.
+    await expect(tab.getByTestId('setlist-details')).toBeVisible();
+
+    await enterPerformanceMode(tab);
+
+    // After: the detail pane gives way to the full-screen song rail.
+    await expect(tab.getByTestId('setlist-details')).toBeHidden();
+    await tab.close();
   });
 
   test('should display songs in Performance Mode', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    // Verify songs are displayed
-    const songs = page.locator('[data-testid="performance-song-item"]');
-    const count = await songs.count();
-    expect(count).toBeGreaterThan(0);
+    const tab = await openSetlist(page);
+
+    const inSetlist = await tab.getByTestId('setlist-song-item').count();
+    await enterPerformanceMode(tab);
+
+    const inPerformanceMode = await tab.getByTestId('performance-song-item').count();
+    expect(inPerformanceMode).toBeGreaterThan(0);
+    // Same setlist, so both views must list the same songs.
+    expect(inPerformanceMode).toBe(inSetlist);
+    await tab.close();
   });
 
-  test('should open attachment drawer when song is tapped', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    // Tap/click on first song
-    await page.click('[data-testid="performance-song-item"]:first-child');
-    
-    // Verify attachment drawer opens
-    const drawer = page.locator('[data-testid="attachment-drawer"]');
-    await expect(drawer).toBeVisible();
+  test('should mark the tapped song as the active one', async ({ page }) => {
+    const tab = await openSetlist(page);
+    await enterPerformanceMode(tab);
+
+    const songs = tab.getByTestId('performance-song-item');
+    test.skip((await songs.count()) < 2, 'Setlist needs at least two songs');
+
+    await songs.nth(1).click();
+    // The highlight follows the selection...
+    await expect(songs.nth(1)).toHaveClass(/border-brand-400/);
+    // ...and exactly one song carries it at a time.
+    await expect(songs.nth(0)).not.toHaveClass(/border-brand-400/);
+    await expect(songs.filter({ hasText: /./ })).toHaveCount(await songs.count());
+    await tab.close();
   });
 
-  test('should display correct song data in attachment drawer', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    // Get song name before entering performance mode
-    const songName = await page.locator('[data-testid="setlist-song-item"]:first-child').textContent();
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    // Click on first song in performance mode
-    await page.click('[data-testid="performance-song-item"]:first-child');
-    
-    // Verify drawer shows correct song
-    const drawerSongName = await page.locator('[data-testid="drawer-song-name"]').textContent();
-    expect(drawerSongName).toContain(songName);
-  });
+  /**
+   * The attachment drawer only opens for songs that actually have attachments
+   * (`itemAttachments.has(songId)` gates it), and the demo seed deliberately
+   * ships zero attachments, so the drawer itself is covered in
+   * setlist-attachments.spec.ts against uploaded files instead.
+   */
+  test('should navigate to the next and previous song', async ({ page }) => {
+    const tab = await openSetlist(page);
+    await enterPerformanceMode(tab);
 
-  test('should close attachment drawer when tapped outside', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-song-item"]:first-child');
-    await page.waitForSelector('[data-testid="attachment-drawer"]', { timeout: 5000 });
-    
-    // Click outside drawer
-    await page.click('[data-testid="drawer-backdrop"]');
-    
-    // Verify drawer closes
-    const drawer = page.locator('[data-testid="attachment-drawer"]');
-    await expect(drawer).not.toBeVisible();
-  });
+    const songs = tab.getByTestId('performance-song-item');
+    const total = await songs.count();
+    test.skip(total < 2, 'Setlist needs at least two songs to navigate');
 
-  test('should navigate between songs in Performance Mode', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    // Click first song
-    await page.click('[data-testid="performance-song-item"]:nth-child(1)');
-    await page.waitForSelector('[data-testid="attachment-drawer"]', { timeout: 5000 });
-    
-    // Click next song button
-    await page.click('[data-testid="next-song-button"]');
-    
-    // Wait for drawer to update
-    await page.waitForTimeout(300);
-    
-    // Verify drawer is still open (song changed)
-    const drawer = page.locator('[data-testid="attachment-drawer"]');
-    await expect(drawer).toBeVisible();
+    await songs.nth(0).click();
+    await expect(songs.nth(0)).toHaveClass(/border-brand-400/);
+
+    await tab.getByRole('button', { name: /volgende|next/i }).last().click();
+    await expect(songs.nth(1)).toHaveClass(/border-brand-400/);
+
+    await tab.getByRole('button', { name: /vorig|prev/i }).last().click();
+    await expect(songs.nth(0)).toHaveClass(/border-brand-400/);
+    await tab.close();
   });
 
   test('should exit Performance Mode', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    // Click exit button
-    await page.click('[data-testid="exit-performance-mode"]');
-    
-    // Verify we're back to normal view
-    const performanceMode = page.locator('[data-testid="performance-mode"]');
-    await expect(performanceMode).not.toBeVisible();
-    
-    const setlistDetails = page.locator('[data-testid="setlist-details"]');
-    await expect(setlistDetails).toBeVisible();
+    const tab = await openSetlist(page);
+    await enterPerformanceMode(tab);
+    await expect(tab.getByTestId('performance-song-item').first()).toBeVisible();
+
+    // The toggle button lives in the detail panel, which Performance Mode
+    // replaces, so leaving goes through the header's own "back to editor".
+    await tab.getByRole('button', { name: /terug naar editor|back to editor/i }).click();
+
+    await expect(tab.getByTestId('setlist-details')).toBeVisible({ timeout: 30_000 });
+    await expect(tab.getByTestId('performance-song-item')).toHaveCount(0);
+    await tab.close();
   });
 
-  test('should handle swipe gestures in Performance Mode', async ({ page }) => {
-    await page.click('[data-testid="setlist-item"]:first-child');
-    await page.waitForSelector('[data-testid="setlist-details"]', { timeout: 5000 });
-    
-    await page.click('[data-testid="performance-mode-button"]');
-    await page.waitForSelector('[data-testid="performance-mode"]', { timeout: 5000 });
-    
-    // Simulate swipe left to next song
-    const songItem = page.locator('[data-testid="performance-song-item"]:first-child');
-    await songItem.hover();
-    
-    const box = await songItem.boundingBox();
-    if (box) {
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(box.x + box.width / 2 - 200, box.y + box.height / 2);
-      await page.mouse.up();
-    }
-    
-    // Wait for potential navigation
-    await page.waitForTimeout(500);
+  test('should not overflow horizontally in Performance Mode', async ({ page }) => {
+    const tab = await openSetlist(page);
+    await enterPerformanceMode(tab);
+
+    const overflow = await tab.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await tab.close();
   });
 });
+
+

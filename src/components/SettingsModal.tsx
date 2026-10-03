@@ -13,6 +13,7 @@ import type { AppLanguage, UserSettingsData } from "@/types";
 import { useTranslation } from "react-i18next";
 import { useModalLock } from "@/hooks/useModalLock";
 import { createPortal } from "react-dom";
+import CalendarIntegrationSection from "./CalendarIntegrationSection";
 
 const CURRENCIES = [
   { code: "EUR", label: "Euro (€)", symbol: "€" },
@@ -505,6 +506,9 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
                     : t('settings.languageHintEnglish')}
                 </p>
               </div>
+
+              {/* v1.36.0: iCal subscription feed. */}
+              <CalendarIntegrationSection />
             </>
           )}
 

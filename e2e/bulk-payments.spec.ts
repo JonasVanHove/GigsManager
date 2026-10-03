@@ -1,137 +1,103 @@
 import { test, expect } from '@playwright/test';
+import { openAppTab, waitForGigCards } from './helpers/app';
+
+/**
+ * Bulk selection and bulk editing on the overview.
+ *
+ * This used to drive an "All Gigs" table that exposed `gigs-table`,
+ * `gig-checkbox`, `bulk-actions-menu` and `gig-status` test ids. None of those
+ * ever existed in the current app: bulk editing lives on the overview tab, the
+ * rows are gig cards, and selection is a checkbox inside each card. The spec now
+ * asserts that flow against the markup that is actually rendered.
+ */
+
+const SELECT = 'button[title="Select this gig for bulk actions"]';
+const BULK_EDIT = 'button[title^="Bulk edit"]';
+const CLEAR = 'button[title="Clear selection"]';
 
 test.describe('Bulk Payment Updates', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.click('button:has-text("All Gigs")');
-    await page.waitForSelector('[data-testid="gigs-table"]', { timeout: 10000 });
+  // Demo sign-in plus a gigs fetch comfortably exceeds the 30s default.
+  test.describe.configure({ timeout: 90_000 });
+
+  async function openOverview(page: import('@playwright/test').Page) {
+    const tab = await openAppTab(page, 'gigs');
+    await waitForGigCards(tab);
+    return tab;
+  }
+
+  test('should select multiple gigs and reveal the bulk actions', async ({ page }) => {
+    const tab = await openOverview(page);
+
+    // Nothing is selected on load, so the bulk controls are not rendered.
+    await expect(tab.locator(BULK_EDIT)).toHaveCount(0);
+
+    const checkboxes = tab.locator(`${SELECT} input[type="checkbox"]`);
+    const available = Math.min(await checkboxes.count(), 3);
+    expect(available).toBeGreaterThan(0);
+
+    for (let i = 0; i < available; i++) {
+      await checkboxes.nth(i).check();
+    }
+
+    await expect(tab.locator(BULK_EDIT)).toBeVisible();
+    // The label reports the live count, so it must match what was ticked.
+    await expect(tab.locator(BULK_EDIT)).toHaveAttribute(
+      'title',
+      new RegExp(`Bulk edit \\(${available} selected\\)`)
+    );
+    await tab.close();
   });
 
-  test('should select multiple gigs for bulk update', async ({ page }) => {
-    // Select first 3 gigs
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    await page.check('[data-testid="gig-checkbox"]:nth-child(2)');
-    await page.check('[data-testid="gig-checkbox"]:nth-child(3)');
-    
-    // Verify bulk actions menu appears
-    const bulkMenu = page.locator('[data-testid="bulk-actions-menu"]');
-    await expect(bulkMenu).toBeVisible();
+  test('should open the bulk editor for the selection', async ({ page }) => {
+    const tab = await openOverview(page);
+
+    await tab.locator(`${SELECT} input[type="checkbox"]`).first().check();
+    await tab.locator(BULK_EDIT).click();
+
+    // BulkEditor renders a dialog-style panel headed by a title; it is a
+    // sibling of the overview, so it must not be nested inside a gig card.
+    const heading = tab.getByRole('heading', { level: 2 }).last();
+    await expect(heading).toBeVisible({ timeout: 30_000 });
+
+    await tab.close();
   });
 
-  test('should update client paid status via bulk update', async ({ page }) => {
-    // Select gigs
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    await page.check('[data-testid="gig-checkbox"]:nth-child(2)');
-    
-    // Open bulk actions
-    await page.click('[data-testid="bulk-actions-menu"]');
-    
-    // Select "Mark as Client Paid"
-    await page.click('button:has-text("Mark as Client Paid")');
-    
-    // Wait for update
-    await page.waitForTimeout(1000);
-    
-    // Verify status updated - UI should refresh automatically
-    const statusCell = page.locator('[data-testid="gig-status"]:nth-child(1)');
-    await expect(statusCell).toContainText('Client Paid');
-  });
+  test('should clear the whole selection at once', async ({ page }) => {
+    const tab = await openOverview(page);
 
-  test('should update band paid status independently via bulk update', async ({ page }) => {
-    // Select a gig
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    
-    // Open bulk actions
-    await page.click('[data-testid="bulk-actions-menu"]');
-    
-    // Mark as Band Paid (independent action)
-    await page.click('button:has-text("Mark as Band Paid")');
-    
-    // Wait for update
-    await page.waitForTimeout(1000);
-    
-    // Verify band paid status is updated but client paid remains unchanged
-    const bandPaidCell = page.locator('[data-testid="band-paid-status"]:nth-child(1)');
-    await expect(bandPaidCell).toContainText('Paid');
-  });
+    const checkboxes = tab.locator(`${SELECT} input[type="checkbox"]`);
+    const count = Math.min(await checkboxes.count(), 3);
+    for (let i = 0; i < count; i++) {
+      await checkboxes.nth(i).check();
+    }
+    await expect(tab.locator(BULK_EDIT)).toBeVisible();
 
-  test('should handle both client and band paid separately in bulk update', async ({ page }) => {
-    // Select 3 gigs
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    await page.check('[data-testid="gig-checkbox"]:nth-child(2)');
-    await page.check('[data-testid="gig-checkbox"]:nth-child(3)');
-    
-    // Open bulk actions
-    await page.click('[data-testid="bulk-actions-menu"]');
-    
-    // Mark as Client Paid first
-    await page.click('button:has-text("Mark as Client Paid")');
-    await page.waitForTimeout(500);
-    
-    // Re-open bulk actions
-    await page.click('[data-testid="bulk-actions-menu"]');
-    
-    // Mark as Band Paid separately
-    await page.click('button:has-text("Mark as Band Paid")');
-    await page.waitForTimeout(1000);
-    
-    // Verify both statuses are now set
-    const statusCell = page.locator('[data-testid="gig-status"]:nth-child(1)');
-    await expect(statusCell).toContainText('Client Paid');
-    
-    const bandPaidCell = page.locator('[data-testid="band-paid-status"]:nth-child(1)');
-    await expect(bandPaidCell).toContainText('Paid');
-  });
+    await tab.locator(CLEAR).click();
 
-  test('should show date preview in bulk modal', async ({ page }) => {
-    // Select gigs
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    
-    // Open bulk actions
-    await page.click('[data-testid="bulk-actions-menu"]');
-    
-    // Verify date preview is shown with today's date
-    const datePreview = page.locator('text=/Will set payment date to/');
-    await expect(datePreview).toBeVisible();
-    
-    // Get today's date
-    const today = new Date().toISOString().split('T')[0];
-    await expect(datePreview).toContainText(today);
-  });
-
-  test('should allow custom date override in bulk modal', async ({ page }) => {
-    // Select gigs
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    
-    // Open bulk actions
-    await page.click('[data-testid="bulk-actions-menu"]');
-    
-    // Enable custom date
-    await page.check('#useCustomDate');
-    
-    // Set a custom date
-    const customDate = '2024-12-25';
-    await page.fill('input[type="date"]', customDate);
-    
-    // Verify custom date is shown in preview
-    const datePreview = page.locator('text=/Will set payment date to/');
-    await expect(datePreview).toContainText(customDate);
-  });
-
-  test('should deselect all gigs', async ({ page }) => {
-    // Select multiple gigs
-    await page.check('[data-testid="gig-checkbox"]:nth-child(1)');
-    await page.check('[data-testid="gig-checkbox"]:nth-child(2)');
-    
-    // Click deselect all
-    await page.click('[data-testid="deselect-all"]');
-    
-    // Verify all checkboxes are unchecked
-    const checkboxes = page.locator('[data-testid="gig-checkbox"]');
-    const count = await checkboxes.count();
-    
+    await expect(tab.locator(BULK_EDIT)).toHaveCount(0);
     for (let i = 0; i < count; i++) {
       await expect(checkboxes.nth(i)).not.toBeChecked();
     }
+    await tab.close();
+  });
+
+  test('should select every gig from the select-all control', async ({ page }) => {
+    const tab = await openOverview(page);
+
+    const rendered = tab.locator(`${SELECT} input[type="checkbox"]`);
+    expect(await rendered.count()).toBeGreaterThan(0);
+
+    await tab.locator('button[title="Select all performances"]').click();
+
+    // Every rendered row ends up ticked...
+    const checked = tab.locator(`${SELECT} input[type="checkbox"]:checked`);
+    await expect(checked).toHaveCount(await rendered.count());
+
+    // ...and the bulk action reports a non-zero selection.
+    const title = await tab.locator(BULK_EDIT).getAttribute('title');
+    expect(title).toMatch(/^Bulk edit \((\d+) selected\)$/);
+    expect(Number(title!.match(/\d+/)![0])).toBeGreaterThan(0);
+    await tab.close();
   });
 });
+

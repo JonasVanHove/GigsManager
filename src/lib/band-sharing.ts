@@ -66,24 +66,107 @@ export async function findSharedGigIds(userId: string): Promise<Set<string>> {
   return new Set(links.map((link) => link.gigId));
 }
 
-/** Whether any band this user is a member of lets members edit shared gigs. */
-export async function canBandmateEdit(userId: string): Promise<boolean> {
+/**
+ * Whether a bandmate may edit gigs that are shared with them, resolved once per
+ * request instead of once per gig — the gigs list would otherwise be an N+1.
+ */
+export interface BandEditPermissions {
+  /** Band names the viewer is listed in. */
+  memberOf: Set<string>;
+  /** Of those, the bands where the viewer is a leader. */
+  leads: Set<string>;
+  /** Bands whose owner opened the `canMembersEdit` switch. */
+  editable: Set<string>;
+}
+
+export async function getBandEditPermissions(
+  userId: string
+): Promise<BandEditPermissions> {
   // BandMember.bands holds band *names*, so match on names rather than on a
   // relation that does not exist.
   const myMembers = await prisma.bandMember.findMany({
     where: { userId },
-    select: { bands: true },
+    select: { bands: true, isLeader: true },
   });
-  const names = new Set(
-    myMembers.flatMap((m) => (Array.isArray(m.bands) ? m.bands : []))
-  );
-  if (names.size === 0) return false;
 
-  const band = await prisma.bands.findFirst({
-    where: { name: { in: [...names] }, canMembersEdit: true },
-    select: { id: true },
-  });
-  return Boolean(band);
+  const memberOf = new Set<string>();
+  const leads = new Set<string>();
+  for (const member of myMembers) {
+    for (const name of Array.isArray(member.bands) ? member.bands : []) {
+      memberOf.add(name);
+      if (member.isLeader) leads.add(name);
+    }
+  }
+
+  // Only bands the viewer actually belongs to can hand out edit access.
+  const editable = new Set<string>();
+  if (memberOf.size > 0) {
+    const openBands = await prisma.bands.findMany({
+      where: { name: { in: [...memberOf] }, canMembersEdit: true },
+      select: { name: true },
+    });
+    for (const band of openBands) editable.add(band.name);
+  }
+
+  return { memberOf, leads, editable };
 }
 
-export { inviteLink };
+/**
+ * Whether this viewer may edit a gig shared with them.
+ *
+ * Deliberately scoped to a single band. Leading band A must not grant edit
+ * rights on gigs shared through band B, and `canMembersEdit` is a per-band
+ * switch in the first place — an earlier "leader of any band" shortcut widened
+ * both at once.
+ */
+export function canEditSharedGig(
+  permissions: BandEditPermissions,
+  bandName?: string | null
+): boolean {
+  if (!bandName || !permissions.memberOf.has(bandName)) return false;
+  return permissions.leads.has(bandName) || permissions.editable.has(bandName);
+}
+
+/**
+ * Checks whether a user is either the owner of a band or an assigned band leader.
+ */
+export async function isBandLeaderOrOwner(
+  bandId: string,
+  userId: string
+): Promise<boolean> {
+  const band = await prisma.bands.findUnique({
+    where: { id: bandId },
+    select: { id: true, name: true, userId: true },
+  });
+  if (!band) return false;
+  if (band.userId === userId) return true;
+
+  const member = await prisma.bandMember.findFirst({
+    where: {
+      userId,
+      isLeader: true,
+      bands: { has: band.name },
+    },
+    select: { id: true },
+  });
+  return Boolean(member);
+}
+
+/**
+ * Checks whether a user is a member of the given band.
+ */
+export async function isBandMember(
+  bandName: string,
+  userId: string
+): Promise<boolean> {
+  const member = await prisma.bandMember.findFirst({
+    where: {
+      userId,
+      bands: { has: bandName },
+    },
+    select: { id: true },
+  });
+  return Boolean(member);
+}
+
+export { inviteLink };

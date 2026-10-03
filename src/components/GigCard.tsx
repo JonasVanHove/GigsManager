@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState, useEffect } from "react";
+import { memo, useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Gig } from "@/types";
 import {
@@ -13,6 +13,56 @@ import BandTag from "./BandTag";
 import GigQuickNotesModal from "./GigQuickNotesModal";
 import { Icons } from "./Icons";
 import { useSettings } from "./SettingsProvider";
+import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastContainer";
+
+/* ── RSVP helpers ──────────────────────────────────────────────────────── */
+
+type RsvpStatus = "ATTENDING" | "DECLINED" | "MAYBE" | "PENDING";
+
+interface RsvpMember {
+  id: string;
+  memberId: string;
+  name: string;
+  avatarUrl: string | null;
+  status: RsvpStatus;
+}
+
+interface RsvpSummary {
+  total: number;
+  attending: number;
+  declined: number;
+  maybe: number;
+  pending: number;
+}
+
+interface RsvpData {
+  summary: RsvpSummary;
+  /** The viewer's own GigBandMember row on this gig, or null when they only watch. */
+  myMemberId: string | null;
+  members: RsvpMember[];
+}
+
+const RSVP_LABELS_EN = { ATTENDING: "Attending", DECLINED: "Declined", MAYBE: "Maybe", PENDING: "Pending" } as const;
+const RSVP_LABELS_NL = { ATTENDING: "Aanwezig", DECLINED: "Afwezig", MAYBE: "Twijfel", PENDING: "Onbekend" } as const;
+
+/** Recomputes the badge counters after one member answers, for the optimistic paint. */
+function withStatus(data: RsvpData, memberId: string, status: RsvpStatus): RsvpData {
+  const members = data.members.map((m) => (m.memberId === memberId ? { ...m, status } : m));
+  return {
+    ...data,
+    members,
+    summary: {
+      total: members.length,
+      attending: members.filter((m) => m.status === "ATTENDING").length,
+      declined: members.filter((m) => m.status === "DECLINED").length,
+      maybe: members.filter((m) => m.status === "MAYBE").length,
+      pending: members.filter((m) => m.status === "PENDING").length,
+    },
+  };
+}
+
+/* ── Utility ───────────────────────────────────────────────────────────── */
 
 function isPastGigDate(value: string) {
   const gigDay = new Date(value);
@@ -52,6 +102,8 @@ const GigCard = memo(function GigCard({
   onDuplicate,
 }: GigCardProps) {
   const router = useRouter();
+  const { getAccessToken } = useAuth();
+  const toast = useToast();
   // Charity gigs start collapsed, others start expanded, but can be overridden by global state
   const [isExpanded, setIsExpanded] = useState(!gig.isCharity);
   const [hasPendingNotes, setHasPendingNotes] = useState(false);
@@ -61,7 +113,98 @@ const GigCard = memo(function GigCard({
   const [showQuickNotes, setShowQuickNotes] = useState(false);
   const { locale } = useSettings();
   const isDutch = locale.startsWith("nl");
-  
+
+  // ── RSVP state ────────────────────────────────────────────────────────
+  const [rsvpData, setRsvpData] = useState<RsvpData | null>(null);
+  // Which answer is in flight, or null when idle. Also doubles as the disabled
+  // flag so a double-tap cannot queue two writes.
+  const [rsvpPending, setRsvpPending] = useState<RsvpStatus | null>(null);
+
+  // Only a linked bandmate holds a GigBandMember row and can therefore answer.
+  // The owner usually has none, and gets a read-only roster instead of three
+  // buttons that would only ever come back 403.
+  const myMemberId = rsvpData?.myMemberId ?? null;
+  const myRsvpStatus = useMemo(
+    () => rsvpData?.members.find((m) => m.memberId === myMemberId)?.status ?? null,
+    [rsvpData, myMemberId]
+  );
+
+  const loadRsvp = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        const res = await fetch(`/api/gigs/${gig.id}/rsvp`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal,
+        });
+        // 403 = the gig is not shared with this viewer, 404 = gone. Either way
+        // the section simply stays hidden rather than showing an error.
+        if (!res.ok) return;
+        setRsvpData((await res.json()) as RsvpData);
+      } catch {
+        // Aborted on unmount, or offline — RSVP is an optional section.
+      }
+    },
+    [gig.id, getAccessToken]
+  );
+
+  // Gigs attached to a band only by name carry `band` without `bandId` (see
+  // the fallback in GET /api/gigs), so either one means attendance is relevant.
+  useEffect(() => {
+    if (!gig.bandId && !gig.band) return;
+    const controller = new AbortController();
+    void loadRsvp(controller.signal);
+    return () => controller.abort();
+  }, [gig.bandId, gig.band, loadRsvp]);
+
+  const submitRsvp = useCallback(
+    async (status: RsvpStatus) => {
+      if (!myMemberId || rsvpPending) return;
+
+      const previous = rsvpData;
+      setRsvpPending(status);
+      // Paint the answer right away; the POST response carries the
+      // authoritative summary, so the badge self-corrects if it disagrees.
+      setRsvpData((prev) => (prev ? withStatus(prev, myMemberId, status) : prev));
+
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new Error("no-session");
+        const res = await fetch(`/api/gigs/${gig.id}/rsvp`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status }),
+        });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error || "rsvp-failed");
+        // The POST already returns the recomputed summary, so the badge lands
+        // without a second GET.
+        setRsvpData((prev) => ({
+          summary: body?.summary ?? prev!.summary,
+          myMemberId: body?.rsvp?.memberId ?? prev!.myMemberId,
+          members: body?.members ?? prev!.members,
+        }));
+      } catch (err) {
+        setRsvpData(previous);
+        const message = err instanceof Error ? err.message : "";
+        toast.error(
+          message && message !== "no-session" && message !== "rsvp-failed"
+            ? message
+            : isDutch
+              ? "Kon je beschikbaarheid niet opslaan"
+              : "Could not save your attendance"
+        );
+      } finally {
+        setRsvpPending(null);
+      }
+    },
+    [myMemberId, rsvpData, rsvpPending, gig.id, getAccessToken, isDutch, toast]
+  );
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -115,6 +258,8 @@ const GigCard = memo(function GigCard({
 
   const formattedDate = useMemo(() => formatDate(gig.date), [gig.date]);
   const bandStyles = useMemo(() => getBandColorStyles(gig.performers, gig.band?.color), [gig.performers, gig.band?.color]);
+
+  const rsvpLabels = isDutch ? RSVP_LABELS_NL : RSVP_LABELS_EN;
 
   return (
     <div
@@ -256,6 +401,23 @@ const GigCard = memo(function GigCard({
                 </span>
               </>
             )}
+
+            {/* RSVP aggregate badge — compact attendance summary */}
+            {rsvpData && rsvpData.summary.total > 0 && (
+              <span
+                data-testid="rsvp-summary-badge"
+                className="badge badge-enter shrink-0 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-500/30"
+                title={
+                  isDutch
+                    ? `${rsvpData.summary.attending}/${rsvpData.summary.total} bandleden aanwezig`
+                    : `${rsvpData.summary.attending}/${rsvpData.summary.total} band members attending`
+                }
+              >
+                👥 {rsvpData.summary.attending}/{rsvpData.summary.total}{" "}
+                {isDutch ? "aanwezig" : "attending"}
+              </span>
+            )}
+
             {/* Expand/collapse chevron */}
             <Icons.ChevronDown
               className={`h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
@@ -335,6 +497,93 @@ const GigCard = memo(function GigCard({
       {/* Collapsible content */}
       {effectiveIsExpanded && (
         <div className="animate-expand">
+
+          {/* ── Quick RSVP section ──────────────────────────────────────── */}
+          {rsvpData && rsvpData.summary.total > 0 && (
+            <div
+              data-testid="rsvp-section"
+              className="border-b border-slate-100 px-3 py-3 dark:border-slate-700/50 sm:px-5"
+            >
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {isDutch ? "Beschikbaarheid" : "Attendance"}
+              </p>
+
+              {/* Quick action buttons. Only rendered for a linked bandmate:
+                  the owner has no row to write to and would just collect 403s. */}
+              {myMemberId && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {(
+                    [
+                      { status: "ATTENDING", emoji: "🟢", label: rsvpLabels.ATTENDING, ring: "ring-emerald-500/30", bg: "bg-emerald-50 dark:bg-emerald-950", text: "text-emerald-700 dark:text-emerald-300", activeBg: "bg-emerald-200 dark:bg-emerald-900" },
+                      { status: "DECLINED", emoji: "🔴", label: rsvpLabels.DECLINED, ring: "ring-red-500/30", bg: "bg-red-50 dark:bg-red-950", text: "text-red-700 dark:text-red-300", activeBg: "bg-red-200 dark:bg-red-900" },
+                      { status: "MAYBE", emoji: "🟡", label: rsvpLabels.MAYBE, ring: "ring-amber-500/30", bg: "bg-amber-50 dark:bg-amber-950", text: "text-amber-700 dark:text-amber-300", activeBg: "bg-amber-200 dark:bg-amber-900" },
+                    ] as const
+                  ).map(({ status, emoji, label, ring, bg, text, activeBg }) => {
+                    const isActive = myRsvpStatus === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        data-testid={`rsvp-btn-${status.toLowerCase()}`}
+                        aria-pressed={isActive}
+                        disabled={rsvpPending !== null}
+                        onClick={(e) => {
+                          // The card body toggles expansion, so keep the tap here.
+                          e.stopPropagation();
+                          void submitRsvp(status);
+                        }}
+                        className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition-all duration-200 ${text} ${ring} ${
+                          isActive ? activeBg : bg
+                        } hover:scale-105 active:scale-95 disabled:cursor-wait disabled:opacity-50`}
+                      >
+                        <span aria-hidden="true">{emoji}</span>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Per-member attendance list. The viewer's own row is bolded so a
+                  bandmate can find themselves in a full lineup. */}
+              <div className="flex flex-wrap gap-1.5">
+                {rsvpData.members.map((m) => {
+                  const statusColor =
+                    m.status === "ATTENDING"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
+                      : m.status === "DECLINED"
+                      ? "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
+                      : m.status === "MAYBE"
+                      ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+                  const statusEmoji =
+                    m.status === "ATTENDING"
+                      ? "🟢"
+                      : m.status === "DECLINED"
+                      ? "🔴"
+                      : m.status === "MAYBE"
+                      ? "🟡"
+                      : "⚪";
+                  const isMe = m.memberId === myMemberId;
+                  return (
+                    <span
+                      key={m.id}
+                      data-testid={`rsvp-member-${m.id}`}
+                      title={`${m.name}: ${rsvpLabels[m.status]}`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${statusColor} ${
+                        isMe ? "font-bold ring-1 ring-current/30" : "font-medium"
+                      }`}
+                    >
+                      <span aria-hidden="true">{statusEmoji}</span>
+                      {m.name}
+                      {isMe && <span className="sr-only"> (jij / you)</span>}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* -- Financial breakdown ------------------------------------------ */}
           <div className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-2 px-3 py-4 text-sm sm:grid-cols-4 sm:px-5 border-b border-slate-100 dark:border-slate-700/50 animate-fade-in">
         <div>
@@ -603,3 +852,4 @@ const GigCard = memo(function GigCard({
 });
 
 export default GigCard;
+

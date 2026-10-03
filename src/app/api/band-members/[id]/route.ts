@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { invalidateCache } from "@/lib/cache";
 import { resolveMemberUserId } from "@/lib/band-invites";
+import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
@@ -83,21 +84,6 @@ export async function PATCH(
     if (authResult instanceof NextResponse) return authResult;
     const { user } = authResult as { user: { id: string } };
 
-    // Check ownership
-    const existing = await prisma.bandMember.findFirst({
-      where: {
-        id: params.id,
-        userId: user.id,
-      },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Band member not found" },
-        { status: 404 }
-      );
-    }
-
     const body = await req.json();
     const { name, email, phone, notes, avatarUrl } = body;
     const bands = Array.isArray(body.bands)
@@ -107,17 +93,41 @@ export async function PATCH(
           .filter((band: string) => band.length > 0)
       : undefined;
 
-    // Ownership check: this handler previously updated by id alone, so any
-    // authenticated user could rewrite another account's member record.
+    // Ownership or Leader check: the owner of the member record, or a
+    // leader/owner of one of the member's bands.
+    //
+    // This lookup is deliberately by id alone. It used to filter on `userId`
+    // too, which made the leader branch unreachable — a band leader who does
+    // not own the row they were promoting got a 404 and could never grant or
+    // revoke the isLeader flag.
     const currentMember = await prisma.bandMember.findUnique({
       where: { id: params.id },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, bands: true },
     });
     if (!currentMember) {
       return NextResponse.json({ error: "Band member not found" }, { status: 404 });
     }
-    if (currentMember.userId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const isOwner = currentMember.userId === user.id;
+    if (!isOwner) {
+      let isLeaderOfBand = false;
+      if (Array.isArray(currentMember.bands)) {
+        for (const bandName of currentMember.bands) {
+          const band = await prisma.bands.findFirst({
+            where: { name: bandName },
+            select: { id: true },
+          });
+          if (band && (await isBandLeaderOrOwner(band.id, user.id))) {
+            isLeaderOfBand = true;
+            break;
+          }
+        }
+      }
+      if (!isLeaderOfBand) {
+        return NextResponse.json(
+          { error: "Forbidden: Only band leaders or owners can edit this member" },
+          { status: 403 }
+        );
+      }
     }
 
     // Re-link on e-mail change: claim an existing account with the new address,

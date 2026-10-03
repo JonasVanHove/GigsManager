@@ -217,6 +217,7 @@ export async function GET(req: NextRequest) {
         phone: member.phone,
         notes: member.notes,
         avatarUrl: member.avatarUrl,
+        isLeader: Boolean(member.isLeader),
         bands: Array.isArray(member.bands) ? member.bands : [],
         updatedAt: member.updatedAt,
         totalEarned,

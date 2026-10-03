@@ -245,6 +245,12 @@ export async function PUT(
         },
       });
 
+      const existingLinks = await prisma.gigBandMember.findMany({
+        where: { gigId: gig.id },
+        select: { bandMemberId: true, rsvpStatus: true, paidAmount: true },
+      });
+      const existingMap = new Map(existingLinks.map((l) => [l.bandMemberId, l]));
+
       await prisma.gigBandMember.deleteMany({
         where: { gigId: gig.id },
       });
@@ -269,11 +275,13 @@ export async function PUT(
             gigId: gig.id,
             bandMemberId: member.id,
             earnedAmount: calc.amountPerMusician,
-            paidAmount: 0,
+            paidAmount: existingMap.get(member.id)?.paidAmount ?? 0,
+            rsvpStatus: existingMap.get(member.id)?.rsvpStatus ?? "PENDING",
           })),
           skipDuplicates: true,
         });
       }
+
     }
 
     return NextResponse.json(gig);

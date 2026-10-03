@@ -343,7 +343,7 @@ export async function GET(request: NextRequest) {
       // Imported dynamically to match this file's safe-import style.
       const sharing = await import("@/lib/band-sharing");
       const sharedGigIds = await sharing.findSharedGigIds(userId);
-      const memberCanEdit = await sharing.canBandmateEdit(userId);
+      const editPermissions = await sharing.getBandEditPermissions(userId);
 
       // Owner OR participant. Empty shared set keeps the previous single-clause
       // shape so the common case does not change query plans.
@@ -388,7 +388,11 @@ export async function GET(request: NextRequest) {
 
             return sharing.redactGigForBandmate(enriched, {
               isOwner: gig.userId === userId,
-              canEdit: memberCanEdit,
+              // Per band: leading one band must not unlock another's gigs.
+              canEdit: sharing.canEditSharedGig(
+                editPermissions,
+                enriched.band?.name ?? gig.performers
+              ),
             });
           });
           

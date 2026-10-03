@@ -17,10 +17,14 @@ import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avata
 interface Band {
   id: string;
   name: string;
+  userId?: string;
   logoUrl?: string | null;
   color?: string | null;
   /** Whether bandmates may edit gigs they are shared on. */
   canMembersEdit?: boolean | null;
+  inviteCode?: string | null;
+  isOwner?: boolean;
+  isLeader?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -33,6 +37,7 @@ interface BandMember {
   notes: string | null;
   avatarUrl?: string | null;
   bands: string[];
+  isLeader?: boolean;
   updatedAt: string;
 }
 
@@ -81,6 +86,7 @@ export default function BandsTab() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // Which band's invite dialog is open, if any.
   const [inviteBand, setInviteBand] = useState<Band | null>(null);
+  const [togglingMemberId, setTogglingMemberId] = useState<string | null>(null);
 
   const loadBands = useCallback(async () => {
     try {
@@ -167,6 +173,7 @@ export default function BandsTab() {
             notes: null,
             avatarUrl: getBandMemberAvatarUrl(currentUserName, currentUserAvatar, currentUserAvatar),
             bands: userBandNames,
+            isLeader: true,
             updatedAt: new Date().toISOString(),
           };
           
@@ -336,6 +343,59 @@ export default function BandsTab() {
       toast.error(t('bands.errorDelete'));
     }
   };
+
+  const handleToggleLeader = async (member: BandMember, band: Band) => {
+    if (member.id === "current-user") {
+      toast.warning(
+        language === "nl"
+          ? "Je eigen leiderschapsrol kan hier niet aangepast worden"
+          : "Your own leadership role cannot be changed here"
+      );
+      return;
+    }
+
+    try {
+      setTogglingMemberId(member.id);
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const nextIsLeader = !member.isLeader;
+      const res = await fetch(`/api/band-members/${member.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isLeader: nextIsLeader }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update leader status");
+      }
+
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === member.id ? { ...m, isLeader: nextIsLeader } : m
+        )
+      );
+
+      toast.success(
+        nextIsLeader
+          ? (language === "nl"
+              ? `${member.name} is nu bandleider`
+              : `${member.name} is now a band leader`)
+          : (language === "nl"
+              ? `Leidersrol ingetrokken voor ${member.name}`
+              : `Removed leader role for ${member.name}`)
+      );
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update leader status");
+    } finally {
+      setTogglingMemberId(null);
+    }
+  };
+
 
   const getBandMembers = (bandId: string) => {
     const band = bands.find(b => b.id === bandId);
@@ -562,6 +622,10 @@ export default function BandsTab() {
             const bandMembers = getBandMembers(band.id);
             const isExpanded = expandedBandId === band.id;
             const isEditing = editingBand?.id === band.id;
+            const isLeaderOrOwner = Boolean(
+              band.isOwner ??
+              (band.isLeader ?? (session?.user?.id && band.userId === session.user.id))
+            );
             return (
               <div key={band.id} className="rounded-2xl border bg-white dark:bg-slate-900 overflow-hidden" style={{ borderColor: band.color || '#e2e8f0' }}>
                 {isEditing ? (
@@ -685,20 +749,28 @@ export default function BandsTab() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(band)}
-                            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                          >
-                            <Icons.Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(band)}
-                            className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                          >
-                            <Icons.Trash className="h-4 w-4" />
-                          </button>
-                        </div>
+                        {isLeaderOrOwner && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(band)}
+                              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                              title={language === "nl" ? "Band bewerken" : "Edit band"}
+                              aria-label={language === "nl" ? "Band bewerken" : "Edit band"}
+                            >
+                              <Icons.Edit className="h-4 w-4" />
+                            </button>
+                            {band.isOwner !== false && (
+                              <button
+                                onClick={() => handleDelete(band)}
+                                className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                                title={language === "nl" ? "Band verwijderen" : "Delete band"}
+                                aria-label={language === "nl" ? "Band verwijderen" : "Delete band"}
+                              >
+                                <Icons.Trash className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {bandMembers.length > 0 ? (
@@ -708,7 +780,11 @@ export default function BandsTab() {
                             {bandMembers.map((member) => (
                               <span
                                 key={member.id}
-                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-1 pl-1 pr-3 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs transition-colors ${
+                                  member.isLeader
+                                    ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/40 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/30"
+                                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                }`}
                               >
                                 <BandMemberAvatar
                                   name={member.name}
@@ -716,7 +792,44 @@ export default function BandsTab() {
                                   avatarUrl={member.avatarUrl}
                                   fallbackAvatarUrl={session?.user?.user_metadata?.avatar_url || null}
                                 />
-                                {member.name}
+                                <span className="font-medium">{member.name}</span>
+                                {member.isLeader && (
+                                  <span
+                                    data-testid={`leader-badge-${member.id}`}
+                                    className="inline-flex items-center gap-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200"
+                                    title={language === "nl" ? "Bandleider" : "Band Leader"}
+                                  >
+                                    👑 {language === "nl" ? "Leider" : "Leader"}
+                                  </span>
+                                )}
+                                {isLeaderOrOwner && member.id !== "current-user" && (
+                                  <button
+                                    type="button"
+                                    data-testid={`toggle-leader-${member.id}`}
+                                    disabled={togglingMemberId === member.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleLeader(member, band);
+                                    }}
+                                    className={`rounded-full p-0.5 text-xs transition-transform hover:scale-125 disabled:opacity-50 ${
+                                      member.isLeader
+                                        ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                                        : "text-slate-400 hover:text-amber-500 opacity-60 hover:opacity-100"
+                                    }`}
+                                    title={
+                                      member.isLeader
+                                        ? (language === "nl" ? "Leidersrol intrekken" : "Revoke leader role")
+                                        : (language === "nl" ? "Maak bandleider" : "Promote to band leader")
+                                    }
+                                    aria-label={
+                                      member.isLeader
+                                        ? (language === "nl" ? `Leidersrol intrekken voor ${member.name}` : `Revoke leader role for ${member.name}`)
+                                        : (language === "nl" ? `Maak ${member.name} bandleider` : `Promote ${member.name} to band leader`)
+                                    }
+                                  >
+                                    👑
+                                  </button>
+                                )}
                               </span>
                             ))}
                           </div>
@@ -734,9 +847,13 @@ export default function BandsTab() {
                         className="touch-target mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70 dark:border-brand-800/70 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40"
                       >
                         <Icons.Plus className="h-4 w-4 shrink-0" />
-                        {language === "nl"
-                          ? "Uitnodigings-QR genereren"
-                          : "Generate invite QR code"}
+                        {isLeaderOrOwner
+                          ? language === "nl"
+                            ? "Uitnodigings-QR genereren"
+                            : "Generate invite QR code"
+                          : language === "nl"
+                            ? "Uitnodigingscode bekijken"
+                            : "View invite code"}
                       </button>
                     </div>
                   </>
@@ -752,9 +869,11 @@ export default function BandsTab() {
           bandId={inviteBand.id}
           bandName={inviteBand.name}
           isDutch={language === "nl"}
+          readOnly={!Boolean(inviteBand.isOwner || inviteBand.isLeader)}
           onClose={() => setInviteBand(null)}
         />
       )}
     </div>
   );
 }
+

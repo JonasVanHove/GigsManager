@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateInviteCode, inviteLink, findBandByInviteCode } from "@/lib/band-invites";
+import { isBandLeaderOrOwner, isBandMember } from "@/lib/band-sharing";
 
 export const runtime = "nodejs";
 
@@ -76,14 +77,39 @@ export async function POST(request: NextRequest) {
       select: { id: true, name: true, userId: true, inviteCode: true },
     });
     if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 });
-    if (band.userId !== owner.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
-    if (body.regenerate && band.inviteCode) {
-      await prisma.bands.update({
-        where: { id: bandId },
-        data: { inviteCode: null },
+    const isLeaderOrOwnerUser = await isBandLeaderOrOwner(bandId, owner.id);
+
+    if (body.regenerate) {
+      if (!isLeaderOrOwnerUser) {
+        return NextResponse.json(
+          { error: "Forbidden: Only band leaders or owners can regenerate invite codes" },
+          { status: 403 }
+        );
+      }
+      if (band.inviteCode) {
+        await prisma.bands.update({
+          where: { id: bandId },
+          data: { inviteCode: null },
+        });
+      }
+    } else if (!isLeaderOrOwnerUser) {
+      // Non-leader members view the invite code in read-only mode if code exists.
+      const isMember = await isBandMember(band.name, owner.id);
+      if (!isMember) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (!band.inviteCode) {
+        return NextResponse.json(
+          { error: "No invite code generated yet. Ask a band leader to generate one." },
+          { status: 403 }
+        );
+      }
+      return NextResponse.json({
+        code: band.inviteCode,
+        link: inviteLink(band.inviteCode),
+        bandName: band.name,
+        readOnly: true,
       });
     }
 
@@ -95,7 +121,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ code, link: inviteLink(code), bandName: band.name });
+    return NextResponse.json({
+      code,
+      link: inviteLink(code),
+      bandName: band.name,
+      readOnly: !isLeaderOrOwnerUser,
+    });
   } catch (error) {
     console.error("POST /api/bands/invite error:", error);
     return NextResponse.json({ error: "Failed to generate invite code" }, { status: 500 });

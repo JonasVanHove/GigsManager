@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateInviteCode, inviteLink } from "@/lib/band-invites";
+import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 
 export const runtime = "nodejs";
 
@@ -33,8 +34,13 @@ export async function POST(
       select: { id: true, name: true, userId: true },
     });
     if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 });
-    if (band.userId !== owner.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const allowed = await isBandLeaderOrOwner(params.id, owner.id);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Forbidden: Only band leaders or owners can regenerate invite codes" },
+        { status: 403 }
+      );
     }
 
     // Clearing the code first invalidates the old link; getOrCreateInviteCode

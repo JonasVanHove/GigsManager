@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Email templates with GigsManager branding
  * Uses Teal (#007280), Gold (#F8B600), Orange (#FAA32C) color scheme
  */
@@ -128,7 +128,7 @@ export function verifyEmailTemplate(
         </div>
 
         <div class="content">
-          <div class="greeting">Welcome to GigsManager, ${userName}! 🎵</div>
+          <div class="greeting">Welcome to GigsManager, ${userName}! ðŸŽµ</div>
           
           <p class="body-text">
             Thanks for signing up! To get started with managing your gigs and finances, 
@@ -157,21 +157,21 @@ export function verifyEmailTemplate(
           <p class="body-text" style="color: #64748b; font-size: 13px;">
             <span class="highlight">What's next?</span><br>
             Once verified, you'll have full access to:
-            • Track all your gigs and performances<br>
-            • Automatically calculate splits and payments<br>
-            • Manage band members and setlists<br>
-            • Export financial reports<br>
-            • And much more!
+            â€¢ Track all your gigs and performances<br>
+            â€¢ Automatically calculate splits and payments<br>
+            â€¢ Manage band members and setlists<br>
+            â€¢ Export financial reports<br>
+            â€¢ And much more!
           </p>
         </div>
 
         <div class="footer">
           <p style="margin: 0;">
-            © ${new Date().getFullYear()} GigsManager • Built for live music professionals
+            Â© ${new Date().getFullYear()} GigsManager â€¢ Built for live music professionals
           </p>
           <p style="margin: 10px 0 0 0;">
-            <a href="https://gigsmanager.com" class="footer-link">Website</a> • 
-            <a href="https://gigsmanager.com/privacy" class="footer-link">Privacy</a> • 
+            <a href="https://gigsmanager.com" class="footer-link">Website</a> â€¢ 
+            <a href="https://gigsmanager.com/privacy" class="footer-link">Privacy</a> â€¢ 
             <a href="https://gigsmanager.com/support" class="footer-link">Support</a>
           </p>
           <p class="secondary-text" style="margin-top: 15px;">
@@ -240,7 +240,7 @@ export function passwordResetTemplate(
 
         <div class="footer">
           <p style="margin: 0;">
-            © ${new Date().getFullYear()} GigsManager • Keep your account secure
+            Â© ${new Date().getFullYear()} GigsManager â€¢ Keep your account secure
           </p>
         </div>
       </div>
@@ -268,7 +268,7 @@ export function welcomeEmailTemplate(userName: string): string {
             Gigs<span class="brand-text">Manager</span>
           </div>
           <div style="font-size: 14px; opacity: 0.95;">
-            Your account is ready to use ✓
+            Your account is ready to use âœ“
           </div>
         </div>
 
@@ -306,7 +306,116 @@ export function welcomeEmailTemplate(userName: string): string {
 
         <div class="footer">
           <p style="margin: 0;">
-            © ${new Date().getFullYear()} GigsManager • Made for musicians, by musicians
+            Â© ${new Date().getFullYear()} GigsManager â€¢ Made for musicians, by musicians
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export interface RsvpChangeEmailData {
+  /** Recipient address; addressing lives here, the template never uses it. */
+  to: string;
+  recipientName: string;
+  actorName: string;
+  gigName: string;
+  gigDate: Date;
+  statusLabel: string;
+  statusIcon: string;
+  attendingCount: number;
+  totalCount: number;
+  gigUrl: string;
+}
+
+const formatEmailDate = (date: Date) =>
+  date.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+/**
+ * Tells a band leader that a bandmate changed their attendance answer.
+ *
+ * The running count is included because a leader's first question on opening
+ * the app is "how many are we still missing?", and a single changed answer is
+ * usually the reason they need to know.
+ */
+export function rsvpChangedTemplate(data: RsvpChangeEmailData): string {
+  const remaining = Math.max(data.totalCount - data.attendingCount, 0);
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${emailStyles}
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">
+            Gigs<span class="brand-text">Manager</span>
+          </div>
+          <div style="font-size: 14px; opacity: 0.95;">
+            Attendance update
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="greeting">Hi ${data.recipientName},</div>
+
+          <p class="body-text">
+            <strong>${data.actorName}</strong> answered
+            <strong>${data.statusIcon} ${data.statusLabel}</strong> for
+            <strong>${data.gigName}</strong>.
+          </p>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 24px 0;">
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px;">
+                Performance
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600;">
+                ${data.gigName}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px;">
+                Date
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600;">
+                ${formatEmailDate(data.gigDate)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0; color: #64748b; font-size: 14px;">
+                Attendance
+              </td>
+              <td style="padding: 12px 0; text-align: right; font-weight: 600;">
+                ${data.attendingCount} of ${data.totalCount} attending${
+                  remaining > 0 ? ` Â· ${remaining} still to confirm` : " Â· full line-up"
+                }
+              </td>
+            </tr>
+          </table>
+
+          <div style="text-align: center; margin: 28px 0;">
+            <a href="${data.gigUrl}"
+               style="display: inline-block; background: #007280; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+              Open the gig
+            </a>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p style="margin: 0;">
+            Â© ${new Date().getFullYear()} GigsManager â€¢ Made for musicians, by musicians
           </p>
         </div>
       </div>

@@ -5,10 +5,17 @@
 [build]
   # Critical build order:
   # 1. npm ci with dev deps (includes Prisma CLI and @prisma/client)
-  # 2. Explicit prisma generate (ensure client is generated)
-  # 3. npm run build (Next.js build bundles everything correctly)
+  # 2. prisma migrate deploy — applies pending migrations BEFORE the build, so
+  #    a deploy never ships code that queries columns the database lacks.
+  #    Needs DATABASE_URL (and DIRECT_URL) available at build time; both are
+  #    configured as Netlify environment variables.
+  #    `migrate deploy` never prompts and never resets data, so it is safe to
+  #    run on every build. Note it deliberately does NOT run `prisma generate`:
+  #    that comes next, after the schema is current.
+  # 3. Explicit prisma generate (ensure client is generated)
+  # 4. npm run build (Next.js build bundles everything correctly)
   # postinstall will also run prisma generate as redundant safety net
-  command   = "npm ci --include=dev && npm run db:generate && npm run build"
+  command   = "npm ci --include=dev && npx prisma migrate deploy && npm run db:generate && npm run build"
   publish   = ".next"
 
 [build.environment]

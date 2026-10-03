@@ -69,60 +69,73 @@ test.describe('Setlist Attachments', () => {
     await tab.close();
   });
 
-  test('should upload a file and list it', async ({ page }) => {
-    // Every project runs against the same demo account, so concurrent workers
-    // would add and remove files in one shared attachment list and each would
-    // see the other's counts. Exactly one project is allowed to mutate it.
-    // Keyed on the project name rather than `browserName`, because the mobile
-    // projects reuse the desktop browser type.
-    test.skip(
-      test.info().project.name !== 'chromium',
-      'Single-writer: all projects share the demo account'
-    );
+  /**
+   * Attachment count is shared state: these two tests upload and delete files
+   * in the same strip, so they assert exact counts against it.
+   *
+   * `serial` is what actually makes that safe. The suite runs `fullyParallel`,
+   * which means one project can still get several workers — a per-project
+   * guard alone is not enough, because two chromium workers would interleave.
+   * Combined with the single-project check below, these run in one worker, in
+   * order, against one account.
+   */
+  test.describe.serial('shared attachment list', () => {
+    test('should upload a file and list it', async ({ page }) => {
+      test.skip(
+        test.info().project.name !== 'chromium',
+        'Single-writer: all projects share the demo account'
+      );
 
-    const tab = await openSetlist(page);
+      const tab = await openSetlist(page);
 
-    const before = await tab.getByTestId('attachment-item').count();
-    await fileInput(tab).setInputFiles(FIXTURE);
+      const before = await tab.getByTestId('attachment-item').count();
+      await fileInput(tab).setInputFiles(FIXTURE);
 
-    // Upload goes to Supabase storage and back; give it room on a cold dev box.
-    await expect(tab.getByTestId('attachment-item')).toHaveCount(before + 1, {
-      timeout: 45_000,
+      // Upload goes to Supabase storage and back; give it room on a cold dev box.
+      await expect(tab.getByTestId('attachment-item')).toHaveCount(before + 1, {
+        timeout: 45_000,
+      });
+
+      // Leave the demo account as we found it. The delete control is `hidden`
+      // until the thumbnail is hovered, which gives it a zero-size box, so a
+      // real mouse click cannot land on it — dispatching the handler directly
+      // is the only reliable way and still exercises the real request.
+      const item = tab.getByTestId('attachment-item').last();
+      await item.hover();
+      await item.locator('button').first().dispatchEvent('click');
+
+      await expect(tab.getByTestId('attachment-item')).toHaveCount(before, {
+        timeout: 30_000,
+      });
+      await tab.close();
     });
 
-    // Leave the demo account as we found it. The delete control is `hidden`
-    // until the thumbnail is hovered, which gives it a zero-size box, so a
-    // real mouse click cannot land on it — dispatching the handler directly is
-    // the only reliable way and still exercises the real request.
-    const item = tab.getByTestId('attachment-item').last();
-    await item.hover();
-    await item.locator('button').first().dispatchEvent('click');
+    test('should keep the attachment count stable across a reload', async ({
+      page,
+    }) => {
+      test.skip(
+        test.info().project.name !== 'chromium',
+        'Single-writer: all projects share the demo account'
+      );
 
-    await expect(tab.getByTestId('attachment-item')).toHaveCount(before, {
-      timeout: 30_000,
+      const tab = await openSetlist(page);
+
+      const before = await tab.getByTestId('attachment-item').count();
+      await tab.reload();
+      await tab
+        .getByTestId('setlists-container')
+        .waitFor({ state: 'visible', timeout: 60_000 });
+      await tab.getByTestId('setlist-item').first().click();
+      await tab
+        .getByTestId('setlist-details')
+        .waitFor({ state: 'visible', timeout: 30_000 });
+
+      // Count comes back from the server, not from client state.
+      await expect(tab.getByTestId('attachment-item')).toHaveCount(before, {
+        timeout: 30_000,
+      });
+      await tab.close();
     });
-    await tab.close();
-  });
-
-  test('should keep the attachment count stable across a reload', async ({ page }) => {
-    // Same single-writer rule as the upload test: this asserts an exact count,
-    // which another project's upload would invalidate.
-    test.skip(
-      test.info().project.name !== 'chromium',
-      'Single-writer: all projects share the demo account'
-    );
-
-    const tab = await openSetlist(page);
-
-    const before = await tab.getByTestId('attachment-item').count();
-    await tab.reload();
-    await tab.getByTestId('setlists-container').waitFor({ state: 'visible', timeout: 60_000 });
-    await tab.getByTestId('setlist-item').first().click();
-    await tab.getByTestId('setlist-details').waitFor({ state: 'visible', timeout: 30_000 });
-
-    // Count comes back from the server, not from client state.
-    await expect(tab.getByTestId('attachment-item')).toHaveCount(before);
-    await tab.close();
   });
 });
 

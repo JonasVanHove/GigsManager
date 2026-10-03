@@ -21,6 +21,8 @@ import Footer from "./Footer";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import { DashboardSummary as DashboardSummaryComponent } from "./DashboardSummary";
 import BulkEditor from "./BulkEditor";
+import NotificationCenter from "./NotificationCenter";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useTranslation } from "react-i18next";
 
 import LoadingSpinner, { CardSkeleton } from "./LoadingSpinner";
@@ -318,6 +320,14 @@ export default function Dashboard() {
   const [selectedGigIds, setSelectedGigIds] = useState<Set<string>>(new Set());
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(activeTab === "gigs");
+
+  // v1.37.0: RSVP alerts for band leaders (see NotificationCenter in the header).
+  const {
+    notifications: notificationData,
+    markAsRead: markNotificationRead,
+    dismiss: dismissNotification,
+    clearAll: clearNotifications,
+  } = useNotifications();
   // Overview view mode: 'grid' (cards) or 'compact' (dense list).
   // Account-bound via settings (overviewViewMode) with a localStorage mirror
   // so the choice survives instant refresh and syncs across devices.
@@ -484,6 +494,40 @@ export default function Dashboard() {
     const timer = setTimeout(handlePageComplete, 100);
     return () => clearTimeout(timer);
   }, [gigs]);
+
+  // v1.37.0: deep link from an RSVP alert (`/app?tab=gigs&gig=<id>`).
+  // Scrolls the referenced card into view and rings it briefly so the eye
+  // lands on the right row instead of the top of the list.
+  useEffect(() => {
+    const targetGigId = searchParams.get("gig");
+    if (!targetGigId || gigs.length === 0) return;
+
+    let frame = 0;
+    let attempts = 0;
+    const findCard = () =>
+      document.querySelector<HTMLElement>(`[data-gig-id="${CSS.escape(targetGigId)}"]`);
+
+    const scrollToTarget = () => {
+      const card = findCard();
+      if (!card) {
+        // The list re-renders after the fetch settles; keep trying briefly.
+        if (attempts < 20) {
+          attempts += 1;
+          frame = window.setTimeout(scrollToTarget, 250);
+        }
+        return;
+      }
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.classList.add("ring-2", "ring-brand-500", "ring-offset-2");
+      window.setTimeout(
+        () => card.classList.remove("ring-2", "ring-brand-500", "ring-offset-2"),
+        3000
+      );
+    };
+
+    scrollToTarget();
+    return () => window.clearTimeout(frame);
+  }, [searchParams, gigs]);
 
   // Sync URL query param with activeTab state
   useEffect(() => {
@@ -1519,6 +1563,14 @@ export default function Dashboard() {
 
           {/* Right: Add + current secondary section + profile */}
           <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2 md:gap-3 sm:ml-0">
+            {/* v1.37.0: RSVP change alerts for band leaders. */}
+            <NotificationCenter
+              notifications={notificationData}
+              onMarkAsRead={markNotificationRead}
+              onDismiss={dismissNotification}
+              onClearAll={clearNotifications}
+            />
+
             {/* Add Performance - icon only on mobile, button on desktop */}
             <button
               onClick={() => {

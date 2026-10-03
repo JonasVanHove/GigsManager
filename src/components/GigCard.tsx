@@ -264,6 +264,7 @@ const GigCard = memo(function GigCard({
   return (
     <div
       data-testid="gig-card"
+      data-gig-id={gig.id}
       className={`group w-full max-w-full overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
       gig.managerInstantPayment
         ? 'surface-card border-slate-300/80 bg-slate-100/60 backdrop-blur dark:border-slate-600/60 dark:bg-slate-800/50 dark:backdrop-blur'

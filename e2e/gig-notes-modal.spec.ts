@@ -10,20 +10,40 @@ import { test, expect } from '@playwright/test';
 
 const MOBILE = { width: 375, height: 667 };
 
-/** Opens the drawer for the first gig card on the overview. */
+/**
+ * Opens the drawer for the first gig card on the overview.
+ *
+ * `/demo` ends with a client-side redirect that is still settling when
+ * `waitForURL` resolves, and the overview fetch can be lost when several
+ * workers hit `next dev` at once — the card then simply never appears. So the
+ * trigger is waited for, and on timeout the dashboard is re-entered explicitly
+ * before waiting again. That is the same resilience band-invite-flow uses.
+ */
 async function openDrawer(page: import('@playwright/test').Page) {
   await page.goto('/demo');
   await page.waitForURL('**/app**', { timeout: 60_000 });
 
-  await page
-    .getByText(/loading performances/i)
-    .waitFor({ state: 'hidden', timeout: 60_000 })
-    .catch(() => {
-      // Placeholder already gone — the button wait below surfaces real failures.
-    });
-
   const trigger = page.getByTestId('gig-quick-notes-trigger').first();
-  await trigger.waitFor({ state: 'visible', timeout: 60_000 });
+
+  const waitForCards = async (timeout: number) => {
+    await page
+      .getByText(/loading performances/i)
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {
+        // Placeholder already gone — the trigger wait surfaces real failures.
+      });
+    await trigger.waitFor({ state: 'visible', timeout });
+  };
+
+  try {
+    await waitForCards(30_000);
+  } catch {
+    // The list never came up on the redirected tab; re-enter the dashboard.
+    await page.goto('/app?tab=gigs', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+    await waitForCards(60_000);
+  }
+
   await trigger.click();
   await expect(page.getByTestId('gig-quick-notes-modal')).toBeVisible();
 }

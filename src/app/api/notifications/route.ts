@@ -113,7 +113,13 @@ export async function PATCH(request: NextRequest) {
 
     const updated = await prisma.notification.update({
       where: { id: notifId },
-      data: { status: action },
+      // "dismiss" is the action name; the stored status is "dismissed", which
+      // is what NotificationCenter filters on. Storing the raw action made
+      // dismissed alerts keep showing forever.
+      data:
+        action === "dismiss"
+          ? { status: "dismissed", dismissedAt: new Date() }
+          : { status: "read", readAt: new Date() },
     });
 
     return NextResponse.json({

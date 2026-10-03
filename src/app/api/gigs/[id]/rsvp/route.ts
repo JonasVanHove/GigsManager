@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getBearerToken, validateTokenAndGetUser } from "@/lib/api-auth-helpers";
+import {
+  deliverRsvpChangeNotifications,
+  type DeliveryResult,
+} from "@/lib/rsvp-notifications";
 
 const VALID_STATUSES = ["ATTENDING", "DECLINED", "MAYBE", "PENDING"] as const;
 type RsvpStatus = (typeof VALID_STATUSES)[number];
@@ -90,7 +94,7 @@ export async function POST(
 
     const link = await prisma.gigBandMember.findFirst({
       where: { gigId, bandMemberId: { in: myMemberIds.map((m) => m.id) } },
-      select: { id: true },
+      select: { id: true, rsvpStatus: true },
     });
 
     if (!link) {
@@ -99,6 +103,10 @@ export async function POST(
         { status: 403 }
       );
     }
+
+    // Reading the previous answer lets us skip the (noisy) alert when someone
+    // re-saves the status they already had.
+    const previousStatus = link.rsvpStatus;
 
     const updated = await prisma.gigBandMember.update({
       where: { id: link.id },
@@ -112,6 +120,48 @@ export async function POST(
       orderBy: { bandMember: { name: "asc" } },
     });
 
+    const summary = summarise(all);
+
+    // Tell the band's leaders, but only for a real change: re-submitting the
+    // same answer would otherwise spam them with a "changed to Attending"
+    // alert every time the card re-renders and a click slips through.
+    let notified: DeliveryResult | null = null;
+    if (previousStatus !== status) {
+      const gig = await prisma.gig.findUnique({
+        where: { id: gigId },
+        select: {
+          id: true,
+          eventName: true,
+          date: true,
+          performers: true,
+          bandId: true,
+        },
+      });
+
+      if (gig) {
+        const band = gig.bandId
+          ? await prisma.bands.findUnique({
+              where: { id: gig.bandId },
+              select: { name: true },
+            })
+          : null;
+
+        notified = await deliverRsvpChangeNotifications({
+          gigId: gig.id,
+          gigName: gig.eventName,
+          gigDate: gig.date,
+          // Fall back to the performers string, which is how the rest of the
+          // app matches a gig to a band when bandId was never set.
+          bandName: band?.name ?? gig.performers ?? null,
+          actorUserId: user.id,
+          actorName: updated.bandMember.name,
+          status,
+          attendingCount: summary.attending,
+          totalCount: summary.total,
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       rsvp: {
@@ -120,7 +170,7 @@ export async function POST(
         memberId: updated.bandMemberId,
         memberName: updated.bandMember.name,
       },
-      summary: summarise(all),
+      summary,
       members: all.map((r) => ({
         id: r.id,
         memberId: r.bandMemberId,
@@ -128,6 +178,7 @@ export async function POST(
         avatarUrl: r.bandMember.avatarUrl,
         status: r.rsvpStatus,
       })),
+      notified,
     });
   } catch (err) {
     console.error("[POST /api/gigs/[id]/rsvp]", err);

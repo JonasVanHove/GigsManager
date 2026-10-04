@@ -2467,7 +2467,7 @@ export default function SetlistsTab() {
                   nothing to build on, while most players already have a
                   printed setlist somewhere. */}
               <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row">
-                <button type="button" onClick={() => setShowImportModal(true)} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 sm:w-auto">
+                <button type="button" data-testid="setlist-import-open" onClick={() => setShowImportModal(true)} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 sm:w-auto">
                   <Icons.Sparkles className="h-4 w-4" />
                   {isDutch ? "Setlist importeren" : "Import a setlist"}
                 </button>
@@ -2713,7 +2713,7 @@ export default function SetlistsTab() {
                       <button type="button" onClick={() => addSpecial("PAUZE")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.pause')}</button>
                       <button type="button" onClick={() => addSpecial("BIS")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.bis')}</button>
                       <button type="button" onClick={() => addSpecial("BINDTEKST")} className="min-w-0 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white dark:bg-white dark:text-slate-900 hover:scale-105 active:scale-95 transition">{t('setlists.bindtekst')}</button>
-                      <button type="button" onClick={() => setShowImportModal(true)} className="min-w-0 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 hover:bg-violet-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1">
+                      <button type="button" data-testid="setlist-import-open" onClick={() => setShowImportModal(true)} className="min-w-0 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 hover:bg-violet-100 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-1">
                         <Icons.Sparkles className="h-3 w-3" />
                         {isDutch ? "Importeren" : "Import"}
                       </button>

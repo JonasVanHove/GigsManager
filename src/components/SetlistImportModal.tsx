@@ -55,6 +55,8 @@ export function SetlistImportModal({
 
   const [tab, setTab] = useState<"text" | "image">("text");
   const [text, setText] = useState("");
+  // v1.43.0: a setlist.fm or any public page, fetched and parsed server-side.
+  const [url, setUrl] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState("");
@@ -84,6 +86,10 @@ export function SetlistImportModal({
         moveDown: "Omlaag",
         remove: "Verwijderen",
         hint: "Zeker groen: gekoppeld aan je bibliotheek. Blauw: check dit, wordt niet gekoppeld.",
+        urlLabel: "Of plak een link (bijv. setlist.fm)",
+        urlPlaceholder: "https://www.setlist.fm/setlist/...",
+        urlHint: "We lezen de pagina en halen de nummers eruit.",
+        or: "of",
       }
     : {
         title: "Import setlist",
@@ -107,6 +113,10 @@ export function SetlistImportModal({
         moveDown: "Move down",
         remove: "Remove",
         hint: "Green: linked to your library. Blue: review it, it will not be linked.",
+        urlLabel: "Or paste a link (e.g. setlist.fm)",
+        urlPlaceholder: "https://www.setlist.fm/setlist/...",
+        urlHint: "We read the page and pull the songs out of it.",
+        or: "or",
       };
 
   const handleFile = useCallback(async (file: File | null | undefined) => {
@@ -153,7 +163,11 @@ export function SetlistImportModal({
           "Content-Type": "application/json",
         },
         body: JSON.stringify(
-          tab === "image" ? { imageDataUrl: preview } : { text }
+          tab === "image"
+            ? { imageDataUrl: preview }
+            : // v1.43.0: a pasted link wins over pasted text, since the server can
+              // only build the prompt from one source at a time.
+              { text, url: url.trim() || undefined }
         ),
       });
 
@@ -180,7 +194,8 @@ export function SetlistImportModal({
     });
   }
 
-  const canParse = tab === "image" ? Boolean(preview) : text.trim().length > 0;
+  const canParse =
+    tab === "image" ? Boolean(preview) : text.trim().length > 0 || url.trim().length > 0;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -225,15 +240,46 @@ export function SetlistImportModal({
           </div>
 
           {tab === "text" ? (
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={10}
-              placeholder={copy.textarea}
-              className="field font-mono text-xs"
-            />
+            <div className="flex flex-col gap-3">
+              {/* v1.43.0: import straight from a public setlist page. */}
+              <div>
+                <label
+                  htmlFor="setlist-import-url"
+                  className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300"
+                >
+                  {copy.urlLabel}
+                </label>
+                <input
+                  id="setlist-import-url"
+                  data-testid="setlist-import-url"
+                  type="url"
+                  inputMode="url"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={copy.urlPlaceholder}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="field text-sm"
+                />
+                <p className="mt-1 text-xs text-slate-500">{copy.urlHint}</p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400">
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                <span>{copy.or}</span>
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              </div>
+
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={10}
+                placeholder={copy.textarea}
+                className="field font-mono text-xs"
+              />
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div>
               <input
                 ref={fileInputRef}
                 type="file"

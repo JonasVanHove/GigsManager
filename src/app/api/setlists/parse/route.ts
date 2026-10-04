@@ -7,6 +7,13 @@ import {
   parseModelJson,
 } from "@/lib/groq";
 import { findBestMatch } from "@/lib/setlist-fuzzy";
+import {
+  assertPublicUrl,
+  cleanScrapedText,
+  isProbablyUrl,
+  MAX_TEXT_CHARS,
+  normaliseImportedSetlist,
+} from "@/lib/ai-setlist-import";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -19,6 +26,60 @@ const AUTO_MATCH_THRESHOLD = 0.8;
 const SUGGEST_THRESHOLD = 0.5;
 
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+/** v1.43.0: cap on a fetched page so a huge document cannot exhaust memory. */
+const MAX_URL_BYTES = 3 * 1024 * 1024;
+const URL_FETCH_TIMEOUT_MS = 10_000;
+/**
+ * Fetches a pasted setlist URL and returns it as plain text.
+ *
+ * Every guard lives here, next to the fetch, because the point of the guard is
+ * the fetch: a user-supplied URL turns this endpoint into a proxy, so without
+ * `assertPublicUrl` anyone could ask the server to read cloud instance metadata
+ * or probe the private network the app runs in.
+ *
+ * Redirects are followed manually and re-validated, since a public URL that
+ * 302s to `http://169.254.169.254/` would otherwise walk straight past the check.
+ */
+async function fetchUrlAsText(input: string): Promise<string> {
+  let target = assertPublicUrl(input);
+
+  for (let hop = 0; hop < 3; hop += 1) {
+    const response = await fetch(target.toString(), {
+      redirect: "manual",
+      signal: AbortSignal.timeout(URL_FETCH_TIMEOUT_MS),
+      headers: {
+        // Some sites serve a stripped page to unknown agents.
+        "User-Agent": "Mozilla/5.0 (compatible; GigsManager/1.0; +setlist-import)",
+        Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
+      },
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) throw new Error("That link did not redirect anywhere useful.");
+      // Re-validate: a redirect is a new destination and needs its own check.
+      target = assertPublicUrl(new URL(location, target).toString());
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(`That page could not be read (HTTP ${response.status}).`);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType && !/text\/html|text\/plain|application\/xhtml/i.test(contentType)) {
+      throw new Error("That link is not a web page we can read.");
+    }
+
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > MAX_URL_BYTES) {
+      throw new Error("That page is too large to import.");
+    }
+    return cleanScrapedText(new TextDecoder("utf-8").decode(buffer));
+  }
+
+  throw new Error("That link redirected too many times.");
+}
 
 const OCR_SYSTEM_PROMPT = `You transcribe images of handwritten or printed setlists.
 Return ONLY a JSON object: { "text": "the full transcription, line breaks preserved" }.
@@ -33,22 +94,44 @@ Rules:
 const PARSE_SYSTEM_PROMPT = `You convert a raw, unstructured setlist into an ordered list of items.
 
 Return ONLY a JSON object:
-{ "items": [ { "kind": "song" | "special", "title": "string", "raw": "the original line" } ] }
+{
+  "title": "the setlist or show title, or null when there is none",
+  "items": [
+    {
+      "kind": "song" | "special",
+      "title": "string",
+      "key": "string or null",
+      "bpm": "number or null",
+      "tuning": "string or null",
+      "duration": "string or null",
+      "notes": "string or null",
+      "raw": "the original line"
+    }
+  ]
+}
 
 Rules:
 - "kind": "song" for actual songs, "special" for non-song blocks such as
   BINDTEKST, PAUZE, "tweede set", encore, DJ-set or any other stage cue.
 - For a "special" item, put the cue text in "title" (for example "BINDTEKST",
   "PAUZE", "Tweede set").
-- For a "song", "title" is ONLY the song title: strip the leading number
+- For a song, "title" is ONLY the song title: strip the leading number
   ("1.", "12)"), strip trailing annotations like "(Zinnia)" or "(Julot)",
   strip "key/tempo" fragments after a dash, and drop any artist name.
+- Put what you stripped into the structured fields instead of discarding it:
+  a trailing "in Am" becomes "key": "Am", "112 bpm" becomes "bpm": 112,
+  "drop D" becomes "tuning": "drop D". Use null when the source does not say.
+- Never invent a key or tempo that is not in the source. A null is correct; an
+  invented key silently writes the wrong thing on the music stand.
+- "notes" holds arrangement cues like "half time", "acoustic intro" or a name
+  in brackets. "duration" is whatever the source states, as written ("3:45").
+- "title" at the top level is the show or setlist title when the source names
+  one (often the artist or the festival). Use null otherwise.
 - "raw" keeps the untouched original line so the user can verify the match.
 - Preserve the original order exactly. Never merge or reorder songs.`;
 
-type RawItem = { kind?: string; title?: string; raw?: string };
-
-/** Resolves the internal user id from the Supabase JWT. */
+/**
+ * Resolves the internal user id from the Supabase JWT. */
 async function resolveUserId(request: NextRequest): Promise<string | null> {
   const fallback = getUserIdFromHeader(request);
   if (!fallback) return null;
@@ -92,10 +175,14 @@ export async function POST(request: NextRequest) {
     const text: string = typeof body?.text === "string" ? body.text : "";
     const imageDataUrl: string | null =
       typeof body?.imageDataUrl === "string" ? body.imageDataUrl : null;
+    // v1.43.0: a pasted setlist.fm / any public page. Distinguished from raw
+    // text by an explicit scheme, so "1. Enter Sandman" is never fetched.
+    const pastedUrl: string =
+      typeof body?.url === "string" ? body.url.trim() : "";
 
-    if (!text.trim() && !imageDataUrl) {
+    if (!text.trim() && !imageDataUrl && !pastedUrl) {
       return NextResponse.json(
-        { error: "Provide setlist text or an image to read." },
+        { error: "Provide setlist text, a link, or an image to read." },
         { status: 400 }
       );
     }
@@ -107,9 +194,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --- Step 1: OCR when an image was supplied ----------------------------
+    // --- Step 0: resolve a pasted URL into text -----------------------------
     let rawText = text.trim();
     let ocrUsed = false;
+    let fetchedUrl: string | null = null;
+
+    if (pastedUrl) {
+      if (!isProbablyUrl(pastedUrl)) {
+        return NextResponse.json(
+          { error: "That does not look like a link. Start it with https://" },
+          { status: 400 }
+        );
+      }
+      try {
+        rawText = await fetchUrlAsText(pastedUrl);
+        fetchedUrl = pastedUrl;
+      } catch (err) {
+        // A failed fetch is the user's problem to fix, not a server fault.
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "That link could not be read." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (rawText.length > MAX_TEXT_CHARS) {
+      rawText = rawText.slice(0, MAX_TEXT_CHARS);
+    }
 
     if (imageDataUrl) {
       if (imageDataUrl.length > MAX_IMAGE_BYTES * 1.4) {
@@ -154,14 +265,21 @@ export async function POST(request: NextRequest) {
         { role: "system", content: PARSE_SYSTEM_PROMPT },
         {
           role: "user",
-          content: `${rawText.slice(0, 8000)}\n\nConvert this setlist to JSON items.`,
+          content: `${rawText.slice(
+            0,
+            8000
+          )}\n\nConvert this setlist to JSON items.`,
         },
       ],
       { family: "text", json: true, temperature: 0, maxTokens: 2500 }
     );
 
-    const parsed = parseModelJson<{ items?: RawItem[] }>(parsedRaw);
-    const rawItems = parsed && Array.isArray(parsed.items) ? parsed.items : [];
+    // v1.43.0: normalise once, here, so key/bpm/tuning/duration/notes are a
+    // known shape downstream instead of whatever the model happened to emit.
+    const structured = normaliseImportedSetlist(
+      parseModelJson<unknown>(parsedRaw)
+    );
+    const rawItems = structured.songs;
 
     if (rawItems.length === 0) {
       return NextResponse.json(
@@ -186,14 +304,23 @@ export async function POST(request: NextRequest) {
 
     const items = rawItems
       .map((raw, index) => {
-        const title = (raw.title ?? "").trim();
+        const title = raw.title;
         const rawLine = (raw.raw ?? title).trim();
         const kind = raw.kind === "special" ? "special" : "song";
+        // v1.43.0: the structured fields ride along so the review stage can show
+        // (and let the user fix) key/bpm/tuning before saving.
+        const details = {
+          key: raw.key,
+          bpm: raw.bpm,
+          tuning: raw.tuning,
+          duration: raw.duration,
+          notes: raw.notes,
+        };
 
         if (!title) return null;
 
         if (kind === "special") {
-          return { index, kind: "special" as const, title, raw: rawLine, match: null };
+          return { index, kind: "special" as const, title, raw: rawLine, details, match: null };
         }
 
         const best = findBestMatch(title, candidates, 0);
@@ -225,7 +352,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        return { index, kind: "song" as const, title, raw: rawLine, match };
+        return { index, kind: "song" as const, title, raw: rawLine, details, match };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
@@ -233,6 +360,9 @@ export async function POST(request: NextRequest) {
       items,
       rawText,
       ocrUsed,
+      // v1.43.0: which input produced this, so the UI can label the review stage.
+      source: fetchedUrl ? "url" : imageDataUrl ? "image" : "text",
+      title: structured.title,
       librarySize: library.length,
       thresholds: { autoMatch: AUTO_MATCH_THRESHOLD, suggest: SUGGEST_THRESHOLD },
     });

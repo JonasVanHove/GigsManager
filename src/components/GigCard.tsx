@@ -12,6 +12,7 @@ import { getLocalNotes } from "@/lib/notes-store";
 import BandTag from "./BandTag";
 import GigQuickNotesModal from "./GigQuickNotesModal";
 import StageMode from "./StageMode";
+import SetlistExportMenu from "./SetlistExportMenu";
 import { Icons } from "./Icons";
 import { useSettings } from "./SettingsProvider";
 import { useAuth } from "./AuthProvider";
@@ -471,6 +472,10 @@ const GigCard = memo(function GigCard({
               >
                 <Icons.ListView className="h-4 w-4 shrink-0" />
               </button>
+              {/* v1.39.0: print / PDF stage sheet and tech playbook. */}
+              <div onClick={(e) => e.stopPropagation()}>
+                <SetlistExportMenu compact setlistId={gig.setlistId} isDutch={isDutch} />
+              </div>
             </>
           )}
           {onDuplicate && (

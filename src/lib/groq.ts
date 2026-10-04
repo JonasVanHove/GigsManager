@@ -11,12 +11,17 @@
 /**
  * Model registry.
  *
- * Text has exactly ONE active model: llama-3.3-70b-versatile (or whatever
- * GROQ_MODEL_NAME points at). There is deliberately no automatic text fallback
- * — an account whose key cannot reach llama-3.1-8b-instant just produced a
- * second failed request and a confusing trace, while the user-facing error was
- * identical either way. When the single model is unavailable, the caller gets
- * one clear, actionable message instead of a retry that cannot help.
+ * Text prefers llama-3.3-70b-versatile (or whatever `GROQ_MODEL_NAME` points at)
+ * and falls back through the models below before giving up.
+ *
+ * v1.39.0 restores the text fallback that v1.34.0 removed. The earlier removal
+ * reasoned that a second failing request produced the same user-facing error,
+ * and that held while *both* candidates came from one account's key. It stops
+ * holding once the primary is `GROQ_MODEL_NAME`: an org-scoped or revoked model
+ * id is rejected for everyone on that key while other candidates still serve,
+ * so walking the chain turns a hard failure into a working AI feature. The
+ * chain is still walked ONLY on `isModelUnavailable` — never on auth, rate
+ * limit or transport failures, which a retry cannot fix.
  *
  * `GROQ_MODEL_NAME` is the escape hatch for keys scoped to a different model.
  */
@@ -24,11 +29,12 @@ export const GROQ_MODELS = {
   text: ["llama-3.3-70b-versatile"] as const,
   vision: ["llama-3.2-11b-vision-preview"] as const,
   /**
-   * Vision keeps a fallback: OCR quality drops noticeably between the two
-   * preview models, and a vision request is already expensive, so a second
-   * attempt is worth it when the primary is rejected as unavailable.
+   * Ordered by preference. llama3-70b-8192 is the quality-preserving retry;
+   * llama-3.1-8b-instant is the last resort that keeps smaller/scoped keys
+   * working at all.
    */
   fallback: {
+    text: ["llama3-70b-8192", "llama-3.1-8b-instant"] as const,
     vision: ["llama-3.2-90b-vision-preview"] as const,
   },
 } as const;
@@ -48,15 +54,14 @@ export function preferredModel(family: GroqModelFamily): string {
 }
 
 /**
- * Models to try, primary first.
+ * Models to try, primary first, de-duplicated.
  *
- * Text resolves to a single element: a successful call never triggers a second
- * request, and an unavailable one is reported rather than retried.
+ * When `GROQ_MODEL_NAME` names something already in the fallback list, it is
+ * hoisted to the front and the duplicate dropped, so an operator overriding to
+ * a fallback id never retries the same model twice.
  */
 export function candidatesFor(family: GroqModelFamily): string[] {
-  const fallbacks =
-    family === "vision" ? GROQ_MODELS.fallback.vision : ([] as readonly string[]);
-  return Array.from(new Set([preferredModel(family), ...fallbacks]));
+  return Array.from(new Set([preferredModel(family), ...GROQ_MODELS.fallback[family]]));
 }
 
 /**

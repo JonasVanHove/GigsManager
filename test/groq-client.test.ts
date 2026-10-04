@@ -38,12 +38,32 @@ describe("groq model registry", () => {
     expect(GROQ_MODELS.text[0]).toBe("llama-3.3-70b-versatile");
   });
 
-  it("uses a single text model with no automatic fallback", () => {
-    // v1.34.0: llama-3.1-8b-instant is no longer retried automatically. Keys
-    // without access to it were paying a second failing request for nothing.
-    expect(GROQ_MODELS.text).not.toContain("llama-3.1-8b-instant");
-    expect("text" in GROQ_MODELS.fallback).toBe(false);
-    expect(candidatesFor("text")).toEqual(["llama-3.3-70b-versatile"]);
+  it("falls back through the text chain when the primary is unavailable", () => {
+    // v1.39.0 reverses v1.34.0, which removed this. The old rationale was that
+    // a second failing request produced the same error — true only while the
+    // primary was a fixed id on the same key. Once GROQ_MODEL_NAME can point at
+    // an org-scoped or revoked model, one candidate failing says nothing about
+    // the next, and the chain turns a dead AI feature into a working one.
+    expect(candidatesFor("text")).toEqual([
+      "llama-3.3-70b-versatile",
+      "llama3-70b-8192",
+      "llama-3.1-8b-instant",
+    ]);
+  });
+
+  it("de-duplicates when GROQ_MODEL_NAME names a fallback model", () => {
+    const original = process.env.GROQ_MODEL_NAME;
+    try {
+      process.env.GROQ_MODEL_NAME = "llama-3.1-8b-instant";
+      // Overriding to a chain member must not retry that same model twice.
+      expect(candidatesFor("text")).toEqual([
+        "llama-3.1-8b-instant",
+        "llama3-70b-8192",
+      ]);
+    } finally {
+      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
+      else process.env.GROQ_MODEL_NAME = original;
+    }
   });
 
   it("still falls back for vision, where a second attempt pays off", () => {
@@ -240,16 +260,30 @@ describe("callGroq model fallback", () => {
     expect(body.model).toBe("llama-3.3-70b-versatile");
   });
 
-  it("does NOT retry a text call on another model", async () => {
-    // v1.34.0: text is single-model. A retired primary surfaces one clear
-    // message instead of a second request that cannot succeed.
+  it("walks the text chain when the primary model is retired", async () => {
+    // v1.39.0 restores the chain text lost in v1.34.0. A 404 primary says
+    // nothing about whether the next candidate can serve, so try it.
+    fetchMock
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(okResponse("from fallback"));
+
+    const out = await callGroq([{ role: "user", content: "hi" }], { family: "text" });
+
+    expect(out).toBe("from fallback");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retryBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(retryBody.model).toBe("llama3-70b-8192");
+  });
+
+  it("exhausts the whole chain before surfacing a clean message", async () => {
     fetchMock.mockResolvedValue(
       groqResponse(404, { error: { code: "model_not_found" } })
     );
     await expect(
       callGroq([{ role: "user", content: "hi" }], { family: "text" })
     ).rejects.toThrow(/does not have access/i);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // All three candidates tried, then a clean message — not a raw trace.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("succeeds on exactly one call when the text model works", async () => {
@@ -260,9 +294,10 @@ describe("callGroq model fallback", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("surfaces a clean message when the single text model lacks access", async () => {
+  it("surfaces a clean message when every text model lacks access", async () => {
     // The real-world shape: a 400 invalid_request_error saying the model is
-    // not enabled. It must not surface as a raw trace.
+    // not enabled. It must not surface as a raw trace, even after the chain
+    // has been walked to the end.
     fetchMock.mockResolvedValue(
       groqResponse(400, {
         error: {
@@ -274,7 +309,7 @@ describe("callGroq model fallback", () => {
     await expect(
       callGroq([{ role: "user", content: "hi" }])
     ).rejects.toThrow(/does not have access/i);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("does NOT retry on an auth failure", async () => {

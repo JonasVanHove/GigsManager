@@ -6,6 +6,7 @@ import { useAuth } from "./AuthProvider";
 import { useSettings } from "./SettingsProvider";
 import { useToast } from "./ToastContainer";
 import { createPrintDocument } from "@/lib/print-document";
+import SetlistExportMenu from "./SetlistExportMenu";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useTranslation } from "react-i18next";
 import LoadingSpinner from "./LoadingSpinner";
@@ -2549,6 +2550,18 @@ export default function SetlistsTab() {
                     <span aria-hidden>📄</span>
                     <span className="hidden md:inline">{t('setlists.exportPdf')}</span>
                   </button>
+
+                  {/* v1.39.0: stage-readable sheet + band/tech playbook. */}
+                  <SetlistExportMenu
+                    setlistId={draft.id}
+                    setlistName={draft.naam}
+                    items={draft.items}
+                    playbook={{
+                      venueName: null,
+                      venueLocation: draft.locatie,
+                      date: draft.datum,
+                    }}
+                  />
 
                   {/* Duplicate */}
                   <button type="button" onClick={duplicateSetlist} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 transition-all duration-200 shrink-0 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">

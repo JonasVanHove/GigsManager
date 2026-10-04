@@ -13,6 +13,7 @@ import BandTag from "./BandTag";
 import GigQuickNotesModal from "./GigQuickNotesModal";
 import StageMode from "./StageMode";
 import SetlistExportMenu from "./SetlistExportMenu";
+import GigFinancialsModal, { type FinancialsMember } from "./GigFinancialsModal";
 import { Icons } from "./Icons";
 import { useSettings } from "./SettingsProvider";
 import { useAuth } from "./AuthProvider";
@@ -115,8 +116,47 @@ const GigCard = memo(function GigCard({
   const [showQuickNotes, setShowQuickNotes] = useState(false);
   // v1.38.0: Stage Mode — the full-screen on-stage view of the gig's setlist.
   const [showStageMode, setShowStageMode] = useState(false);
+  // v1.40.0: expenses + payout split.
+  const [showFinancials, setShowFinancials] = useState(false);
+  const [financialMembers, setFinancialMembers] = useState<FinancialsMember[]>([]);
+  const [financialsLoading, setFinancialsLoading] = useState(false);
   const { locale } = useSettings();
   const isDutch = locale.startsWith("nl");
+
+  // v1.40.0: open the financials modal and pull the payout roster.
+  //
+  // The gig list carries no GigBandMember rows, so they are fetched here —
+  // lazily, on first open, and only for the gig actually being inspected.
+  const openFinancials = useCallback(async () => {
+    setShowFinancials(true);
+    if (financialMembers.length > 0 || financialsLoading) return;
+    setFinancialsLoading(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const res = await fetch(`/api/gigs/${gig.id}/band-members`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setFinancialMembers(
+        (data.bandMembers ?? []).map((m: any) => ({
+          id: m.id,
+          name: m.name ?? m.bandMember?.name ?? "Member",
+          included: m.payoutIncluded !== false,
+          customAmount:
+            m.customPayoutAmount === null || m.customPayoutAmount === undefined
+              ? null
+              : Number(m.customPayoutAmount),
+          isSelf: Boolean(m.isSelf),
+        }))
+      );
+    } catch (error) {
+      console.error("[gig-financials] member load failed:", error);
+    } finally {
+      setFinancialsLoading(false);
+    }
+  }, [gig.id, financialMembers.length, financialsLoading, getAccessToken]);
 
   // ── RSVP state ────────────────────────────────────────────────────────
   const [rsvpData, setRsvpData] = useState<RsvpData | null>(null);
@@ -478,6 +518,19 @@ const GigCard = memo(function GigCard({
               </div>
             </>
           )}
+          {/* v1.40.0: expenses, net profit and the payout split. */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openFinancials();
+            }}
+            data-testid="gig-financials-button"
+            title={isDutch ? "Financiën" : "Financials"}
+            aria-label={isDutch ? "Financiën" : "Financials"}
+            className="rounded-lg p-2 text-emerald-600 transition-all duration-200 hover:bg-emerald-100/60 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+          >
+            <Icons.Wallet className="h-4 w-4 shrink-0" />
+          </button>
           {onDuplicate && (
             <button
               onClick={(e) => {
@@ -883,6 +936,17 @@ const GigCard = memo(function GigCard({
           setlistId={gig.setlistId}
           isDutch={isDutch}
           onClose={() => setShowStageMode(false)}
+        />
+      )}
+
+      {showFinancials && (
+        <GigFinancialsModal
+          gig={gig}
+          members={financialMembers}
+          fmtCurrency={fmtCurrency}
+          canEdit={!financialsLoading || financialMembers.length > 0}
+          isDutch={isDutch}
+          onClose={() => setShowFinancials(false)}
         />
       )}
     </div>

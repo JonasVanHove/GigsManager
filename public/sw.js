@@ -1,7 +1,7 @@
-// Service Worker for GigsManager
+﻿// Service Worker for GigsManager
 // Provides offline support and intelligent caching strategies
 
-const CACHE_NAME = 'gigs-manager-v1.39.0';
+const CACHE_NAME = 'gigs-manager-v1.40.0';
 // Every cache is derived from CACHE_NAME so a single version bump invalidates
 // all of them. They used to be pinned at "-v3", which meant bumping CACHE_NAME
 // alone left stale JS/CSS/HTML in those caches forever.
@@ -15,7 +15,7 @@ const OFFLINE_CACHE = `${CACHE_NAME}-offline`;
 
 /**
  * Caches written by earlier releases. Their names are not derived from
- * CACHE_NAME, so they can never be matched by the keep-list below — they are
+ * CACHE_NAME, so they can never be matched by the keep-list below â€” they are
  * removed explicitly, otherwise a user stays stuck on an old bundle.
  */
 const LEGACY_CACHE_NAMES = [
@@ -342,7 +342,7 @@ self.addEventListener('fetch', (event) => {
   // Strategy 3b: Media (audio backing tracks / demos) - cache first.
   // Backing-track files are immutable uploads, so once a setlist is pinned
   // ("Offline Opslaan") the cached copy in gigs-manager-offline-v1 serves
-  // instantly — even mid-gig with zero connectivity — and only falls back
+  // instantly â€” even mid-gig with zero connectivity â€” and only falls back
   // to the network when never cached before.
   if (destination === 'audio' || destination === 'video') {
     event.respondWith(

@@ -70,6 +70,21 @@ model Gig {
   /// Bandmates normally see the money (fees, bonuses), because transparent
   /// terms are the point of sharing. The owner can opt a specific gig out.
   isFinancialHidden          Boolean         @default(false)
+  // --- Gig-level cost accounting (v1.40.0) --------------------------------
+  /// Deductions taken off the gross before the band is paid. All four default to
+  /// 0 so existing gigs keep the exact behaviour they had before this feature.
+  paExpenses                 Float           @default(0)
+  travelExpenses             Float           @default(0)
+  otherExpenses              Float           @default(0)
+  /// Booking agent / manager commission.
+  commission                 Float           @default(0)
+  /// Overrides `performanceFee + technicalFee` as the gross when set.
+  ///
+  /// Deliberately nullable rather than a plain `totalFee` column: the gross is
+  /// already recorded by performanceFee + technicalFee, and a non-null default-0
+  /// column would read as "€0 gross" on every gig created before v1.40.0.
+  /// null means "derive it from the fees", which is what almost every gig wants.
+  totalFeeOverride           Float?
   setlist                    Setlist?        @relation(fields: [setlistId], references: [id])
   user                       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   band                       bands?          @relation(fields: [bandId], references: [id])
@@ -344,6 +359,14 @@ model GigBandMember {
   createdAt               DateTime   @default(now())
   updatedAt               DateTime   @updatedAt
   customPerformanceAmount Float?
+  // --- Payout distribution (v1.40.0) ---------------------------------------
+  /// Whether this member shares in the net profit. Default true so a gig whose
+  /// lineup is already curated needs no extra setup; an explicit false models a
+  /// guest or a musician who is paid a flat fee instead of a share.
+  payoutIncluded         Boolean @default(true)
+  /// Overrides this member's computed share with a fixed amount, in euros.
+  /// null = take the computed share.
+  customPayoutAmount     Float?
   bandMember              BandMember @relation(fields: [bandMemberId], references: [id], onDelete: Cascade)
   gig                     Gig        @relation(fields: [gigId], references: [id], onDelete: Cascade)
 

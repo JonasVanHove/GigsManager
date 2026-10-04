@@ -336,17 +336,79 @@ export async function PATCH(
       data.notes = notes.length > 0 ? notes : null;
     }
 
-    if (Object.keys(data).length === 0) {
+    // --- v1.40.0: gig-level cost accounting ---------------------------------
+    // Each expense is coerced to a finite, non-negative number: a negative
+    // expense is a data-entry slip, and storing it would inflate every payout
+    // derived from the net.
+    const EXPENSE_FIELDS = [
+      "paExpenses",
+      "travelExpenses",
+      "otherExpenses",
+      "commission",
+    ] as const;
+    for (const field of EXPENSE_FIELDS) {
+      if (body[field] === undefined) continue;
+      const value = Number(body[field]);
+      data[field] = Number.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    // The gross override is nullable: absent/null clears it and lets the gig
+    // fall back to performanceFee + technicalFee. An explicit 0 is a real zero.
+    if ("totalFeeOverride" in body) {
+      const raw = body.totalFeeOverride;
+      if (raw === null || raw === "") {
+        data.totalFeeOverride = null;
+      } else {
+        const value = Number(raw);
+        data.totalFeeOverride = Number.isFinite(value) && value > 0 ? value : 0;
+      }
+    }
+
+    if (Object.keys(data).length === 0 && !("payouts" in body)) {
       return NextResponse.json(
         { error: "No supported fields to update" },
         { status: 400 }
       );
     }
 
-    const gig = await prisma.gig.update({
-      where: { id: params.id },
-      data,
-    });
+    const gig =
+      Object.keys(data).length > 0
+        ? await prisma.gig.update({ where: { id: params.id }, data })
+        : existing;
+
+    // Per-member participation and fixed-amount overrides. Scoped to this gig
+    // and matched on the join row, so a bandMemberId from another gig cannot be
+    // touched through it.
+    if (Array.isArray(body.payouts)) {
+      const joinRows = await prisma.gigBandMember.findMany({
+        where: { gigId: params.id },
+        select: { id: true },
+      });
+      const allowed = new Set(joinRows.map((r) => r.id));
+
+      await prisma.$transaction(
+        body.payouts
+          .filter(
+            (p: any) => p && allowed.has(String(p.gigBandMemberId ?? ""))
+          )
+          .map((p: any) => {
+            const amount =
+              p.customPayoutAmount === null ||
+              p.customPayoutAmount === undefined ||
+              p.customPayoutAmount === ""
+                ? null
+                : Math.max(0, Number(p.customPayoutAmount) || 0);
+            return prisma.gigBandMember.update({
+              where: { id: String(p.gigBandMemberId) },
+              data: {
+                payoutIncluded: p.payoutIncluded !== false,
+                customPayoutAmount: amount,
+              },
+            });
+          })
+      );
+    }
+
     invalidateCache(`${user.id}:gigs`);
 
     return NextResponse.json({ gig });

@@ -11,6 +11,13 @@ export interface Gig {
   isCharity: boolean; // whether this is a charity/pro bono performance
   isTentative: boolean; // provisional booking, not yet definitive
   isFinancialHidden?: boolean; // hide fees/payouts from bandmates shared on this gig
+  // --- Gig-level cost accounting (v1.40.0) ---
+  paExpenses?: number; // sound & lighting
+  travelExpenses?: number; // transport / fuel
+  otherExpenses?: number; // anything else
+  commission?: number; // booking agent fee
+  /** null/undefined = derive the gross from performanceFee + technicalFee. */
+  totalFeeOverride?: number | null;
   performanceFee: number;
   performanceFeeUnknown: boolean; // true when fee is still unknown
   technicalFee: number;
@@ -93,6 +100,13 @@ export interface GigFormData {
   isCharity: boolean; // whether this is a charity/pro bono performance
   isTentative: boolean; // provisional booking, not yet definitive
   isFinancialHidden?: boolean; // hide fees/payouts from bandmates shared on this gig
+  // --- Gig-level cost accounting (v1.40.0) ---
+  paExpenses?: number; // sound & lighting
+  travelExpenses?: number; // transport / fuel
+  otherExpenses?: number; // anything else
+  commission?: number; // booking agent fee
+  /** null/undefined = derive the gross from performanceFee + technicalFee. */
+  totalFeeOverride?: number | null;
   performanceFee: number;
   performanceFeeUnknown: boolean; // true when fee is still unknown
   technicalFee: number;

@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   GROQ_MODELS,
   callGroq,
@@ -100,8 +100,8 @@ describe("groq model registry", () => {
 
   it("still falls back for vision, where a second attempt pays off", () => {
     expect(candidatesFor("vision")).toEqual([
-      "llama-3.2-11b-vision-preview",
-      "llama-3.2-90b-vision-preview",
+      "llama-3.2-11b-vision-instruct",
+      "llama-3.2-90b-vision-instruct",
     ]);
   });
 
@@ -114,14 +114,14 @@ describe("groq model registry", () => {
 
   it("keeps the vision primary independent of the text chain", () => {
     // A text model cannot read an image, so the two families never share a head.
-    expect(preferredModel("vision")).toBe("llama-3.2-11b-vision-preview");
+    expect(preferredModel("vision")).toBe("llama-3.2-11b-vision-instruct");
     expect(candidatesFor("vision")).not.toContain(preferredModel("text"));
   });
 
   it("only lists currently supported models", () => {
     // Retired ids were dropped in v1.33.2; v1.33.3 split primary from fallback.
     expect(GROQ_MODELS.text).toEqual(["llama3-70b-8192"]);
-    expect(GROQ_MODELS.vision).toEqual(["llama-3.2-11b-vision-preview"]);
+    expect(GROQ_MODELS.vision).toEqual(["llama-3.2-11b-vision-instruct"]);
 
     const all = [
       ...GROQ_MODELS.text,
@@ -176,8 +176,8 @@ describe("groq model registry", () => {
   });
 
   it("has a vision primary plus a defensive fallback", () => {
-    expect(GROQ_MODELS.vision[0]).toBe("llama-3.2-11b-vision-preview");
-    expect(GROQ_MODELS.fallback.vision).toEqual(["llama-3.2-90b-vision-preview"]);
+    expect(GROQ_MODELS.vision[0]).toBe("llama-3.2-11b-vision-instruct");
+    expect(GROQ_MODELS.fallback.vision).toEqual(["llama-3.2-90b-vision-instruct"]);
   });
 
   it("explains a missing key permission instead of leaking the trace", () => {
@@ -265,7 +265,7 @@ describe("describeGroqFailure", () => {
 describe("getGroqModelName / resolved-model cache (v1.42.0)", () => {
   it("returns the head of the chain when nothing is resolved yet", () => {
     expect(getGroqModelName()).toBe("llama3-70b-8192");
-    expect(getGroqModelName("vision")).toBe("llama-3.2-11b-vision-preview");
+    expect(getGroqModelName("vision")).toBe("llama-3.2-11b-vision-instruct");
   });
 
   it("ignores GROQ_MODEL_NAME entirely — the variable is gone", () => {
@@ -375,11 +375,14 @@ describe("chatCandidatesFrom", () => {
   const feed = [
     "llama-3.1-8b-instant",
     "llama-3.3-70b-versatile",
-    "llama-3.2-11b-vision-preview",
+    "llama-3.2-11b-vision-instruct",
+    "llama-3.2-90b-vision-instruct",
     "meta-llama/llama-4-scout-17b-16e-instruct",
+    "qwen/qwen2-vl-7b-instruct",
     "whisper-large-v3",
     "groq-guard-llama-3-70b",
     "text-embedding-ada-002",
+    "clip-vit-base-patch32",
     "compound-beta-mini",
   ];
 
@@ -393,7 +396,9 @@ describe("chatCandidatesFrom", () => {
 
   it("keeps only vision models for vision calls", () => {
     expect(chatCandidatesFrom(feed, "vision")).toEqual([
-      "llama-3.2-11b-vision-preview",
+      "llama-3.2-11b-vision-instruct",
+      "llama-3.2-90b-vision-instruct",
+      "qwen/qwen2-vl-7b-instruct",
     ]);
   });
 
@@ -407,6 +412,38 @@ describe("chatCandidatesFrom", () => {
   it("returns nothing for an empty or malformed feed", () => {
     expect(chatCandidatesFrom([], "text")).toEqual([]);
     expect(chatCandidatesFrom([null as any, 42 as any, {} as any], "text")).toEqual([]);
+  });
+
+  it("never offers an embeddings model to a chat endpoint", () => {
+    // CLIP used to be classified as a vision model, which is why it sat in the
+    // vision retry list: every attempt against it fails, and the chain walks on.
+    const out = chatCandidatesFrom(feed, "vision");
+    expect(out).not.toContain("clip-vit-base-patch32");
+    expect(out).not.toContain("whisper-large-v3");
+    expect(out).not.toContain("text-embedding-ada-002");
+  });
+
+  it("picks up vision models whose ids are not llama-3.2", () => {
+    // The point of discovery: a key may only be able to reach a newer vision
+    // model the registry has never heard of.
+    expect(chatCandidatesFrom(["qwen/qwen2.5-vl-72b-instruct"], "vision")).toEqual([
+      "qwen/qwen2.5-vl-72b-instruct",
+    ]);
+  });
+
+  it("recognises -vl- models as vision, not text", () => {
+    // Regression: the Qwen vision-language models have no "vision" substring, so
+    // they used to be offered to text calls (wasting a retry) while being
+    // invisible to vision discovery.
+    const feed = ["qwen/qwen2-vl-7b-instruct", "llama3-70b-8192"];
+    expect(chatCandidatesFrom(feed, "text")).toEqual(["llama3-70b-8192"]);
+    expect(chatCandidatesFrom(feed, "vision")).toEqual(["qwen/qwen2-vl-7b-instruct"]);
+  });
+
+  it("does not mistake unrelated words containing vl for vision models", () => {
+    // "vllm" and "vlog" are not vision models.
+    const feed = ["some-vllm-build", "my-vlog-entry"];
+    expect(chatCandidatesFrom(feed, "vision")).toEqual([]);
   });
 });
 
@@ -604,7 +641,7 @@ describe("callGroq model fallback", () => {
         groqResponse(400, {
           error: {
             code: "invalid_request_error",
-            message: "The model llama-3.2-11b-vision-preview is not enabled for your organization",
+            message: "The model llama-3.2-11b-vision-instruct is not enabled for your organization",
           },
         })
       )
@@ -613,6 +650,62 @@ describe("callGroq model fallback", () => {
     const result = await callGroq([{ role: "user", content: "hi" }], { family: "vision" });
     expect(result).toBe("served by fallback");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("recovers vision through discovery when the whole static chain is retired", async () => {
+    // v1.44.0: this is the scenario that broke photo OCR. Both configured
+    // vision ids were retired by Groq, so nothing in the registry could serve a
+    // request. Discovery must find a working one instead of failing.
+    process.env.GROQ_API_KEY = "vision-key";
+    fetchMock
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } })) // 11b-instruct
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } })) // 90b-instruct
+      .mockResolvedValueOnce(
+        modelsResponse(["qwen/qwen2.5-vl-72b-instruct", "clip-vit-base-patch32"])
+      )
+      .mockResolvedValueOnce(okResponse("read from the photo"));
+
+    const out = await callGroq([{ role: "user", content: "hi" }], { family: "vision" });
+    expect(out).toBe("read from the photo");
+
+    // The retry used a discovered vision model, not one from the registry.
+    const finalBody = JSON.parse(
+      fetchMock.mock.calls[fetchMock.mock.calls.length - 1][1].body
+    );
+    expect(finalBody.model).toBe("qwen/qwen2.5-vl-72b-instruct");
+    expect(resolvedModel("vision-key", "vision")).toBe("qwen/qwen2.5-vl-72b-instruct");
+  });
+
+  it("goes straight to the discovered vision model on the next call", async () => {
+    process.env.GROQ_API_KEY = "vision-key-2";
+    fetchMock
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(modelsResponse(["qwen/qwen2.5-vl-72b-instruct"]))
+      .mockResolvedValueOnce(okResponse("first"));
+    await callGroq([{ role: "user", content: "hi" }], { family: "vision" });
+    const afterFirst = fetchMock.mock.calls.length;
+
+    // One request, straight to the model that worked: no chain walk, no probe.
+    fetchMock.mockResolvedValueOnce(okResponse("second"));
+    const out = await callGroq([{ role: "user", content: "hi" }], { family: "vision" });
+
+    expect(out).toBe("second");
+    expect(fetchMock.mock.calls.length).toBe(afterFirst + 1);
+    const body = JSON.parse(fetchMock.mock.calls[afterFirst][1].body);
+    expect(body.model).toBe("qwen/qwen2.5-vl-72b-instruct");
+  });
+
+  it("caches vision and text separately", async () => {
+    // A key resolved for text must not send an image to a text-only model.
+    process.env.GROQ_API_KEY = "both-key";
+    fetchMock
+      .mockResolvedValueOnce(okResponse("text answer"));
+    await callGroq([{ role: "user", content: "hi" }], { family: "text" });
+
+    expect(resolvedModel("both-key", "text")).toBe("llama3-70b-8192");
+    expect(resolvedModel("both-key", "vision")).toBeNull();
+    expect(getGroqModelName("vision", "both-key")).toBe("llama-3.2-11b-vision-instruct");
   });
 
   it("honours an explicit model and skips the chain", async () => {

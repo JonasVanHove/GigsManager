@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Minimal Groq (groq.com) client for server-side use.
  *
  * Kept dependency-free on purpose: Groq exposes an OpenAI-compatible
@@ -30,7 +30,11 @@
  */
 export const GROQ_MODELS = {
   text: ["llama3-70b-8192"] as const,
-  vision: ["llama-3.2-11b-vision-preview"] as const,
+  // v1.44.0: the `-preview` ids were retired by Groq. The active vision models
+  // carry the `-instruct` suffix, so a key pointed at the old preview ids now
+  // fails every vision call — which is what broke photo OCR and gig-document
+  // summarisation while text AI kept working.
+  vision: ["llama-3.2-11b-vision-instruct"] as const,
   /**
    * Ordered by preference. llama-3.1-8b-instant is the last-resort retry that
    * keeps the smallest/scoped keys working at all; the 3.3 flagship is kept at
@@ -38,7 +42,7 @@ export const GROQ_MODELS = {
    */
   fallback: {
     text: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"] as const,
-    vision: ["llama-3.2-90b-vision-preview"] as const,
+    vision: ["llama-3.2-90b-vision-instruct"] as const,
   },
 } as const;
 
@@ -163,9 +167,17 @@ export async function listAvailableModels(apiKey: string): Promise<string[]> {
  * `/chat/completions` and just burn the retry budget.
  */
 export function chatCandidatesFrom(available: string[], family: GroqModelFamily): string[] {
-  const isVision = (id: string) => /vision|llava|whisper|clip/i.test(id);
+  // `clip` was previously treated as a vision model. It is not: on Groq it is an
+  // embeddings endpoint, so offering it as a chat candidate just burns a retry.
+  //
+  // `-vl-` matters as much as "vision": the Qwen vision-language models
+  // (qwen2-vl, qwen2.5-vl) are named that way and contain no "vision" substring.
+  // Without it they were offered to *text* calls and skipped by vision calls.
+  const isVision = (id: string) => /vision|llava|(^|[/\-_])vl([\d.\-_])/i.test(id);
   const nonChat = (id: string) =>
-    /guard|moderation|safety|whisper|embed|rerank|audio|speech|compound|scim/i.test(id);
+    /guard|moderation|safety|whisper|embed|rerank|clip|audio|speech|compound|scim/i.test(
+      id
+    );
 
   return available.filter((id): id is string => {
     // The feed comes from a remote API, so guard the shape rather than trusting

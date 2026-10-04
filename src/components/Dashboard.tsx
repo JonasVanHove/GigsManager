@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense, lazy, useDeferredValue, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -321,7 +321,7 @@ export default function Dashboard() {
   const [showBulkEditor, setShowBulkEditor] = useState(false);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(activeTab === "gigs");
 
-  // v1.37.0: RSVP alerts for band leaders (see NotificationCenter in the header).
+  // Header alerts (see NotificationCenter). RSVP alerts were removed in v1.41.0.
   const {
     notifications: notificationData,
     markAsRead: markNotificationRead,
@@ -495,7 +495,7 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [gigs]);
 
-  // v1.37.0: deep link from an RSVP alert (`/app?tab=gigs&gig=<id>`).
+  // Deep link from an alert (`/app?tab=gigs&gig=<id>`).
   // Scrolls the referenced card into view and rings it briefly so the eye
   // lands on the right row instead of the top of the list.
   useEffect(() => {
@@ -1563,7 +1563,7 @@ export default function Dashboard() {
 
           {/* Right: Add + current secondary section + profile */}
           <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2 md:gap-3 sm:ml-0">
-            {/* v1.37.0: RSVP change alerts for band leaders. */}
+            {/* Header alerts */}
             <NotificationCenter
               notifications={notificationData}
               onMarkAsRead={markNotificationRead}

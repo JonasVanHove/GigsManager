@@ -53,6 +53,8 @@ export interface Gig {
   organizerEmail?: string | null;
   organizerPhone?: string | null;
   bandId?: string | null;
+  /** Set by the API from band-sharing: this viewer may edit the gig. Absent means unknown. */
+  canEdit?: boolean;
   band?: {
     id: string;
     name: string;

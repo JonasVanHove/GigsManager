@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { calculateGigFinancialBreakdown, type PayoutMember } from "@/lib/financials";
 import { useAuth } from "./AuthProvider";
 import { useToast } from "./ToastContainer";
@@ -114,6 +115,23 @@ export default function GigFinancialsModal({
     }))
   );
   const [saving, setSaving] = useState(false);
+  // Portals need a real DOM. The card renders this on the client only, but the
+  // guard keeps SSR and the first client render in agreement.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  /**
+   * Renders into `document.body` rather than inline.
+   *
+   * The modal lives inside a gig card, and a card is not a neutral parent: any
+   * ancestor with a transform, filter or containment turns `position: fixed`
+   * into a box relative to *that* element instead of the viewport. The card's
+   * own header then paints over the dialog and swallows clicks — which is
+   * exactly what Safari did to the Cancel button. Portalling to <body> removes
+   * the card from the containing-block chain entirely.
+   */
+  const portal = (node: React.ReactNode) =>
+    mounted ? createPortal(node, document.body) : null;
 
   // Escape closes, and the body stops scrolling behind the sheet.
   useEffect(() => {
@@ -209,7 +227,7 @@ export default function GigFinancialsModal({
 
   // A hidden gig shows nothing at all — not even the total.
   if (gig.isFinancialHidden) {
-    return (
+    return portal(
       <div
         data-testid="gig-financials-modal"
         className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-4 sm:items-center"
@@ -242,7 +260,7 @@ export default function GigFinancialsModal({
   // own line is noise; hiding the breakdown entirely would be mysterious.
   if (!canEdit) {
     const mine = readOnlyMember ? amountFor(readOnlyMember.id) : breakdown.payoutPerMember;
-    return (
+    return portal(
       <div
         data-testid="gig-financials-modal"
         className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-4 sm:items-center"
@@ -295,7 +313,7 @@ export default function GigFinancialsModal({
   }
 
   // ── Owner / leader view ────────────────────────────────────────────────
-  return (
+  return portal(
     <div
       data-testid="gig-financials-modal"
       className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-4 sm:items-center"

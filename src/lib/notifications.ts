@@ -4,7 +4,6 @@ export type NotificationType =
   | "payment_overdue"
   | "upcoming_gig"
   | "band_paid"
-  | "rsvp_changed"
   | "custom";
 export type NotificationStatus = "unread" | "read" | "dismissed";
 
@@ -89,12 +88,6 @@ export function formatNotificationMessage(
         title: "Band Payment Sent",
         message: `${data.amount} paid to band for ${data.event}`,
         icon: "✅",
-      };
-    case "rsvp_changed":
-      return {
-        title: "Attendance updated",
-        message: `${data.member} is ${data.statusLabel} for ${data.event}`,
-        icon: data.icon || "📋",
       };
     case "custom":
     default:

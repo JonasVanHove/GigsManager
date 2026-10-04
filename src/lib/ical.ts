@@ -85,28 +85,10 @@ export interface IcalGig {
   performers?: string | null;
   notes?: string | null;
   isTentative?: boolean;
-  /** The viewer's own attendance answer, when the gig is shared with them. */
-  rsvpStatus?: string | null;
-}
-
-/** Human-readable attendance label embedded in the event description. */
-export function rsvpLabel(status?: string | null): string | null {
-  switch (status) {
-    case "ATTENDING":
-      return "Attending";
-    case "DECLINED":
-      return "Declined";
-    case "MAYBE":
-      return "Maybe";
-    case "PENDING":
-      return "Awaiting reply";
-    default:
-      return null;
-  }
 }
 
 /**
- * Builds the DESCRIPTION body: notes, band and the viewer's RSVP answer.
+ * Builds the DESCRIPTION body: notes, band and whether the booking is firm.
  *
  * Order is fixed so the output is diffable between polls — calendar clients
  * refetch constantly and an unstable body makes them redraw for no reason.
@@ -118,9 +100,6 @@ export function buildDescription(gig: IcalGig): string {
 
   const band = gig.performers?.trim();
   if (band) parts.push(`Band: ${band}`);
-
-  const attendance = rsvpLabel(gig.rsvpStatus);
-  if (attendance) parts.push(`My attendance: ${attendance}`);
 
   if (gig.isTentative) parts.push("Tentative booking");
 

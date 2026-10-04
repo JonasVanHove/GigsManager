@@ -54,12 +54,13 @@ export async function GET(
 
   const url = _request.nextUrl;
   const windowDays = clampWindow(url.searchParams.get("days"));
-  // `attending=1` narrows the feed to gigs this user RSVP'd "Attending".
-  const onlyAttending = url.searchParams.get("attending") === "1";
   const now = new Date();
   const since = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
 
-  const gigs = await loadFeedGigs(user.id, { since, onlyAttending });
+  // v1.41.0: the `attending=1` filter is gone with RSVP. Every gig shared
+  // through a band membership is one the viewer is playing, so the feed is just
+  // "my gigs plus my band's".
+  const gigs = await loadFeedGigs(user.id, since);
 
   const body = buildIcalFeed(gigs, {
     calendarName: `GigsManager - ${user.name || user.email}`,
@@ -88,40 +89,18 @@ function clampWindow(raw: string | null): number {
  * Loads the gigs a feed should contain: the user's own, plus the ones shared
  * with them through a BandMember row — the same audience the dashboard shows.
  */
-async function loadFeedGigs(
-  userId: string,
-  options: { since: Date; onlyAttending: boolean }
-): Promise<IcalGig[]> {
-  const sharedLinkWhere = {
-    gig: { date: { gte: options.since } },
-    bandMember: { userId },
-  };
-
-  // A bandmate's own attendance answer drives the `attending=1` filter.
-  const attendingLinkIds = options.onlyAttending
-    ? (
-        await prisma.gigBandMember.findMany({
-          where: { ...sharedLinkWhere, rsvpStatus: "ATTENDING" },
-          select: { gigId: true },
-        })
-      ).map((link) => link.gigId)
-    : null;
-
+async function loadFeedGigs(userId: string, since: Date): Promise<IcalGig[]> {
   const gigs = await prisma.gig.findMany({
     where: {
-      date: { gte: options.since },
-      ...(options.onlyAttending
-        ? { OR: [{ userId }, { id: { in: attendingLinkIds ?? [] } }] }
-        : {
-            OR: [
-              { userId },
-              {
-                bandMembers: {
-                  some: { bandMember: { userId } },
-                },
-              },
-            ],
-          }),
+      date: { gte: since },
+      OR: [
+        { userId },
+        {
+          bandMembers: {
+            some: { bandMember: { userId } },
+          },
+        },
+      ],
     },
     orderBy: { date: "asc" },
     take: 2000,
@@ -134,11 +113,6 @@ async function loadFeedGigs(
       performers: true,
       notes: true,
       isTentative: true,
-      bandMembers: {
-        where: { bandMember: { userId } },
-        select: { rsvpStatus: true },
-        take: 1,
-      },
     },
   });
 
@@ -152,6 +126,5 @@ async function loadFeedGigs(
     performers: gig.performers,
     notes: gig.notes,
     isTentative: gig.isTentative,
-    rsvpStatus: gig.bandMembers[0]?.rsvpStatus ?? null,
   }));
 }

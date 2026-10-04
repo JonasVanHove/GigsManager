@@ -354,8 +354,6 @@ model GigBandMember {
   bandMemberId            String
   earnedAmount            Float      @default(0)
   paidAmount              Float      @default(0)
-  /// RSVP / attendance status: ATTENDING, DECLINED, MAYBE, or PENDING (default).
-  rsvpStatus              String     @default("PENDING")
   createdAt               DateTime   @default(now())
   updatedAt               DateTime   @updatedAt
   customPerformanceAmount Float?
@@ -374,7 +372,6 @@ model GigBandMember {
   @@index([gigId])
   @@index([bandMemberId])
   @@index([gigId, bandMemberId])
-  @@index([gigId, rsvpStatus])
 }
 
 model Notification {

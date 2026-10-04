@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   buildDescription,
   buildIcalFeed,
@@ -7,7 +7,6 @@ import {
   formatIcalDate,
   generateCalendarToken,
   hashCalendarToken,
-  rsvpLabel,
   type IcalGig,
 } from "@/lib/ical";
 
@@ -83,25 +82,23 @@ describe("date formatting", () => {
 });
 
 describe("event descriptions", () => {
-  it("labels every attendance state", () => {
-    expect(rsvpLabel("ATTENDING")).toBe("Attending");
-    expect(rsvpLabel("DECLINED")).toBe("Declined");
-    expect(rsvpLabel("MAYBE")).toBe("Maybe");
-    expect(rsvpLabel("PENDING")).toBe("Awaiting reply");
-    expect(rsvpLabel(null)).toBeNull();
-    expect(rsvpLabel("NONSENSE")).toBeNull();
-  });
-
-  it("includes notes, band and the RSVP answer in a stable order", () => {
+  it("includes notes and band in a stable order", () => {
     const body = buildDescription({
       ...gig(),
       notes: "Bring charts",
       performers: "The Notes",
-      rsvpStatus: "ATTENDING",
     });
-    expect(body).toBe("Bring charts\nBand: The Notes\nMy attendance: Attending");
+    expect(body).toBe("Bring charts\nBand: The Notes");
   });
 
+  it("marks a tentative booking", () => {
+    expect(buildDescription({ ...gig(), isTentative: true })).toBe("Tentative booking");
+  });
+
+  it("returns an empty body when there is nothing to say", () => {
+    expect(buildDescription(gig())).toBe("");
+  });
+});
 
 describe("buildIcalFeed", () => {
   it("emits a valid VCALENDAR envelope with CRLF endings", () => {
@@ -204,14 +201,5 @@ describe("calendar tokens", () => {
     expect(hashCalendarToken(generateCalendarToken())).not.toBe(
       hashCalendarToken(generateCalendarToken())
     );
-  });
-});
-
-  it("is empty when there is nothing to report", () => {
-    expect(buildDescription(gig())).toBe("");
-  });
-
-  it("flags tentative bookings", () => {
-    expect(buildDescription(gig({ isTentative: true }))).toBe("Tentative booking");
   });
 });

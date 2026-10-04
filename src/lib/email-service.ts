@@ -3,8 +3,6 @@ import {
   verifyEmailTemplate,
   passwordResetTemplate,
   welcomeEmailTemplate,
-  rsvpChangedTemplate,
-  type RsvpChangeEmailData,
 } from "@/lib/email-templates";
 
 // Initialize Resend client only when API key is available
@@ -109,38 +107,5 @@ export async function sendWelcomeEmail(email: string, userName: string) {
   } catch (error) {
     console.error("[sendWelcomeEmail] Error:", error);
     throw error;
-  }
-}
-
-/**
- * Tell a band leader that a bandmate changed their attendance answer (v1.37.0).
- *
- * Returns a boolean instead of throwing, because callers dispatch this in the
- * background: a mail failure must never fail the RSVP request that triggered
- * it, and the in-app alert has already been stored by then.
- */
-export async function sendRsvpChangeEmail(
-  data: RsvpChangeEmailData
-): Promise<boolean> {
-  try {
-    const resend = getResendClient();
-    if (!resend) {
-      console.warn("[sendRsvpChangeEmail] Resend not configured - skipping");
-      return false;
-    }
-
-    const html = rsvpChangedTemplate(data);
-
-    await resend.emails.send({
-      from: "GigsManager <noreply@gigsmanager.com>",
-      to: data.to,
-      subject: `${data.statusIcon} ${data.actorName} is ${data.statusLabel.toLowerCase()} for ${data.gigName}`,
-      html,
-    });
-
-    return true;
-  } catch (error) {
-    console.error("[sendRsvpChangeEmail] Error:", error);
-    return false;
   }
 }

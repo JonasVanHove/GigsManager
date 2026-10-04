@@ -247,7 +247,7 @@ export async function PUT(
 
       const existingLinks = await prisma.gigBandMember.findMany({
         where: { gigId: gig.id },
-        select: { bandMemberId: true, rsvpStatus: true, paidAmount: true },
+        select: { bandMemberId: true, paidAmount: true },
       });
       const existingMap = new Map(existingLinks.map((l) => [l.bandMemberId, l]));
 
@@ -276,7 +276,6 @@ export async function PUT(
             bandMemberId: member.id,
             earnedAmount: calc.amountPerMusician,
             paidAmount: existingMap.get(member.id)?.paidAmount ?? 0,
-            rsvpStatus: existingMap.get(member.id)?.rsvpStatus ?? "PENDING",
           })),
           skipDuplicates: true,
         });

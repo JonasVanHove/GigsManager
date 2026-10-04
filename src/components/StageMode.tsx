@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "./AuthProvider";
 import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { useWakeLock } from "@/lib/use-mobile-features";
@@ -251,18 +252,29 @@ const releaseWakeLock = useCallback(async () => {
   const nextUp =
     active >= 0 && active + 1 < items.length ? items[active + 1] : null;
   const overrun = isOverrun(timing);
-if (loading) {
-    return (
+  // Rendered into <body>, not inline.
+  //
+  // This overlay is mounted from inside a gig card, and a card is not a neutral
+  // parent: any ancestor with a transform, filter or containment makes
+  // `position: fixed` resolve against that ancestor instead of the viewport, so
+  // the card's own content paints over the stage and swallows taps. On Safari
+  // that left songs unselectable. Portalling drops the card from the
+  // containing-block chain entirely.
+  if (typeof document === "undefined") return null;
+
+  if (loading) {
+    return createPortal(
       <div
         data-testid="stage-mode"
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-black text-white"
       >
         <p className="text-xl text-slate-300">{isDutch ? "Laden…" : "Loading…"}</p>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
+  return createPortal(
     <div
       data-testid="stage-mode"
       data-gig-id={gigId}
@@ -510,6 +522,7 @@ if (loading) {
           )}
         </div>
       </footer>
-    </div>
+    </div>,
+    document.body
   );
 }

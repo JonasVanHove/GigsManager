@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Minimal Groq (groq.com) client for server-side use.
  *
  * Kept dependency-free on purpose: Groq exposes an OpenAI-compatible
@@ -11,35 +11,40 @@
 /**
  * Model registry.
  *
- * Text prefers llama-3.3-70b-versatile (or whatever `GROQ_MODEL_NAME` points at)
- * and falls back through the models below before giving up.
+ * Text prefers `llama3-70b-8192` (or whatever `GROQ_MODEL_NAME` points at) and
+ * falls back through the models below before giving up.
  *
- * v1.39.0 restores the text fallback that v1.34.0 removed. The earlier removal
- * reasoned that a second failing request produced the same user-facing error,
- * and that held while *both* candidates came from one account's key. It stops
- * holding once the primary is `GROQ_MODEL_NAME`: an org-scoped or revoked model
- * id is rejected for everyone on that key while other candidates still serve,
- * so walking the chain turns a hard failure into a working AI feature. The
- * chain is still walked ONLY on `isModelUnavailable` — never on auth, rate
- * limit or transport failures, which a retry cannot fix.
+ * v1.41.0: the default was llama-3.3-70b-versatile. Accounts whose key is not
+ * scoped to that model could not reach *any* AI feature, because it was the
+ * first (and, for a long time, the only) candidate. llama3-70b-8192 is the
+ * broadly-available 70B, so the first request now lands on a model most keys
+ * can actually answer with.
  *
- * `GROQ_MODEL_NAME` is the escape hatch for keys scoped to a different model.
+ * The static chain is the fast path. If it is exhausted because every id is
+ * unavailable, `listAvailableModels` asks Groq what this key *can* reach and the
+ * call is retried against that — so a retired or over-restricted id list
+ * degrades to "whatever works" instead of a dead feature.
+ *
+ * `GROQ_MODEL_NAME` remains the escape hatch for keys scoped elsewhere.
  */
 export const GROQ_MODELS = {
-  text: ["llama-3.3-70b-versatile"] as const,
+  text: ["llama3-70b-8192"] as const,
   vision: ["llama-3.2-11b-vision-preview"] as const,
   /**
-   * Ordered by preference. llama3-70b-8192 is the quality-preserving retry;
-   * llama-3.1-8b-instant is the last resort that keeps smaller/scoped keys
-   * working at all.
+   * Ordered by preference. llama-3.1-8b-instant is the last-resort retry that
+   * keeps the smallest/scoped keys working at all; the 3.3 flagship is kept at
+   * the end so a key that *does* have it is never denied a better model.
    */
   fallback: {
-    text: ["llama3-70b-8192", "llama-3.1-8b-instant"] as const,
+    text: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"] as const,
     vision: ["llama-3.2-90b-vision-preview"] as const,
   },
 } as const;
 
 export type GroqModelFamily = "text" | "vision";
+
+/** The last thing that went wrong, kept to shape the final error message. */
+type FailureShape = { status: number; body: string; model: string };
 
 /**
  * The model a family prefers when everything is healthy, honouring the
@@ -62,6 +67,70 @@ export function preferredModel(family: GroqModelFamily): string {
  */
 export function candidatesFor(family: GroqModelFamily): string[] {
   return Array.from(new Set([preferredModel(family), ...GROQ_MODELS.fallback[family]]));
+}
+
+/**
+ * The text model id in force right now.
+ *
+ * The single place a caller should ask "which model are we using?", so the env
+ * override is read in exactly one spot rather than being re-derived per route.
+ */
+export function getGroqModelName(family: GroqModelFamily = "text"): string {
+  return preferredModel(family);
+}
+
+/** Groq's OpenAI-compatible model listing. */
+const MODELS_URL = "https://api.groq.com/openai/v1/models";
+
+/**
+ * Model ids Groq lists for this key.
+ *
+ * This is the escape hatch that stops the app from ever being pinned to a model
+ * id that has been retired or that the key is not scoped to. `GET /models`
+ * returns what the key can actually reach, so the caller can retry against a
+ * working model instead of surfacing an error.
+ *
+ * Never throws: discovery is an optimisation, and a failure here must leave the
+ * normal error reporting intact rather than replace it with a network error.
+ */
+export async function listAvailableModels(apiKey: string): Promise<string[]> {
+  try {
+    const response = await fetch(MODELS_URL, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!response.ok) return [];
+    const body = await response.json();
+    const data = Array.isArray(body?.data) ? body.data : [];
+    return data
+      .map((m: any) => (typeof m?.id === "string" ? m.id : ""))
+      .filter((id: string) => id.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Model ids from `/models` worth retrying a chat completion against.
+ *
+ * Groq serves far more than chat on the same endpoint, so the list is filtered
+ * down to text-to-text models: the moderation, guard, speech-to-text,
+ * embedding, rerank and vision ids would all fail against
+ * `/chat/completions` and just burn the retry budget.
+ */
+export function chatCandidatesFrom(available: string[], family: GroqModelFamily): string[] {
+  const isVision = (id: string) => /vision|llava|whisper|clip/i.test(id);
+  const nonChat = (id: string) =>
+    /guard|moderation|safety|whisper|embed|rerank|audio|speech|compound|scim/i.test(id);
+
+  return available.filter((id): id is string => {
+    // The feed comes from a remote API, so guard the shape rather than trusting
+    // it: a non-string would survive the regex tests (which coerce) and end up
+    // as a `model` in the request body.
+    if (typeof id !== "string" || id.trim() === "") return false;
+    if (nonChat(id)) return false;
+    if (family === "vision") return isVision(id);
+    return !isVision(id);
+  });
 }
 
 /**
@@ -162,7 +231,7 @@ export function describeGroqFailure(
     )}). Every model in the chain looks retired or unavailable to this key. Update GROQ_MODELS in src/lib/groq.ts to a model your account can access.`;
   }
   if (isModelAccessDenied(status, body)) {
-    return `Your Groq key does not have access to "${model}", so AI features cannot run. Enable this model for your account at console.groq.com, or set GROQ_MODEL_NAME in the environment to a model your key can reach.`;
+    return `Your Groq key cannot use "${model}", so AI features cannot run. Enable it for your account at console.groq.com, or set GROQ_MODEL_NAME to a model your key can reach.`;
   }
   if (isModelUnavailable(status, body)) {
     return `The AI model "${model}" is no longer available on this Groq account. Update GROQ_MODELS in src/lib/groq.ts to a model your key can access.`;
@@ -301,12 +370,32 @@ export async function callGroq(
     signal.addEventListener("abort", () => controller.abort(), { once: true });
   }
 
-  try {
-    let lastFailure: { status: number; body: string; model: string } | null = null;
-    // Models that were actually tried and failed, in order.
-    const attempted: string[] = [];
+  // Models that were actually tried and failed, in order.
+  //
+  // v1.41.0: this array used to be declared inside the try block and then only
+  // ever given the *last* failure, after the loop. So `attempted.length > 1` in
+  // describeGroqFailure was unreachable, its "no model in the chain answered"
+  // branch was dead code, and an exhausted three-model chain still reported
+  // itself as a single-model access problem — naming whichever model happened to
+  // fail last. That is the "your key does not have access to <model>" message
+  // users were seeing.
+  const attempted: string[] = [];
+  // Held in an object because `walkChain` mutates it from inside a closure, and
+  // TypeScript's control-flow analysis does not track that — reading the bare
+  // variable afterwards narrows it to `never`.
+  const lastFailure: { current: FailureShape | null } = { current: null };
 
-    for (const candidate of candidates) {
+  /**
+   * Try each model in `chain`, returning the first successful content.
+   *
+   * Returns null when every model failed or the chain is exhausted. Throws only
+   * for abort/transport errors, which are the caller's problem either way.
+   */
+  const walkChain = async (
+    chain: string[],
+    warnBase?: string
+  ): Promise<string | null> => {
+    for (const candidate of chain) {
       let attempt: Attempt;
       try {
         attempt = await runOnce(
@@ -328,31 +417,55 @@ export async function callGroq(
       }
 
       if (attempt.ok && attempt.content) {
-        if (candidate !== candidates[0]) {
+        if (warnBase && warnBase !== candidate) {
           console.warn(
-            `[groq] "${candidates[0]}" unavailable — served by fallback "${candidate}".`
+            `[groq] "${warnBase}" unavailable — served by "${candidate}".`
           );
         }
         return attempt.content;
       }
 
-      lastFailure = {
-        status: attempt.status ?? 502,
-        body: attempt.body ?? "",
-        model: candidate,
-      };
+      const status = attempt.status ?? 502;
+      const body = attempt.body ?? "";
+      attempted.push(candidate);
+      lastFailure.current = { status, body, model: candidate };
 
-      // Only a retired model id justifies moving to the next candidate.
-      const canRetry =
-        lastFailure.model !== candidates[candidates.length - 1] &&
-        isModelUnavailable(lastFailure.status, lastFailure.body);
-      if (!canRetry) break;
+      // Only an unusable model id justifies moving on. An auth, rate-limit or
+      // transport failure will not be fixed by switching models.
+      if (candidate === chain[chain.length - 1]) break;
+      if (!isModelUnavailable(status, body)) return null;
+    }
+    return null;
+  };
+
+  try {
+    let content = await walkChain(candidates, explicitModel ? undefined : candidates[0]);
+
+    // The static chain is exhausted and every id was rejected as unavailable.
+    // Ask Groq what this key can actually reach and retry against that: this is
+    // what stops the app from ever being pinned to a retired or over-restricted
+    // id, whatever the registry happens to say today.
+    if (
+      content === null &&
+      !explicitModel &&
+      lastFailure.current !== null &&
+      isModelUnavailable(lastFailure.current.status, lastFailure.current.body)
+    ) {
+      const discovered = chatCandidatesFrom(await listAvailableModels(apiKey), family)
+        .filter((id) => !attempted.includes(id));
+      if (discovered.length > 0) {
+        console.warn(
+          `[groq] every configured ${family} model was unavailable — asking the API what this key can reach.`
+        );
+        content = await walkChain(discovered, candidates[0]);
+      }
     }
 
-    // Record what the chain actually walked through, so an exhausted chain can be
-    // reported as such instead of blaming whichever model happened to be last.
-    const failure = lastFailure ?? { status: 502, body: "", model: candidates[0] };
-    if (lastFailure) attempted.push(failure.model);
+    if (content !== null) return content;
+
+    // Report what the chain actually walked through, so an exhausted chain is
+    // named as such instead of blaming whichever model happened to be last.
+    const failure = lastFailure.current ?? { status: 502, body: "", model: candidates[0] };
 
     const message = describeGroqFailure(
       failure.status,

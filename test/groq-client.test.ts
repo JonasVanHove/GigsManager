@@ -8,8 +8,10 @@ import {
   preferredModel,
   candidatesFor,
   chatCandidatesFrom,
+  clearResolvedModels,
   getGroqModelName,
   listAvailableModels,
+  resolvedModel,
 } from "@/lib/groq";
 
 /** fetch stub shared by the pure-predicate suites below. */
@@ -19,6 +21,10 @@ beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
   process.env.GROQ_API_KEY = "test-key";
+  // The resolved-model cache is process-global by design, so it has to be
+  // reset between tests or one test's discovery leaks into the next one's
+  // expected fetch count.
+  clearResolvedModels();
 });
 
 afterEach(() => {
@@ -82,20 +88,14 @@ describe("groq model registry", () => {
     ]);
   });
 
-  it("de-duplicates when GROQ_MODEL_NAME names a fallback model", () => {
-    const original = process.env.GROQ_MODEL_NAME;
-    try {
-      process.env.GROQ_MODEL_NAME = "llama-3.1-8b-instant";
-      // Overriding to a chain member must not retry that same model twice. The
-      // override replaces the primary; the static fallback list still follows.
-      expect(candidatesFor("text")).toEqual([
-        "llama-3.1-8b-instant",
-        "llama-3.3-70b-versatile",
-      ]);
-    } finally {
-      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
-      else process.env.GROQ_MODEL_NAME = original;
-    }
+  it("orders the text chain by how broadly each id is available", () => {
+    // v1.42.0: the chain is fixed and no environment variable can reorder it.
+    // Order encodes availability, cheapest-to-lose first.
+    expect(candidatesFor("text")).toEqual([
+      "llama3-70b-8192", // primary — available on every Groq tier
+      "llama-3.1-8b-instant", // fast secondary
+      "llama-3.3-70b-versatile", // legacy / higher-tier
+    ]);
   });
 
   it("still falls back for vision, where a second attempt pays off", () => {
@@ -105,30 +105,17 @@ describe("groq model registry", () => {
     ]);
   });
 
-  it("honours GROQ_MODEL_NAME as the text primary", () => {
-    const original = process.env.GROQ_MODEL_NAME;
-    try {
-      process.env.GROQ_MODEL_NAME = "llama-3.1-8b-instant";
-      expect(preferredModel("text")).toBe("llama-3.1-8b-instant");
-      expect(candidatesFor("text")[0]).toBe("llama-3.1-8b-instant");
-
-      // Vision is never overridden: a text model cannot read an image.
-      expect(preferredModel("vision")).toBe("llama-3.2-11b-vision-preview");
-    } finally {
-      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
-      else process.env.GROQ_MODEL_NAME = original;
+  it("never lists a model twice in a chain", () => {
+    for (const family of ["text", "vision"] as const) {
+      const chain = candidatesFor(family);
+      expect(new Set(chain).size).toBe(chain.length);
     }
   });
 
-  it("ignores a blank GROQ_MODEL_NAME", () => {
-    const original = process.env.GROQ_MODEL_NAME;
-    try {
-      process.env.GROQ_MODEL_NAME = "   ";
-      expect(preferredModel("text")).toBe("llama3-70b-8192");
-    } finally {
-      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
-      else process.env.GROQ_MODEL_NAME = original;
-    }
+  it("keeps the vision primary independent of the text chain", () => {
+    // A text model cannot read an image, so the two families never share a head.
+    expect(preferredModel("vision")).toBe("llama-3.2-11b-vision-preview");
+    expect(candidatesFor("vision")).not.toContain(preferredModel("text"));
   });
 
   it("only lists currently supported models", () => {
@@ -200,7 +187,9 @@ describe("groq model registry", () => {
       "llama-3.1-8b-instant"
     );
     expect(message).toMatch(/cannot use/i);
-    expect(message).toContain("GROQ_MODEL_NAME");
+    expect(message).toContain("console.groq.com");
+    // v1.42.0: the message no longer points at an env var that no longer exists.
+    expect(message).not.toContain("GROQ_MODEL_NAME");
     expect(message).not.toContain("invalid_request_error");
     expect(message).not.toContain('{"error"');
   });
@@ -273,36 +262,94 @@ describe("describeGroqFailure", () => {
   });
 });
 
-describe("getGroqModelName (v1.41.0)", () => {
-  it("is the single place the env override is read", () => {
+describe("getGroqModelName / resolved-model cache (v1.42.0)", () => {
+  it("returns the head of the chain when nothing is resolved yet", () => {
+    expect(getGroqModelName()).toBe("llama3-70b-8192");
+    expect(getGroqModelName("vision")).toBe("llama-3.2-11b-vision-preview");
+  });
+
+  it("ignores GROQ_MODEL_NAME entirely — the variable is gone", () => {
+    // The point of v1.42.0: setting, blanking or unsetting the variable cannot
+    // change behaviour, so there is no configuration left to get wrong.
     const original = process.env.GROQ_MODEL_NAME;
     try {
-      // Unset: the broadly-available default, never the id that caused the
-      // "your key does not have access" reports.
       delete process.env.GROQ_MODEL_NAME;
       expect(getGroqModelName()).toBe("llama3-70b-8192");
+      expect(candidatesFor("text")[0]).toBe("llama3-70b-8192");
 
       process.env.GROQ_MODEL_NAME = "some-other-model";
-      expect(getGroqModelName()).toBe("some-other-model");
+      expect(getGroqModelName()).toBe("llama3-70b-8192");
+      expect(candidatesFor("text")).not.toContain("some-other-model");
 
-      // Vision is never redirected by a text override.
-      expect(getGroqModelName("vision")).toBe("llama-3.2-11b-vision-preview");
+      process.env.GROQ_MODEL_NAME = "   ";
+      expect(getGroqModelName()).toBe("llama3-70b-8192");
     } finally {
       if (original === undefined) delete process.env.GROQ_MODEL_NAME;
       else process.env.GROQ_MODEL_NAME = original;
     }
   });
 
-  it("never defaults to the model that broke AI for scoped keys", () => {
-    const original = process.env.GROQ_MODEL_NAME;
-    try {
-      delete process.env.GROQ_MODEL_NAME;
-      expect(getGroqModelName()).not.toBe("llama-3.3-70b-versatile");
-      expect(candidatesFor("text")).toContain("llama3-70b-8192");
-    } finally {
-      if (original === undefined) delete process.env.GROQ_MODEL_NAME;
-      else process.env.GROQ_MODEL_NAME = original;
-    }
+  it("reports no resolved model until one is remembered", () => {
+    expect(resolvedModel("k", "text")).toBeNull();
+  });
+
+  it("scopes the cache by key so two keys never share a model", async () => {
+    process.env.GROQ_API_KEY = "key-a";
+    fetchMock
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(modelsResponse(["gemma2-9b-it"]))
+      .mockResolvedValueOnce(okResponse("a"));
+    await callGroq([{ role: "user", content: "hi" }], { family: "text" });
+    expect(resolvedModel("key-a", "text")).toBe("gemma2-9b-it");
+
+    // A different key on the same process must not inherit that answer.
+    expect(resolvedModel("key-b", "text")).toBeNull();
+    expect(getGroqModelName("text", "key-b")).toBe("llama3-70b-8192");
+  });
+
+  it("goes straight to the remembered model on the next call", async () => {
+    process.env.GROQ_API_KEY = "key-c";
+    // First call: primary fails, chain fails, discovery finds a working model.
+    fetchMock
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(modelsResponse(["gemma2-9b-it"]))
+      .mockResolvedValueOnce(okResponse("first"));
+    await callGroq([{ role: "user", content: "hi" }], { family: "text" });
+    const afterFirst = fetchMock.mock.calls.length;
+
+    // Second call: one request, straight to the model that worked. No chain
+    // walk, no /models probe.
+    fetchMock.mockResolvedValueOnce(okResponse("second"));
+    const out = await callGroq([{ role: "user", content: "hi" }], { family: "text" });
+
+    expect(out).toBe("second");
+    expect(fetchMock.mock.calls.length).toBe(afterFirst + 1);
+    const body = JSON.parse(fetchMock.mock.calls[afterFirst][1].body);
+    expect(body.model).toBe("gemma2-9b-it");
+  });
+
+  it("forgets a remembered model that later stops serving", async () => {
+    process.env.GROQ_API_KEY = "key-d";
+    fetchMock
+      .mockResolvedValueOnce(groqResponse(404, { error: { code: "model_not_found" } }))
+      .mockResolvedValueOnce(okResponse("first"));
+    // Second link in the chain answers, so that is what gets remembered.
+    await callGroq([{ role: "user", content: "hi" }], { family: "text" });
+    const remembered = resolvedModel("key-d", "text");
+    expect(remembered).toBe("llama-3.1-8b-instant");
+
+    // It is now retired too: the cached entry must not be trusted forever.
+    fetchMock.mockResolvedValue(
+      groqResponse(404, { error: { code: "model_not_found" } })
+    );
+    await expect(
+      callGroq([{ role: "user", content: "hi" }], { family: "text" })
+    ).rejects.toThrow();
+    expect(resolvedModel("key-d", "text")).toBeNull();
   });
 });
 

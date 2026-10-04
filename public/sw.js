@@ -1,7 +1,7 @@
 ﻿// Service Worker for GigsManager
 // Provides offline support and intelligent caching strategies
 
-const CACHE_NAME = 'gigs-manager-v1.41.0';
+const CACHE_NAME = 'gigs-manager-v1.42.0';
 // Every cache is derived from CACHE_NAME so a single version bump invalidates
 // all of them. They used to be pinned at "-v3", which meant bumping CACHE_NAME
 // alone left stale JS/CSS/HTML in those caches forever.
@@ -12,6 +12,14 @@ const LONG_TERM_CACHE = `${CACHE_NAME}-longterm`;
 const REPERTOIRE_CACHE = `${CACHE_NAME}-repertoire`;
 // Explicitly pinned attachment assets ("Offline Opslaan").
 const OFFLINE_CACHE = `${CACHE_NAME}-offline`;
+// Gig + setlist payloads pinned for Stage Mode (v1.42.0).
+//
+// These are also picked up incidentally by the strategies below, but only if
+// the user happened to open the gig while online and the entry survived. On a
+// phone in a basement venue that is not a guarantee, so Stage Mode pins its
+// own copy explicitly and this cache is consulted as a last resort before
+// giving up.
+const STAGE_CACHE = `${CACHE_NAME}-stage`;
 
 /**
  * Caches written by earlier releases. Their names are not derived from
@@ -34,6 +42,7 @@ const ACTIVE_CACHES = new Set([
   LONG_TERM_CACHE,
   REPERTOIRE_CACHE,
   OFFLINE_CACHE,
+  STAGE_CACHE,
 ]);
 
 /**
@@ -261,6 +270,18 @@ self.addEventListener('fetch', (event) => {
 
         const response = await networkFetch;
         if (response) return response;
+
+        // Last resort for a setlist: the copy Stage Mode pinned explicitly.
+        // Without this, a gig opened once while online can still be missing when
+        // the band is somewhere with no signal.
+        const stageCache = await caches.open(STAGE_CACHE).catch(() => null);
+        const pinned = stageCache
+          ? await stageCache
+              .match(key, { ignoreVary: true })
+              .catch(() => undefined)
+          : undefined;
+        if (pinned) return pinned;
+
         return new Response(
           JSON.stringify({ error: 'Offline and no cached repertoire data.', type: 'offline_no_cache' }),
           { status: 503, headers: new Headers({ 'Content-Type': 'application/json' }) },
@@ -318,9 +339,18 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // Network error - try cached response first
-          return caches.match(request).then((cachedResponse) => {
+          return caches.match(request).then(async (cachedResponse) => {
             if (cachedResponse) {
               return cachedResponse;
+            }
+            // Then the Stage Mode pin, which is keyed the same way.
+            try {
+              const stageCache = await caches.open(STAGE_CACHE);
+              const stageKey = authScopedKey(request);
+              const pinned = await stageCache.match(stageKey, { ignoreVary: true });
+              if (pinned) return pinned;
+            } catch (err) {
+              console.warn('SW: stage cache lookup failed:', err);
             }
             // No cache available - return appropriate error
             const errorMsg = 'Unable to load data. Please check your connection and try again.';
@@ -448,6 +478,48 @@ self.addEventListener('message', (event) => {
           }
         })
         .catch((err) => console.warn('SW: PIN_URLS failed:', err));
+    }
+    if (event.data && event.data.type === 'PIN_STAGE_KIT' && Array.isArray(event.data.entries)) {
+      // Each entry is { url, token }: the worker needs the bearer token because
+      // it performs the fetch itself, and the URLs are same-origin API routes
+      // that would answer 401 unauthenticated.
+      const entries = event.data.entries
+        .filter((e) => e && typeof e.url === 'string' && e.url.startsWith('/'))
+        .slice(0, 10);
+
+      caches
+        .open(STAGE_CACHE)
+        .then(async (cache) => {
+          const results = await Promise.all(
+            entries.map(async (entry) => {
+              try {
+                const target = new URL(entry.url, self.location.origin).toString();
+                const key = authScopedKey(new Request(target));
+                // Already pinned for this token: nothing to re-fetch.
+                const existing = await cache.match(key, { ignoreVary: true }).catch(() => undefined);
+                if (existing) return true;
+
+                const res = await fetch(target, {
+                  headers: entry.token ? { Authorization: `Bearer ${entry.token}` } : {},
+                  credentials: 'include',
+                });
+                if (!res || res.status !== 200) return false;
+                await cache.put(key, res.clone()).catch(() => {});
+                return true;
+              } catch (err) {
+                console.warn('SW: failed to pin stage entry:', entry.url, err);
+                return false;
+              }
+            }),
+          );
+          if (event.source) {
+            event.source.postMessage({
+              type: 'STAGE_KIT_PINNED',
+              pinned: results.filter(Boolean).length,
+            });
+          }
+        })
+        .catch((err) => console.warn('SW: PIN_STAGE_KIT failed:', err));
     }
     if (event.data && event.data.type === 'CLEAR_CACHE') {
       caches

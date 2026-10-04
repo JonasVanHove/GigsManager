@@ -11,8 +11,7 @@
 /**
  * Model registry.
  *
- * Text prefers `llama3-70b-8192` (or whatever `GROQ_MODEL_NAME` points at) and
- * falls back through the models below before giving up.
+ * Text leads with `llama3-70b-8192` and falls back through the models below
  *
  * v1.41.0: the default was llama-3.3-70b-versatile. Accounts whose key is not
  * scoped to that model could not reach *any* AI feature, because it was the
@@ -25,7 +24,9 @@
  * call is retried against that — so a retired or over-restricted id list
  * degrades to "whatever works" instead of a dead feature.
  *
- * `GROQ_MODEL_NAME` remains the escape hatch for keys scoped elsewhere.
+ * No environment variable is consulted: GROQ_MODEL_NAME was removed in
+ * v1.42.0. The chain plus discovery already adapt to the key, so there is no
+ * configuration to get wrong.
  */
 export const GROQ_MODELS = {
   text: ["llama3-70b-8192"] as const,
@@ -47,35 +48,79 @@ export type GroqModelFamily = "text" | "vision";
 type FailureShape = { status: number; body: string; model: string };
 
 /**
- * The model a family prefers when everything is healthy, honouring the
- * `GROQ_MODEL_NAME` override for text calls.
+ * The model a family leads with.
+ *
+ * v1.42.0: `GROQ_MODEL_NAME` is gone. The env override was a second source of
+ * truth that had to be kept in step with the registry, and it was never needed:
+ * the chain below already adapts to whatever the key can reach, and discovery
+ * handles ids that are retired or out of scope. One less knob to misconfigure.
  */
 export function preferredModel(family: GroqModelFamily): string {
-  if (family === "text") {
-    const override = process.env.GROQ_MODEL_NAME?.trim();
-    if (override) return override;
-  }
   return GROQ_MODELS[family][0];
 }
 
-/**
- * Models to try, primary first, de-duplicated.
- *
- * When `GROQ_MODEL_NAME` names something already in the fallback list, it is
- * hoisted to the front and the duplicate dropped, so an operator overriding to
- * a fallback id never retries the same model twice.
- */
+/** Models to try for a family: primary first, then its fallbacks. */
 export function candidatesFor(family: GroqModelFamily): string[] {
   return Array.from(new Set([preferredModel(family), ...GROQ_MODELS.fallback[family]]));
 }
 
+/** How long a discovered model stays trusted before we re-derive it. */
+const RESOLVED_TTL_MS = 60 * 60 * 1000;
+
 /**
- * The text model id in force right now.
+ * Models that were found to work, per (api key, family).
  *
- * The single place a caller should ask "which model are we using?", so the env
- * override is read in exactly one spot rather than being re-derived per route.
+ * Discovery costs a round trip and, in the worst case, every static candidate
+ * failing first. Once a model is known to serve this key there is no reason to
+ * rediscover it on the next call, so the winner is remembered here.
+ *
+ * Scoped by key: two keys on one process can have entirely different access, so
+ * a shared "last known good" would hand one account's model to another.
  */
-export function getGroqModelName(family: GroqModelFamily = "text"): string {
+const resolved = new Map<string, { model: string; expiresAt: number }>();
+
+const cacheKey = (apiKey: string, family: GroqModelFamily) => `${family}::${apiKey}`;
+
+/** The remembered working model for this key, if still fresh. */
+export function resolvedModel(apiKey: string, family: GroqModelFamily): string | null {
+  const hit = resolved.get(cacheKey(apiKey, family));
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    resolved.delete(cacheKey(apiKey, family));
+    return null;
+  }
+  return hit.model;
+}
+
+/** Remembers a model that answered. No-op for entries already at the head. */
+function rememberModel(apiKey: string, family: GroqModelFamily, model: string): void {
+  resolved.set(cacheKey(apiKey, family), { model, expiresAt: Date.now() + RESOLVED_TTL_MS });
+}
+
+/** Drops the remembered model — used when it turns out to be unusable. */
+function forgetModel(apiKey: string, family: GroqModelFamily): void {
+  resolved.delete(cacheKey(apiKey, family));
+}
+
+/** Test seam: clears every remembered model. */
+export function clearResolvedModels(): void {
+  resolved.clear();
+}
+
+/**
+ * The model id this key is currently using.
+ *
+ * The remembered working model when there is one, otherwise the head of the
+ * static chain.
+ */
+export function getGroqModelName(
+  family: GroqModelFamily = "text",
+  apiKey?: string
+): string {
+  if (apiKey) {
+    const remembered = resolvedModel(apiKey, family);
+    if (remembered) return remembered;
+  }
   return preferredModel(family);
 }
 
@@ -231,7 +276,7 @@ export function describeGroqFailure(
     )}). Every model in the chain looks retired or unavailable to this key. Update GROQ_MODELS in src/lib/groq.ts to a model your account can access.`;
   }
   if (isModelAccessDenied(status, body)) {
-    return `Your Groq key cannot use "${model}", so AI features cannot run. Enable it for your account at console.groq.com, or set GROQ_MODEL_NAME to a model your key can reach.`;
+    return `Your Groq key cannot use "${model}", so AI features cannot run. Enable it for your account at console.groq.com.`;
   }
   if (isModelUnavailable(status, body)) {
     return `The AI model "${model}" is no longer available on this Groq account. Update GROQ_MODELS in src/lib/groq.ts to a model your key can access.`;
@@ -360,9 +405,15 @@ export async function callGroq(
     signal,
   } = options;
 
+  // A model this key is already known to answer with goes first, so the steady
+  // state costs exactly one request instead of re-walking a chain or
+  // rediscovering. An explicit `model` from a caller always wins.
+  const remembered = explicitModel ? null : resolvedModel(apiKey, family);
   const candidates: string[] = explicitModel
     ? [explicitModel]
-    : candidatesFor(family);
+    : remembered
+      ? Array.from(new Set([remembered, ...candidatesFor(family)]))
+      : candidatesFor(family);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45_000);
@@ -422,6 +473,8 @@ export async function callGroq(
             `[groq] "${warnBase}" unavailable — served by "${candidate}".`
           );
         }
+        // Remember what actually answered so the next call can go straight to it.
+        if (!explicitModel) rememberModel(apiKey, family, candidate);
         return attempt.content;
       }
 
@@ -429,6 +482,16 @@ export async function callGroq(
       const body = attempt.body ?? "";
       attempted.push(candidate);
       lastFailure.current = { status, body, model: candidate };
+
+      // A remembered model that no longer serves must not stay pinned, or every
+      // later call would keep retrying it first.
+      if (
+        remembered &&
+        candidate === remembered &&
+        isModelUnavailable(status, body)
+      ) {
+        forgetModel(apiKey, family);
+      }
 
       // Only an unusable model id justifies moving on. An auth, rate-limit or
       // transport failure will not be fixed by switching models.

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "./AuthProvider";
 import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { useWakeLock } from "@/lib/use-mobile-features";
+import { pinStageKit } from "@/lib/pwa";
 import {
   computeStageTiming,
   findTuningAlerts,
@@ -124,6 +125,11 @@ export default function StageMode({
         if (cancelled) return;
         setItems(normaliseStageItems(body?.items as RawSetlistItem[]));
         setError(null);
+
+        // v1.42.0: pin the gig + setlist for offline use. Only once the data is
+        // confirmed good — pinning a failed or empty load would just guarantee
+        // a broken stage later. Fire-and-forget: the stage must not wait on it.
+        void pinStageKit({ gigId, setlistId, token }).catch(() => undefined);
       } catch {
         if (!cancelled) setError(loadFailed);
       } finally {
@@ -134,7 +140,7 @@ export default function StageMode({
     return () => {
       cancelled = true;
     };
-  }, [setlistId, getAccessToken, loadFailed]);
+  }, [gigId, setlistId, getAccessToken, loadFailed]);
 
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), CLOCK_INTERVAL_MS);

@@ -91,6 +91,10 @@ model Gig {
   bandMembers                GigBandMember[]
   shareLinks                 ShareLinkGig[]
   attachments                GigAttachment[]
+  /// v1.47.0: the in-app logistics chat (arrival times, gear, carpooling).
+  chatMessages               GigMessage[]
+  /// v1.47.0: per-user "last read" markers that drive the unread badge.
+  chatReads                  GigChatRead[]
 
   @@index([userId])
   @@index([date])
@@ -341,6 +345,8 @@ model BandMember {
   bands     String[]        @default([])
   user      User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   gigs      GigBandMember[]
+  /// v1.47.0: messages this member posted in a gig's logistics chat.
+  chatMessages GigMessage[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -372,6 +378,38 @@ model GigBandMember {
   @@index([gigId])
   @@index([bandMemberId])
   @@index([gigId, bandMemberId])
+}
+
+/// v1.47.0: in-app gig chat — quick band logistics talk (arrival times, gear
+/// list, carpooling) scoped to one gig. The author is a BandMember rather than
+/// a raw user id so messages render with the name the band already knows.
+model GigMessage {
+  id        String     @id @default(cuid())
+  gigId     String
+  authorId  String
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+
+  gig  Gig        @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  author BandMember @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([gigId, createdAt])
+  @@index([authorId])
+}
+
+/// Per-user read marker for a gig chat. Unread = messages newer than
+/// `lastReadAt` that were not written by the reader themselves. Keyed by the
+/// account (userId), not by BandMember, so an account with several member rows
+/// still has exactly one badge per gig.
+model GigChatRead {
+  gigId      String
+  userId     String
+  lastReadAt DateTime @default(now())
+
+  gig Gig @relation(fields: [gigId], references: [id], onDelete: Cascade)
+
+  @@id([gigId, userId])
+  @@index([userId])
 }
 
 model Notification {

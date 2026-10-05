@@ -11,6 +11,7 @@ import { getBandColorStyles } from "@/lib/preferences";
 import { getLocalNotes } from "@/lib/notes-store";
 import BandTag from "./BandTag";
 import GigQuickNotesModal from "./GigQuickNotesModal";
+import GigChatModal from "./GigChatModal";
 import StageMode from "./StageMode";
 import SetlistExportMenu from "./SetlistExportMenu";
 import GigFinancialsModal, { type FinancialsMember } from "./GigFinancialsModal";
@@ -18,6 +19,7 @@ import { Icons } from "./Icons";
 import { useSettings } from "./SettingsProvider";
 import { useAuth } from "./AuthProvider";
 import { useToast } from "./ToastContainer";
+import { setGigChatUnread, useGigChatUnread } from "@/lib/gig-chat-unread";
 
 /* ── Utility ───────────────────────────────────────────────────────────── */
 
@@ -68,6 +70,8 @@ const GigCard = memo(function GigCard({
   // waiting for a full list refetch.
   const [localNotes, setLocalNotes] = useState<string | null>(gig.notes);
   const [showQuickNotes, setShowQuickNotes] = useState(false);
+  // v1.47.0: "Gig chat / Overleg" — the band's logistics thread for this gig.
+  const [showChat, setShowChat] = useState(false);
   // v1.38.0: Stage Mode — the full-screen on-stage view of the gig's setlist.
   const [showStageMode, setShowStageMode] = useState(false);
   // v1.40.0: expenses + payout split.
@@ -76,6 +80,9 @@ const GigCard = memo(function GigCard({
   const [financialsLoading, setFinancialsLoading] = useState(false);
   const { locale } = useSettings();
   const isDutch = locale.startsWith("nl");
+  // v1.47.0: unread badge for the gig chat; the count comes from the shared,
+  // batched store so a long gig list still costs one request for everyone.
+  const chatUnread = useGigChatUnread(gig.id, getAccessToken);
 
   // v1.40.0: open the financials modal and pull the payout roster.
   //
@@ -369,6 +376,32 @@ const GigCard = memo(function GigCard({
               </div>
             </>
           )}
+          {/* v1.47.0: Gig chat / Overleg — quick band logistics talk with an
+              unread indicator for messages since this account last looked. */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowChat(true);
+            }}
+            data-testid="gig-chat-button"
+            title={isDutch ? "Gig chat / Overleg" : "Gig chat / Discussion"}
+            aria-label={
+              isDutch
+                ? `Gig chat / Overleg: ${gig.eventName}`
+                : `Gig chat / Discussion: ${gig.eventName}`
+            }
+            className="relative rounded-lg p-2 text-sky-600 transition-all duration-200 hover:bg-sky-100/60 dark:text-sky-400 dark:hover:bg-sky-900/30"
+          >
+            <Icons.Chat className="h-4 w-4 shrink-0" />
+            {chatUnread > 0 && (
+              <span
+                data-testid="gig-chat-unread-badge"
+                className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-lg"
+              >
+                {chatUnread > 9 ? "9+" : chatUnread}
+              </span>
+            )}
+          </button>
           {/* v1.40.0: expenses, net profit and the payout split. */}
           <button
             onClick={(e) => {
@@ -687,6 +720,18 @@ const GigCard = memo(function GigCard({
           isDutch={isDutch}
           onNotesSaved={setLocalNotes}
           onClose={() => setShowQuickNotes(false)}
+        />
+      )}
+
+      {/* v1.47.0: gig logistics chat drawer; opening it marks the thread read
+          so the unread badge on this card clears immediately. */}
+      {showChat && (
+        <GigChatModal
+          gigId={gig.id}
+          gigName={gig.eventName}
+          isDutch={isDutch}
+          onRead={() => setGigChatUnread(gig.id, 0)}
+          onClose={() => setShowChat(false)}
         />
       )}
 

@@ -81,13 +81,16 @@ const nextConfig = {
     optimizePackageImports: ["lodash-es"],
     // Dynamic page size for better performance
     ppr: false, // Partial prerendering (consider enabling for specific routes)
-  },
 
-  // v1.45.0: Tesseract ships a WASM core and downloads language data at
-  // runtime. It is only ever reached through a dynamic import on the OCR
-  // fallback path, and it must not be traced into every API bundle — the
-  // serverless function needs the package installed, not inlined.
-  serverExternalPackages: ["tesseract.js"],
+    // v1.45.0 / v1.47.0: Tesseract ships a WASM core and downloads language
+    // data at runtime. It is only ever reached through a dynamic import on the
+    // OCR fallback path, and it must not be traced into every API bundle — the
+    // serverless function needs the package installed, not inlined.
+    // Next 14.2 reads this key as `experimental.serverComponentsExternalPackages`;
+    // the unprefixed `serverExternalPackages` name only exists from Next 15
+    // onwards and produced a configuration warning here (fixed in v1.47.0).
+    serverComponentsExternalPackages: ["tesseract.js"],
+  },
 
   // Webpack optimization
   webpack: (config, { isServer }) => {

@@ -83,6 +83,12 @@ const nextConfig = {
     ppr: false, // Partial prerendering (consider enabling for specific routes)
   },
 
+  // v1.45.0: Tesseract ships a WASM core and downloads language data at
+  // runtime. It is only ever reached through a dynamic import on the OCR
+  // fallback path, and it must not be traced into every API bundle — the
+  // serverless function needs the package installed, not inlined.
+  serverExternalPackages: ["tesseract.js"],
+
   // Webpack optimization
   webpack: (config, { isServer }) => {
     config.optimization.minimize = true;

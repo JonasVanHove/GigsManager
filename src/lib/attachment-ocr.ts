@@ -1,4 +1,9 @@
 import { callGroq } from "@/lib/groq";
+import {
+  extractTextLocally,
+  isVisionModelUnavailable,
+  type LocalOcrRunner,
+} from "@/lib/local-ocr";
 
 /**
  * Image OCR for gig attachments.
@@ -7,6 +12,10 @@ import { callGroq } from "@/lib/groq";
  * vision model reads them once, here, and the extracted text is cached on the
  * attachment row so every later "State of Play" summary is a cheap text request
  * instead of another vision round-trip.
+ *
+ * v1.45.0: when no vision model is reachable for the key, the image is read
+ * locally with Tesseract instead. It produces rougher text than the model, but
+ * a rough transcript the text model can still structure beats no import at all.
  */
 
 /** Image types we will send to the vision model. */
@@ -37,13 +46,16 @@ Rules:
  * Runs OCR over an image buffer.
  *
  * Returns the transcribed text, or null when the image had nothing readable or
- * the vision model is unavailable. Callers treat null as "no cached text" and
- * fall back to whatever they were doing before, so a Groq outage must never
- * fail an upload.
+ * no OCR path could serve it. Callers treat null as "no cached text" and fall
+ * back to whatever they were doing before, so neither a Groq outage nor a
+ * missing local OCR engine may fail an upload.
+ *
+ * `localRunner` is injectable for tests; production always uses Tesseract.
  */
 export async function extractImageText(
   buffer: Buffer,
-  mimeType: string
+  mimeType: string,
+  localRunner?: LocalOcrRunner
 ): Promise<string | null> {
   if (buffer.byteLength > MAX_INLINE_BYTES) {
     console.warn(
@@ -73,11 +85,22 @@ export async function extractImageText(
     );
 
     const text = raw.trim();
+    // A clean NO_TEXT_FOUND means the model read the image and it was blank.
+    // That is a successful read, so there is nothing for the local fallback to
+    // improve on.
     if (!text || text === "NO_TEXT_FOUND") return null;
     return text.slice(0, MAX_OCR_CHARS);
   } catch (error) {
     // Non-fatal by design: the upload itself already succeeded.
     console.warn("[ocr] Vision extraction failed:", error);
+
+    if (!isVisionModelUnavailable(error)) return null;
+
+    console.warn("[ocr] No vision model available — falling back to local OCR.");
+    const local = await extractTextLocally(buffer, localRunner);
+    if (local.outcome === "ok" && local.text) {
+      return local.text.slice(0, MAX_OCR_CHARS);
+    }
     return null;
   }
 }

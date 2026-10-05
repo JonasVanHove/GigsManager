@@ -1,6 +1,6 @@
 {
   "name": "gig-manager",
-  "version": "1.44.0",
+  "version": "1.45.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -59,7 +59,8 @@
     "react-i18next": "^17.0.11",
     "react-signature-canvas": "^1.1.0-alpha.2",
     "resend": "^6.9.2",
-    "svix": "^1.85.0"
+    "svix": "^1.85.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.11",

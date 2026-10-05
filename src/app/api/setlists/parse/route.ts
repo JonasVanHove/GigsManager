@@ -14,6 +14,7 @@ import {
   MAX_TEXT_CHARS,
   normaliseImportedSetlist,
 } from "@/lib/ai-setlist-import";
+import { extractTextLocally, isVisionModelUnavailable } from "@/lib/local-ocr";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
@@ -197,6 +198,7 @@ export async function POST(request: NextRequest) {
     // --- Step 0: resolve a pasted URL into text -----------------------------
     let rawText = text.trim();
     let ocrUsed = false;
+    let ocrFallback: "local" | null = null;
     let fetchedUrl: string | null = null;
 
     if (pastedUrl) {
@@ -230,23 +232,49 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const ocrRaw = await callGroq(
-        [
-          { role: "system", content: OCR_SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Transcribe this setlist image." },
-              { type: "image_url", image_url: { url: imageDataUrl } },
-            ],
-          },
-        ],
-        { family: "vision", temperature: 0, maxTokens: 2000 }
-      );
+      // --- Step 1: read the image --------------------------------------------
+      // v1.45.0: vision first, local Tesseract if no vision model is reachable.
+      // Either way this produces raw text; Step 2 structures it with the text
+      // model, which is a far more available dependency than vision.
+      try {
+        const ocrRaw = await callGroq(
+          [
+            { role: "system", content: OCR_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Transcribe this setlist image." },
+                { type: "image_url", image_url: { url: imageDataUrl } },
+              ],
+            },
+          ],
+          { family: "vision", temperature: 0, maxTokens: 2000 }
+        );
 
-      const ocrParsed = parseModelJson<{ text?: string }>(ocrRaw);
-      rawText = (ocrParsed?.text ?? "").trim();
-      ocrUsed = true;
+        const ocrParsed = parseModelJson<{ text?: string }>(ocrRaw);
+        rawText = (ocrParsed?.text ?? "").trim();
+        ocrUsed = true;
+      } catch (ocrError) {
+        if (!isVisionModelUnavailable(ocrError)) throw ocrError;
+
+        console.warn(
+          "[setlist-import] No vision model available — reading the photo locally."
+        );
+        const base64 = imageDataUrl.slice(imageDataUrl.indexOf(",") + 1);
+        const local = await extractTextLocally(Buffer.from(base64, "base64"));
+        if (local.outcome !== "ok" || !local.text) {
+          return NextResponse.json(
+            {
+              error:
+                "This photo could not be read, and the AI vision service is unavailable for this account. Paste the setlist text instead.",
+            },
+            { status: 422 }
+          );
+        }
+        rawText = local.text.trim().slice(0, MAX_TEXT_CHARS);
+        ocrUsed = true;
+        ocrFallback = "local";
+      }
 
       if (!rawText) {
         return NextResponse.json(
@@ -362,6 +390,10 @@ export async function POST(request: NextRequest) {
       ocrUsed,
       // v1.43.0: which input produced this, so the UI can label the review stage.
       source: fetchedUrl ? "url" : imageDataUrl ? "image" : "text",
+      // v1.45.0: non-null means vision was unreachable and Tesseract was used,
+      // which is worth surfacing: the transcript is rougher and the user should
+      // know to check the review stage carefully.
+      ocrFallback,
       title: structured.title,
       librarySize: library.length,
       thresholds: { autoMatch: AUTO_MATCH_THRESHOLD, suggest: SUGGEST_THRESHOLD },

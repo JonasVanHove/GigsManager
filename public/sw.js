@@ -1,7 +1,7 @@
 // Service Worker for GigsManager
 // Provides offline support and intelligent caching strategies
 
-const CACHE_NAME = 'gigs-manager-v1.45.0';
+const CACHE_NAME = 'gigs-manager-v1.46.0';
 // Every cache is derived from CACHE_NAME so a single version bump invalidates
 // all of them. They used to be pinned at "-v3", which meant bumping CACHE_NAME
 // alone left stale JS/CSS/HTML in those caches forever.

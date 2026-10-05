@@ -15,6 +15,25 @@
  * feature.
  */
 
+/**
+ * True only when the server reports that local Tesseract OCR produced the
+ * transcript instead of Vision AI (`ocrFallback: "local"` in the
+ * `POST /api/setlists/parse` response).
+ *
+ * Lives here rather than in the component because the component is a `.tsx`
+ * file and this repo's vitest setup cannot transform JSX (`"jsx": "preserve"`
+ * in tsconfig.json for Next.js), so the predicate would otherwise be
+ * untestable.
+ *
+ * Deliberately strict: `null` (vision worked) and any unexpected value keep
+ * the warning hidden. A banner that appears on every import stops being read;
+ * only a genuine degradation is worth asking the user to double-check song
+ * titles before committing the setlist.
+ */
+export function usesLocalOcrFallback(ocrFallback: unknown): boolean {
+  return ocrFallback === "local";
+}
+
 /** The canonical shape the API returns for a reviewable import. */
 export interface ImportedSong {
   title: string;

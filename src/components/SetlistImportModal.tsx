@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
 import { AI_BOX, AI_BOX_PRE, AI_SHEET } from "@/lib/ai-ui";
+import { usesLocalOcrFallback } from "@/lib/ai-setlist-import";
 
 /** Mirrors the shape returned by POST /api/setlists/parse. */
 export type ParsedImportItem = {
@@ -62,6 +63,9 @@ export function SetlistImportModal({
   const [error, setError] = useState("");
   const [rawText, setRawText] = useState("");
   const [rows, setRows] = useState<ReviewedImportItem[]>([]);
+  // v1.45.0: "local" means Vision AI was unreachable and Tesseract read the
+  // photo instead - surfaced in the review stage so the user checks titles.
+  const [ocrFallback, setOcrFallback] = useState<"local" | null>(null);
 
   const copy = isDutch
     ? {
@@ -90,6 +94,9 @@ export function SetlistImportModal({
         urlPlaceholder: "https://www.setlist.fm/setlist/...",
         urlHint: "We lezen de pagina en halen de nummers eruit.",
         or: "of",
+        localOcr: "Lokaal OCR gebruikt (geen Vision AI)",
+        localOcrHint:
+          "Vision AI was niet bereikbaar; de foto is lokaal gelezen. De tekst kan rommelig zijn - controleer de nummertitels even voor je ze toevoegt.",
       }
     : {
         title: "Import setlist",
@@ -117,6 +124,9 @@ export function SetlistImportModal({
         urlPlaceholder: "https://www.setlist.fm/setlist/...",
         urlHint: "We read the page and pull the songs out of it.",
         or: "or",
+        localOcr: "Local OCR used (no Vision AI)",
+        localOcrHint:
+          "Vision AI was unreachable, so the photo was read locally. The text may be rougher - quickly check the song titles before adding.",
       };
 
   const handleFile = useCallback(async (file: File | null | undefined) => {
@@ -151,6 +161,7 @@ export function SetlistImportModal({
 
   async function handleParse() {
     setError("");
+    setOcrFallback(null);
     setParsing(true);
     try {
       const token = await getAccessToken();
@@ -176,6 +187,9 @@ export function SetlistImportModal({
 
       setRawText(body.rawText || "");
       setRows(toReviewed(body.items ?? []));
+      // "local" = Vision AI unreachable, Tesseract read the photo instead.
+      // Anything else (null / unexpected) must keep the warning hidden.
+      setOcrFallback(usesLocalOcrFallback(body.ocrFallback) ? "local" : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parse failed");
     } finally {
@@ -333,13 +347,28 @@ export function SetlistImportModal({
           {/* -- Review grid ----------------------------------------- */}
           {rows.length > 0 && (
             <div className="space-y-3">
+              {/* Shown only when local Tesseract OCR produced the transcript:
+                  the text is rougher than Vision AI, so titles deserve a
+                  quick check before the setlist is committed. */}
+              {usesLocalOcrFallback(ocrFallback) && (
+                <div
+                  role="status"
+                  className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200"
+                >
+                  <Icons.AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-semibold">{copy.localOcr}</p>
+                    <p className="mt-0.5 text-xs opacity-90">{copy.localOcrHint}</p>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
                   {copy.review} ({rows.length})
                 </h3>
                 <button
                   type="button"
-                  onClick={() => { setRows([]); setRawText(""); }}
+                  onClick={() => { setRows([]); setRawText(""); setOcrFallback(null); }}
                   className="text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
                 >
                   {isDutch ? "Opnieuw" : "Start over"}

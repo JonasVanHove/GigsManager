@@ -84,6 +84,9 @@ const GigCard = memo(function GigCard({
   // batched store so a long gig list still costs one request for everyone.
   const chatUnread = useGigChatUnread(gig.id, getAccessToken);
 
+  // v1.48.0: check if band has external chat link configured
+  const hasExternalChat = gig.band?.chatType && gig.band?.chatUrl;
+
   // v1.40.0: open the financials modal and pull the payout roster.
   //
   // The gig list carries no GigBandMember rows, so they are fetched here —
@@ -377,31 +380,51 @@ const GigCard = memo(function GigCard({
             </>
           )}
           {/* v1.47.0: Gig chat / Overleg — quick band logistics talk with an
-              unread indicator for messages since this account last looked. */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowChat(true);
-            }}
-            data-testid="gig-chat-button"
-            title={isDutch ? "Gig chat / Overleg" : "Gig chat / Discussion"}
-            aria-label={
-              isDutch
-                ? `Gig chat / Overleg: ${gig.eventName}`
-                : `Gig chat / Discussion: ${gig.eventName}`
-            }
-            className="relative rounded-lg p-2 text-sky-600 transition-all duration-200 hover:bg-sky-100/60 dark:text-sky-400 dark:hover:bg-sky-900/30"
-          >
-            <Icons.Chat className="h-4 w-4 shrink-0" />
-            {chatUnread > 0 && (
-              <span
-                data-testid="gig-chat-unread-badge"
-                className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-lg"
-              >
-                {chatUnread > 9 ? "9+" : chatUnread}
-              </span>
-            )}
-          </button>
+              unread indicator for messages since this account last looked.
+              v1.48.0: If band has external chat link configured, open that instead. */}
+          {hasExternalChat ? (
+            <a
+              href={gig.band?.chatUrl || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              data-testid="gig-chat-button"
+              title={isDutch ? "Open externe chat" : "Open external chat"}
+              aria-label={
+                isDutch
+                  ? `Open externe chat: ${gig.eventName}`
+                  : `Open external chat: ${gig.eventName}`
+              }
+              className="relative rounded-lg p-2 text-sky-600 transition-all duration-200 hover:bg-sky-100/60 dark:text-sky-400 dark:hover:bg-sky-900/30"
+            >
+              <Icons.Chat className="h-4 w-4 shrink-0" />
+            </a>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowChat(true);
+              }}
+              data-testid="gig-chat-button"
+              title={isDutch ? "Gig chat / Overleg" : "Gig chat / Discussion"}
+              aria-label={
+                isDutch
+                  ? `Gig chat / Overleg: ${gig.eventName}`
+                  : `Gig chat / Discussion: ${gig.eventName}`
+              }
+              className="relative rounded-lg p-2 text-sky-600 transition-all duration-200 hover:bg-sky-100/60 dark:text-sky-400 dark:hover:bg-sky-900/30"
+            >
+              <Icons.Chat className="h-4 w-4 shrink-0" />
+              {chatUnread > 0 && (
+                <span
+                  data-testid="gig-chat-unread-badge"
+                  className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-lg"
+                >
+                  {chatUnread > 9 ? "9+" : chatUnread}
+                </span>
+              )}
+            </button>
+          )}
           {/* v1.40.0: expenses, net profit and the payout split. */}
           <button
             onClick={(e) => {

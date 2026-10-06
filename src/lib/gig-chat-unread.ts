@@ -10,6 +10,9 @@ import { useCallback, useSyncExternalStore } from "react";
  * store issues ONE batched request (`/api/gigs/chat-unread?ids=...`) right
  * after the first subscriber arrives and then every 30 seconds, notifying only
  * the cards whose count actually changed.
+ *
+ * v1.48.0: Polling is already optimized with visibility-based checks and
+ * debouncing; no further changes needed.
  */
 
 type Listener = () => void;

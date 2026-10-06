@@ -5,6 +5,7 @@ import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
 import { AI_BOX, AI_BOX_PRE, AI_SHEET } from "@/lib/ai-ui";
 import { usesLocalOcrFallback } from "@/lib/ai-setlist-import";
+import { readAsDataUrl } from "@/lib/file-utils";
 
 /** Mirrors the shape returned by POST /api/setlists/parse. */
 export type ParsedImportItem = {
@@ -36,15 +37,6 @@ interface SetlistImportModalProps {
 }
 
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.readAsDataURL(file);
-  });
-}
 
 export function SetlistImportModal({
   isDutch,

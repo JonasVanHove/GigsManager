@@ -336,7 +336,7 @@ export async function GET(request: NextRequest) {
       // First fetch all bands for this user to enable name-based matching
       const allBands = await prisma.bands.findMany({
         where: { userId },
-        select: { id: true, name: true, color: true },
+        select: { id: true, name: true, color: true, chatType: true, chatUrl: true },
       });
 
       // Gigs the user plays on, resolved through their own BandMember rows.
@@ -367,6 +367,8 @@ export async function GET(request: NextRequest) {
                   id: true,
                   name: true,
                   color: true,
+                  chatType: true,
+                  chatUrl: true,
                 },
               },
             },

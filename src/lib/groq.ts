@@ -360,7 +360,10 @@ async function runOnce(
         model,
         messages,
         temperature: options.temperature,
-        max_tokens: options.maxTokens,
+        // `max_tokens` is deprecated in favour of `max_completion_tokens`
+        // (groq-sdk marks it `@deprecated`); the old name is rejected on
+        // newer model ids, so send the current name.
+        max_completion_tokens: options.maxTokens,
         ...(options.json ? { response_format: { type: "json_object" } } : {}),
       }),
       signal,

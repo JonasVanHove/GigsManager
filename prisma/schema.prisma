@@ -572,6 +572,10 @@ model bands {
   /// Band leader's switch: when false, linked members may read shared gigs but
   /// cannot edit them. Owners are never affected by this flag.
   canMembersEdit Boolean @default(false)
+  /// External group chat platform: 'whatsapp' | 'messenger' | 'telegram' | 'signal' | 'discord' | 'custom_url'
+  chatType  String?
+  /// URL for the external group chat (e.g., WhatsApp group link, Discord server invite)
+  chatUrl   String?   @db.Text
   createdAt DateTime? @default(now()) @db.Timestamptz(6)
   updatedAt DateTime? @default(now()) @db.Timestamptz(6)
   setlists  Setlist[]

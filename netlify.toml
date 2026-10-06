@@ -143,3 +143,10 @@
 
 # ─── Redirects ───────────────────────────────────────────────────────────────
 # SPA fallback handled automatically by @netlify/plugin-nextjs
+#
+# NOTE: synchronous Netlify Functions are limited to 60 seconds and that limit
+# is NOT configurable (no `[functions] timeout` key exists — docs list it as
+# "Configurable? No"). Long AI routes (e.g. /api/setlists/parse, which chains
+# vision OCR + text structuring + fallbacks) therefore keep their own
+# `maxDuration = 60` / 45s AbortController budgets instead of relying on
+# platform config.

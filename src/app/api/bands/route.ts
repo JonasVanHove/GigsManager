@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
         color: true,
         canMembersEdit: true,
         inviteCode: true,
+        chatType: true,
+        chatUrl: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -57,6 +59,8 @@ export async function GET(request: NextRequest) {
         color: band.color,
         canMembersEdit: band.canMembersEdit,
         inviteCode: band.inviteCode,
+        chatType: band.chatType,
+        chatUrl: band.chatUrl,
         createdAt: band.createdAt,
         updatedAt: band.updatedAt,
         isOwner,
@@ -77,15 +81,15 @@ export async function POST(request: NextRequest) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { name, logoUrl, color } = body;
+    const { name, logoUrl, color, chatType, chatUrl } = body;
     if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
 
     const user = await prisma.user.findUnique({ where: { supabaseId: userId }, select: { id: true } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const id = crypto.randomUUID();
-    await prisma.$executeRaw`INSERT INTO bands (id, name, "logoUrl", color, "userId", "createdAt") VALUES (${id}, ${name}, ${logoUrl || null}, ${color || '#6366f1'}, ${user.id}, NOW())`;
-    return NextResponse.json({ id, name, logoUrl, color, isOwner: true, isLeader: true }, { status: 201 });
+    await prisma.$executeRaw`INSERT INTO bands (id, name, "logoUrl", color, "chatType", "chatUrl", "userId", "createdAt") VALUES (${id}, ${name}, ${logoUrl || null}, ${color || '#6366f1'}, ${chatType || null}, ${chatUrl || null}, ${user.id}, NOW())`;
+    return NextResponse.json({ id, name, logoUrl, color, chatType, chatUrl, isOwner: true, isLeader: true }, { status: 201 });
   } catch (err) {
     console.error("POST /api/bands error:", err);
     return NextResponse.json({ error: "Failed to create band" }, { status: 500 });
@@ -113,11 +117,13 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const data: { logoUrl?: string | null; color?: string; canMembersEdit?: boolean; name?: string } = {};
+    const data: { logoUrl?: string | null; color?: string; canMembersEdit?: boolean; name?: string; chatType?: string | null; chatUrl?: string | null } = {};
     if ("logoUrl" in body) data.logoUrl = body.logoUrl || null;
     if ("color" in body) data.color = body.color || "#6366f1";
     if ("canMembersEdit" in body) data.canMembersEdit = Boolean(body.canMembersEdit);
     if ("name" in body && body.name) data.name = body.name.trim();
+    if ("chatType" in body) data.chatType = body.chatType || null;
+    if ("chatUrl" in body) data.chatUrl = body.chatUrl || null;
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(

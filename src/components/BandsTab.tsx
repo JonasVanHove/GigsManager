@@ -12,6 +12,7 @@ import BandInviteModal from "./BandInviteModal";
 import ToggleSwitch from "./ToggleSwitch";
 import Avatar from "./Avatar";
 import { normalizeArrayResponse } from "@/lib/api-response";
+import { readAsDataUrl } from "@/lib/file-utils";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
 
 interface Band {
@@ -23,6 +24,8 @@ interface Band {
   /** Whether bandmates may edit gigs they are shared on. */
   canMembersEdit?: boolean | null;
   inviteCode?: string | null;
+  chatType?: string | null;
+  chatUrl?: string | null;
   isOwner?: boolean;
   isLeader?: boolean;
   createdAt: string;
@@ -81,6 +84,8 @@ export default function BandsTab() {
     logoUrl: "",
     color: "#bfdbfe",
     canMembersEdit: false,
+    chatType: "",
+    chatUrl: "",
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -222,12 +227,7 @@ export default function BandsTab() {
         console.error("Supabase upload error:", error);
         // Fallback to base64 data URL if Supabase upload fails
         console.log("Using fallback base64 encoding");
-        const fallbackUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => (typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Failed to read file")));
-          reader.onerror = () => reject(new Error("Failed to read file"));
-          reader.readAsDataURL(file);
-        });
+        const fallbackUrl = await readAsDataUrl(file);
         setLogoPreview(fallbackUrl);
         setFormData({ ...formData, logoUrl: fallbackUrl });
         toast.warning(t('bands.logoUploadWarning'));
@@ -271,6 +271,8 @@ export default function BandsTab() {
             logoUrl: formData.logoUrl || null,
             color: formData.color,
             canMembersEdit: formData.canMembersEdit,
+            chatType: formData.chatType || null,
+            chatUrl: formData.chatUrl || null,
           }),
         });
 
@@ -284,7 +286,13 @@ export default function BandsTab() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ name: formData.name.trim(), logoUrl: formData.logoUrl || null, color: formData.color }),
+          body: JSON.stringify({ 
+            name: formData.name.trim(), 
+            logoUrl: formData.logoUrl || null, 
+            color: formData.color,
+            chatType: formData.chatType || null,
+            chatUrl: formData.chatUrl || null,
+          }),
         });
 
         if (!response.ok) throw new Error(t('bands.errorSave'));
@@ -294,7 +302,7 @@ export default function BandsTab() {
       setShowForm(false);
       setEditingBand(null);
       setExpandedBandId(null);
-      setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false });
+      setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "" });
       setLogoPreview(null);
       loadBands();
     } catch (error) {
@@ -309,6 +317,8 @@ export default function BandsTab() {
       logoUrl: band.logoUrl || "",
       color: band.color || "#bfdbfe",
       canMembersEdit: Boolean(band.canMembersEdit),
+      chatType: band.chatType || "",
+      chatUrl: band.chatUrl || "",
     });
     setLogoPreview(band.logoUrl || null);
     setExpandedBandId(band.id);
@@ -317,7 +327,7 @@ export default function BandsTab() {
   const handleCancelEdit = () => {
     setEditingBand(null);
     setExpandedBandId(null);
-    setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false });
+    setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "" });
     setLogoPreview(null);
   };
 
@@ -448,7 +458,7 @@ export default function BandsTab() {
         <button
           onClick={() => {
             setEditingBand(null);
-            setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false });
+            setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "" });
             setLogoPreview(null);
             setShowForm(true);
           }}
@@ -562,6 +572,46 @@ export default function BandsTab() {
               </div>
             </div>
 
+            {/* v1.48.0: External group chat link configuration */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {language === "nl" ? "Chat platform" : "Chat Platform"}
+              </label>
+              <select
+                value={formData.chatType}
+                onChange={(e) => setFormData({ ...formData, chatType: e.target.value })}
+                className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="">{language === "nl" ? "Geen chat" : "No chat"}</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="messenger">Messenger</option>
+                <option value="telegram">Telegram</option>
+                <option value="signal">Signal</option>
+                <option value="discord">Discord</option>
+                <option value="custom_url">{language === "nl" ? "Aangepaste URL" : "Custom URL"}</option>
+              </select>
+            </div>
+
+            {formData.chatType && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {language === "nl" ? "Chat link / URL" : "Chat Link / URL"}
+                </label>
+                <input
+                  type="url"
+                  value={formData.chatUrl}
+                  onChange={(e) => setFormData({ ...formData, chatUrl: e.target.value })}
+                  placeholder={language === "nl" ? "https://..." : "https://..."}
+                  className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {language === "nl"
+                    ? "De chatknop in gigkaarten opent deze link in een nieuw tabblad."
+                    : "The chat button in gig cards opens this link in a new tab."}
+                </p>
+              </div>
+            )}
+
             {/* Only meaningful when editing: a brand new band has no members
                 to grant anything to yet. */}
             {editingBand && (
@@ -591,7 +641,7 @@ export default function BandsTab() {
                 onClick={() => {
                   setShowForm(false);
                   setEditingBand(null);
-                  setFormData({ name: "", logoUrl: "", color: "#6366f1", canMembersEdit: false });
+                  setFormData({ name: "", logoUrl: "", color: "#6366f1", canMembersEdit: false, chatType: "", chatUrl: "" });
                   setLogoPreview(null);
                 }}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -715,6 +765,46 @@ export default function BandsTab() {
                           )}
                         </div>
                       </div>
+
+                      {/* v1.48.0: External group chat link configuration */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {language === "nl" ? "Chat platform" : "Chat Platform"}
+                        </label>
+                        <select
+                          value={formData.chatType}
+                          onChange={(e) => setFormData({ ...formData, chatType: e.target.value })}
+                          className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                        >
+                          <option value="">{language === "nl" ? "Geen chat" : "No chat"}</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="messenger">Messenger</option>
+                          <option value="telegram">Telegram</option>
+                          <option value="signal">Signal</option>
+                          <option value="discord">Discord</option>
+                          <option value="custom_url">{language === "nl" ? "Aangepaste URL" : "Custom URL"}</option>
+                        </select>
+                      </div>
+
+                      {formData.chatType && (
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {language === "nl" ? "Chat link / URL" : "Chat Link / URL"}
+                          </label>
+                          <input
+                            type="url"
+                            value={formData.chatUrl}
+                            onChange={(e) => setFormData({ ...formData, chatUrl: e.target.value })}
+                            placeholder={language === "nl" ? "https://..." : "https://..."}
+                            className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          />
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {language === "nl"
+                              ? "De chatknop in gigkaarten opent deze link in een nieuw tabblad."
+                              : "The chat button in gig cards opens this link in a new tab."}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="flex justify-end gap-2">
                         <button

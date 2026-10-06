@@ -59,6 +59,8 @@ export interface Gig {
     id: string;
     name: string;
     color?: string | null;
+    chatType?: string | null;
+    chatUrl?: string | null;
   } | null;
   createdAt: string;
   updatedAt: string;

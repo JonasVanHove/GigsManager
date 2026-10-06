@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
+import { readAsDataUrl as readFileAsDataUrl } from "@/lib/file-utils";
 
 type SongAttachment = {
   id: string;
@@ -16,14 +17,6 @@ interface SongMediaManagerProps {
   attachments: SongAttachment[];
   onChange: (attachments: SongAttachment[]) => void;
 }
-
-const readFileAsDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => (typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Failed to read file")));
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
 
 export function SongMediaManager({ attachments, onChange }: SongMediaManagerProps) {
   const [uploading, setUploading] = useState(false);

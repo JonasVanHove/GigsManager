@@ -5,6 +5,7 @@ import { Icons } from "./Icons";
 import { useAuth } from "./AuthProvider";
 import { GigMessageDrafter } from "./GigMessageDrafter";
 import { AI_BOX, AI_BOX_TEXT } from "@/lib/ai-ui";
+import { readAsDataUrl } from "@/lib/file-utils";
 
 export type GigAttachmentItem = {
   id: string;
@@ -41,15 +42,6 @@ function formatBytes(bytes: number | null): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("read failed"));
-    reader.readAsDataURL(file);
-  });
 }
 
 /**

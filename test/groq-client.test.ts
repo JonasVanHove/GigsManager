@@ -547,6 +547,10 @@ describe("callGroq model fallback", () => {
     expect(out).toBe("hello");
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.model).toBe("llama3-70b-8192");
+    // The deprecated `max_tokens` name is rejected on newer model ids —
+    // the request must carry the current `max_completion_tokens` name.
+    expect(body.max_completion_tokens).toBe(1500);
+    expect(body).not.toHaveProperty("max_tokens");
   });
 
   it("walks the text chain when the primary model is retired", async () => {

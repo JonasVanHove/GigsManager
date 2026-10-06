@@ -186,7 +186,7 @@ async function handleSave() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ force }),
+        body: JSON.stringify({ force, language: isDutch ? "nl" : "en" }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Summary failed");

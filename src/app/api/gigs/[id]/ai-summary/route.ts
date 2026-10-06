@@ -81,7 +81,8 @@ Rules:
 - If a category has no information, return an empty items array for it (do not guess).
 - Keep every bullet short and concrete (max ~15 words), quantities with their currency.
 - Prefer the most recent figure if the source contains several conflicting amounts.
-- Unresolved questions are things the band must still confirm/ask, phrased as questions.`;
+- Unresolved questions are things the band must still confirm/ask, phrased as questions.
+- IMPORTANT: All output must be in the language specified in the user's request (Dutch for "nl", English for "en").`;
 
 const USER_PROMPT_SHAPE = `Return ONLY a JSON object with this exact shape:
 {
@@ -125,6 +126,7 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const force = Boolean(body?.force);
+    const language = body?.language || "en";
 
     const existing = await prisma.gig.findUnique({
       where: { id: gig.id },
@@ -211,6 +213,7 @@ export async function POST(
       documents.length > 0
         ? `\nAttached documents:\n${documents.join("\n\n")}`
         : "\nAttached documents: (none)",
+      `\nLanguage requirement: Generate the entire response in ${language === "nl" ? "Dutch" : "English"}.`,
     ]
       .filter(Boolean)
       .join("\n");

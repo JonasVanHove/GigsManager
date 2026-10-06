@@ -186,7 +186,7 @@ const GigCard = memo(function GigCard({
     <div
       data-testid="gig-card"
       data-gig-id={gig.id}
-      className={`group w-full max-w-full overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
+      className={`group relative w-full max-w-full overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
       gig.managerInstantPayment
         ? 'surface-card border-slate-300/80 bg-slate-100/60 backdrop-blur dark:border-slate-600/60 dark:bg-slate-800/50 dark:backdrop-blur'
         : isSelected
@@ -270,48 +270,6 @@ const GigCard = memo(function GigCard({
                 {isDutch ? "Notities (pending)" : "Notes (pending)"}
               </span>
             )}
-            {/* Notes live here, in the always-visible header, rather than in a
-                full-width action row: the badge is the affordance, and it stays
-                reachable whether or not the card is expanded. */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowQuickNotes(true);
-              }}
-              title={
-                localNotes
-                  ? isDutch
-                    ? "Notities & stand van zaken"
-                    : "Notes & AI summary"
-                  : isDutch
-                    ? "Notitie toevoegen"
-                    : "Add a note"
-              }
-              aria-label={
-                isDutch
-                  ? `Notities & stand van zaken: ${gig.eventName}`
-                  : `Notes & AI summary: ${gig.eventName}`
-              }
-              data-testid="gig-quick-notes-trigger"
-              className={`badge badge-enter min-h-[28px] cursor-pointer transition hover:underline ${
-                localNotes
-                  ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                  : "border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-700 dark:text-slate-500 dark:hover:text-slate-300"
-              }`}
-            >
-              {localNotes ? (
-                <>
-                  <Icons.Document className="h-3 w-3 shrink-0" />
-                  {isDutch ? "Notitie" : "Note"}
-                </>
-              ) : (
-                <>
-                  <Icons.Plus className="h-3 w-3 shrink-0" />
-                  {isDutch ? "Notitie" : "Note"}
-                </>
-              )}
-            </button>
             {gig.managerInstantPayment && (
               <>
                 <span className="inline-flex tablet:hidden items-center shrink-0 p-1 rounded-md text-amber-700 dark:text-amber-300 badge-enter" title="Manager pays">
@@ -736,6 +694,37 @@ const GigCard = memo(function GigCard({
       </div>
         </div>
       )}
+
+      {/* Notes button - always visible at bottom-right corner */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowQuickNotes(true);
+        }}
+        title={
+          localNotes
+            ? isDutch
+              ? "Notities & stand van zaken"
+              : "Notes & AI summary"
+            : isDutch
+              ? "Notitie toevoegen"
+              : "Add a note"
+        }
+        aria-label={
+          isDutch
+            ? `Notities & stand van zaken: ${gig.eventName}`
+            : `Notes & AI summary: ${gig.eventName}`
+        }
+        data-testid="gig-quick-notes-trigger"
+        className="absolute bottom-3 right-3 rounded-lg bg-slate-100 p-2 text-slate-600 shadow-sm transition-all hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+      >
+        {localNotes ? (
+          <Icons.Document className="h-4 w-4 shrink-0" />
+        ) : (
+          <Icons.Plus className="h-4 w-4 shrink-0" />
+        )}
+      </button>
 
       {showQuickNotes && (
         <GigQuickNotesModal

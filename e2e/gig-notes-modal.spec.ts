@@ -244,4 +244,47 @@ test.describe('Gig quick notes modal', () => {
     await expect(page.getByTestId('gig-quick-notes-modal')).toBeVisible();
     await context.close();
   });
+
+  test('passes language parameter to AI summary API', async ({ page }) => {
+    await openDrawer(page);
+
+    // Intercept the API call to verify the language parameter
+    const apiRequestPromise = page.waitForRequest(/\/api\/gigs\/.*\/ai-summary/);
+
+    await page.getByTestId('gig-quick-notes-generate').click();
+
+    const request = await apiRequestPromise;
+    const postData = request.postDataJSON();
+
+    // Verify language parameter is present (should be 'nl' for Dutch demo account)
+    expect(postData).toHaveProperty('language');
+    expect(postData.language).toMatch(/^(en|nl)$/);
+  });
+
+  test('notes button is positioned at bottom-right corner of card', async ({ page }) => {
+    await page.goto('/demo');
+    await page.waitForURL('**/app**', { timeout: 60_000 });
+
+    // Wait for the first gig card to appear
+    const card = page.getByTestId('gig-card').first();
+    await card.waitFor({ state: 'visible', timeout: 60_000 });
+
+    // Get the notes button
+    const notesButton = page.getByTestId('gig-quick-notes-trigger').first();
+    await expect(notesButton).toBeVisible();
+
+    // Verify it's positioned absolutely at bottom-right
+    const buttonStyles = await notesButton.evaluate((el) => {
+      const styles = getComputedStyle(el);
+      return {
+        position: styles.position,
+        bottom: styles.bottom,
+        right: styles.right,
+      };
+    });
+
+    expect(buttonStyles.position).toBe('absolute');
+    expect(buttonStyles.bottom).toBe('12px'); // 3 * 4px tailwind spacing
+    expect(buttonStyles.right).toBe('12px'); // 3 * 4px tailwind spacing
+  });
 });

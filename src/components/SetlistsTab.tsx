@@ -786,11 +786,18 @@ export default function SetlistsTab() {
       }
       void getPinnedSetlistIds().then((ids) => setPinnedIds(ids));
 
-      if (!selectedId && hydratedSetlists[0]) {
-        const first = hydratedSetlists[0];
-        setSelectedId(first.id);
-        setDraft(JSON.parse(JSON.stringify(first)) as StoredSetlist);
+      if (!selectedId && hydratedSetlists.length > 0) {
+        // Prefer the setlist requested via URL (e.g. from a gig card deep link).
+        // Read searchParams imperatively (not a dep) to avoid re-triggering loadData on URL changes.
+        const urlSetlistId = new URLSearchParams(window.location.search).get('setlist');
+        const target = urlSetlistId
+          ? hydratedSetlists.find((s) => s.id === urlSetlistId) || hydratedSetlists[0]
+          : hydratedSetlists[0];
+        setSelectedId(target.id);
+        setDraft(JSON.parse(JSON.stringify(target)) as StoredSetlist);
         setSavingState("saved");
+        // Sync URL so the selected setlist is always reflected
+        router.replace(`/app?tab=setlists&setlist=${target.id}`, { scroll: false });
       }
 
       // These datasets are secondary to opening the setlist editor. Loading
@@ -815,7 +822,7 @@ export default function SetlistsTab() {
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken, loadNotes, session?.user, selectedId, toast, t, fetchSongsCollection, fetchSetlistsCollection]);
+  }, [getAccessToken, loadNotes, session?.user, selectedId, toast, t, fetchSongsCollection, fetchSetlistsCollection, router]);
 
   useEffect(() => {
     loadData();
@@ -984,7 +991,7 @@ export default function SetlistsTab() {
     }
   }, [draft?.id, loadItemAttachments]);
 
-  // Handle URL parameter to open specific setlist from gig card
+  // Handle URL parameter to open specific setlist from gig card or direct link
   useEffect(() => {
     const setlistIdFromUrl = searchParams.get('setlist');
     if (setlistIdFromUrl && setlists.length > 0) {
@@ -993,11 +1000,9 @@ export default function SetlistsTab() {
         setSelectedId(setlistIdFromUrl);
         setDraft(JSON.parse(JSON.stringify(targetSetlist)) as StoredSetlist);
         setSavingState("saved");
-        // Clean up URL parameter
-        router.replace('/?tab=setlists', { scroll: false });
       }
     }
-  }, [searchParams, setlists, selectedId, router]);
+  }, [searchParams, setlists, selectedId]);
 
   // Close tag dropdown when clicking outside
   useEffect(() => {
@@ -1069,7 +1074,9 @@ export default function SetlistsTab() {
     setActiveItemId(null);
     // Auto-collapse sidebar on mobile when setlist is selected
     setSidebarCollapsed(true);
-  }, []);
+    // Keep the URL in sync so each setlist has a unique, shareable URL
+    router.replace(`/app?tab=setlists&setlist=${setlist.id}`, { scroll: false });
+  }, [router]);
 
   /**
    * Creates a setlist from reviewed import rows, for when no setlist is open.
@@ -1248,8 +1255,10 @@ export default function SetlistsTab() {
       setSetlists((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
       setSelectedId(saved.id);
       setSavingState("saved");
+      // Keep URL in sync with the (possibly newly-created) setlist ID
+      router.replace(`/app?tab=setlists&setlist=${saved.id}`, { scroll: false });
     }
-  }, [getAccessToken, session?.user, t]);
+  }, [getAccessToken, session?.user, t, router]);
 
   useEffect(() => {
     if (!draft || savingState !== "dirty") return;
@@ -1537,8 +1546,10 @@ export default function SetlistsTab() {
     if (selectedId === setlistId) {
       setSelectedId(null);
       setDraft(null);
+      // Remove the deleted setlist from the URL
+      router.replace('/app?tab=setlists', { scroll: false });
     }
-  }, [getAccessToken, selectedId, toast, t]);
+  }, [getAccessToken, selectedId, toast, t, router]);
 
   const addSong = useCallback((song: SongRow) => {
     updateDraftItems((items) => [...items, createSongItem(song)]);

@@ -387,6 +387,24 @@ export const Icons = {
       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
     </svg>
   ),
+
+  // v1.49.1: stage / performance microphone — unmistakable "on stage" cue.
+  Mic: (props: IconProps) => (
+    <svg {...iconDefaults} {...props}>
+      <path d="M12 19v3" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <rect x="9" y="2" width="6" height="13" rx="3" />
+    </svg>
+  ),
+
+  // v1.49.1: presentation screen — used where a stage/deck metaphor reads better.
+  Presentation: (props: IconProps) => (
+    <svg {...iconDefaults} {...props}>
+      <path d="M2 3h20" />
+      <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" />
+      <path d="m7 21 5-5 5 5" />
+    </svg>
+  ),
 };
 
 // For backward compatibility with common patterns

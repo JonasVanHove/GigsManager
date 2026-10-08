@@ -19,6 +19,13 @@ export type ParsedImportItem = {
     score: number;
     confidence: "high" | "low";
   } | null;
+  details?: {
+    key: string | null;
+    bpm: number | null;
+    tuning: string | null;
+    duration: string | null;
+    notes: string | null;
+  };
 };
 
 /** A reviewed row, ready to be merged into the setlist draft. */
@@ -28,6 +35,13 @@ export type ReviewedImportItem = {
   title: string;
   songId: string | null;
   notitie: string;
+  details?: {
+    key: string | null;
+    bpm: number | null;
+    tuning: string | null;
+    duration: string | null;
+    notes: string | null;
+  };
 };
 
 interface SetlistImportModalProps {
@@ -148,6 +162,7 @@ export function SetlistImportModal({
         item.match && item.match.confidence === "low"
           ? `${isDutch ? "Suggestie" : "Suggestion"}: ${item.match.title}`
           : "",
+      details: item.details,
     }));
   }
 

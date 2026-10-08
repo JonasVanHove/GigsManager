@@ -131,4 +131,58 @@ describe("POST /api/setlists/parse", () => {
       expect.objectContaining({ songId: "song-1", confidence: "high" })
     );
   });
+
+  it("inherits library song metadata into the parse result for linked songs", async () => {
+    songsFindManyMock.mockResolvedValue([
+      {
+        id: "song-1",
+        title: "Bohemian Rhapsody",
+        notes:
+          "[[song-meta]]{\"keySignature\": \"A\", \"bpm\": \"150\", \"comments\": \"piano\\\":\\\"ist\"}[[/song-meta]] body",
+      },
+      { id: "song-2", title: "Hotel California" },
+    ]);
+    callGroqMock.mockResolvedValueOnce(
+      JSON.stringify({ items: [{ title: "Bohemian Rhapsody" }, { title: "A Brand New Song" }] })
+    );
+    const { POST } = await import("@/app/api/setlists/parse/route");
+    const res = await POST(
+      jsonRequest({ text: "1. Bohemian Rhapsody\n2. A Brand New Song" })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.items[0].match).toEqual(
+      expect.objectContaining({ songId: "song-1", confidence: "high" })
+    );
+    // The linked song inherits the library metadata into `details`.
+    expect(body.items[0].details).toEqual(
+      expect.objectContaining({
+        key: "A",
+        bpm: 150,
+        notes: "piano\":\"ist",
+      })
+    );
+    // Unlinked items keep only the raw parsed fields and no inherited details.
+    expect(body.items[1].match).toBeNull();
+    expect(body.items[1].details).toEqual({
+      key: null,
+      bpm: null,
+      tuning: null,
+      duration: null,
+      notes: null,
+    });
+  });
+
+  it("extracts song metadata from the [[song-meta]] JSON block", async () => {
+    const { parseSongMetaFromNotes } = await import("@/lib/song-meta");
+    const notes =
+          "[[song-meta]]{\"keySignature\": \"A\", \"bpm\": \"150\", \"comments\": \"piano:ist\"}[[/song-meta]] body";
+    const meta = parseSongMetaFromNotes(notes);
+    expect(meta).toEqual({ keySignature: "A", bpm: "150", comments: "piano:ist" });
+  });
+
+  it("returns null when the [[song-meta]] block is missing", async () => {
+    const { parseSongMetaFromNotes } = await import("@/lib/song-meta");
+    expect(parseSongMetaFromNotes("just a plain body")).toBeNull();
+  });
 });

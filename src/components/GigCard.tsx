@@ -186,7 +186,7 @@ const GigCard = memo(function GigCard({
     <div
       data-testid="gig-card"
       data-gig-id={gig.id}
-      className={`group relative w-full max-w-full overflow-hidden rounded-xl border border-l-4 animate-fade-in transition-all duration-300 ${
+      className={`group relative w-full max-w-full overflow-hidden rounded-xl border border-l-4 pt-3 pb-6 animate-fade-in transition-all duration-300 ${
       gig.managerInstantPayment
         ? 'surface-card border-slate-300/80 bg-slate-100/60 backdrop-blur dark:border-slate-600/60 dark:bg-slate-800/50 dark:backdrop-blur'
         : isSelected
@@ -317,9 +317,9 @@ const GigCard = memo(function GigCard({
                 data-testid="stage-mode-button"
                 title={isDutch ? "Podiummodus" : "Stage Mode"}
                 aria-label={isDutch ? "Podiummodus" : "Stage Mode"}
-                className="rounded-lg p-2 text-amber-500 transition-all duration-200 hover:bg-amber-100/60 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                className="rounded-lg bg-amber-100 p-2 text-amber-700 ring-1 ring-amber-500/40 transition-all duration-200 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-400/40 dark:hover:bg-amber-800/50"
               >
-                <Icons.Music className="h-4 w-4 shrink-0" />
+                <Icons.Mic className="h-4 w-4 shrink-0" />
               </button>
               <button
                 onClick={(e) => {
@@ -717,7 +717,7 @@ const GigCard = memo(function GigCard({
             : `Notes & AI summary: ${gig.eventName}`
         }
         data-testid="gig-quick-notes-trigger"
-        className="absolute bottom-3 right-3 rounded-lg bg-slate-100 p-2 text-slate-600 shadow-sm transition-all hover:bg-slate-200 hover:text-slate-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+        className="absolute bottom-3 right-3 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 p-2.5 text-white shadow-lg shadow-brand-900/30 transition-all duration-200 hover:from-brand-400 hover:to-brand-500 hover:shadow-xl hover:shadow-brand-900/40 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2 dark:focus:ring-offset-black"
       >
         {localNotes ? (
           <Icons.Document className="h-4 w-4 shrink-0" />

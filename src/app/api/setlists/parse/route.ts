@@ -17,6 +17,7 @@ import {
 import { extractTextLocally, isVisionModelUnavailable } from "@/lib/local-ocr";
 import { getUserIdFromHeader, getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { parseSongMetaFromNotes } from "@/lib/song-meta";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -319,7 +320,7 @@ export async function POST(request: NextRequest) {
     // --- Step 3: fuzzy match against the user's song library ----------------
     const library = await prisma.songs.findMany({
       where: { userId },
-      select: { id: true, title: true },
+      select: { id: true, title: true, notes: true },
       orderBy: { title: "asc" },
       take: 2000,
     });
@@ -368,6 +369,19 @@ export async function POST(request: NextRequest) {
               confidence: "high",
             };
             usedSongIds.add(best.item.id);
+            // v1.49.1: inherit metadata from the existing library record when
+            // the import did not supply it, so the review stage starts from
+            // the library's own key/bpm/tuning/notes instead of blanks.
+            const parsed = parseSongMetaFromNotes(best.item.notes);
+            if (parsed) {
+              if (!details.key && parsed.keySignature) details.key = parsed.keySignature;
+              if (!details.bpm && parsed.bpm) {
+                const bpm = Number(parsed.bpm);
+                if (Number.isFinite(bpm)) details.bpm = bpm;
+              }
+              if (!details.tuning && parsed.keySignature) details.tuning = parsed.keySignature;
+              if (!details.notes && parsed.comments) details.notes = parsed.comments;
+            }
           } else if (best.score >= SUGGEST_THRESHOLD) {
             // Below the auto-match threshold we surface a suggestion but do NOT
             // link it: an unverified DB link would silently attach wrong data.

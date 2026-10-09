@@ -24,9 +24,32 @@ async function requireAuth(request: NextRequest) {
   return { user };
 }
 
+async function requireSetlistItemOwnership(itemId: string, userId: string) {
+  const p: any = prisma;
+  const item = await p.setlistItem.findUnique({
+    where: { id: itemId },
+    include: { setlist: true },
+  });
+
+  if (!item) {
+    return NextResponse.json({ error: 'Setlist item not found' }, { status: 404 });
+  }
+
+  if (item.setlist.userId !== userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return null;
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: { id: string } };
+
+  const ownershipCheck = await requireSetlistItemOwnership(params.id, user.id);
+  if (ownershipCheck) return ownershipCheck;
+
   try {
     console.log('[DEBUG Setlist Attachments API] Fetching attachments for item:', params.id);
     const p: any = prisma;
@@ -45,6 +68,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
+  const { user } = authResult as { user: { id: string } };
+
+  const ownershipCheck = await requireSetlistItemOwnership(params.id, user.id);
+  if (ownershipCheck) return ownershipCheck;
+
   try {
     const body = await request.json();
     const { url, type, title, description, mimeType, fileSize } = body;

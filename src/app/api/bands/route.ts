@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserIdFromHeader } from "@/lib/auth-helpers";
+import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const user = await prisma.user.findUnique({ where: { supabaseId: userId }, select: { id: true } });
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
@@ -146,7 +146,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const url = new URL(request.url);

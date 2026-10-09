@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdFromHeader } from "@/lib/auth-helpers";
+import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateInviteCode, inviteLink } from "@/lib/band-invites";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
@@ -20,7 +20,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const owner = await prisma.user.findUnique({

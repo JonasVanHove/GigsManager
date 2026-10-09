@@ -1824,16 +1824,16 @@ export default function SetlistsTab() {
 
   const handleDeleteAttachment = async (itemId: string, attachmentId: string) => {
     if (!session?.user) return;
-    
+
     try {
       const token = await getAccessToken();
       if (!token) return;
-      
+
       const response = await fetch(`/api/setlist-items/${itemId}/attachments/${attachmentId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       if (response.ok) {
         await loadItemAttachments(itemId);
         toast.success(t('setlists.attachmentDeleted'));
@@ -1841,6 +1841,31 @@ export default function SetlistsTab() {
     } catch (error) {
       console.error('Failed to delete attachment:', error);
       toast.error(t('setlists.deleteFailed'));
+    }
+  };
+
+  const handleReorderAttachments = async (itemId: string, attachmentIds: string[]) => {
+    if (!session?.user) return;
+
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch(`/api/setlist-items/${itemId}/attachments/reorder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ order: attachmentIds }),
+      });
+
+      if (response.ok) {
+        await loadItemAttachments(itemId);
+      }
+    } catch (error) {
+      console.error('Failed to reorder attachments:', error);
+      toast.error(t('setlists.reorderFailed'));
     }
   };
 

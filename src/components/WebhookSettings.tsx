@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Icons } from "./Icons";
 import type { Webhook } from "@/lib/webhooks";
 import { useSettings } from "./SettingsProvider";
+import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastContainer";
 
 interface WebhookSettingsProps {
   webhooks?: Webhook[];
@@ -13,12 +15,15 @@ interface WebhookSettingsProps {
 }
 
 export default function WebhookSettings({
-  webhooks = [],
+  webhooks: propWebhooks,
   onAddWebhook,
   onToggleWebhook,
   onDeleteWebhook,
 }: WebhookSettingsProps) {
   const { language } = useSettings();
+  const { getAccessToken } = useAuth();
+  const toast = useToast();
+  const [webhooks, setWebhooks] = useState<Webhook[]>(propWebhooks || []);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<{
     provider: "discord" | "n8n" | "custom";
@@ -33,6 +38,29 @@ export default function WebhookSettings({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Load webhooks from API on mount
+  const loadWebhooks = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch("/api/webhooks", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setWebhooks(data.webhooks || []);
+      }
+    } catch (err) {
+      console.error("Failed to load webhooks:", err);
+    }
+  }, [getAccessToken]);
+
+  useEffect(() => {
+    loadWebhooks();
+  }, [loadWebhooks]);
 
   const eventOptions = [
     { id: "payment_received", label: language === "nl" ? "Betaling ontvangen" : "Payment Received", icon: "💰" },
@@ -105,33 +133,102 @@ export default function WebhookSettings({
         return;
       }
 
-      // TODO: Call API to create webhook
-      // For now, mock implementation
-      const newWebhook: Webhook = {
-        id: `webhook_${Date.now()}`,
-        userId: "",
-        provider: formData.provider,
-        url: formData.url,
-        events: formData.events as any,
-        enabled: true,
-        name: formData.name || `${formData.provider} Webhook`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const token = await getAccessToken();
+      if (!token) {
+        setError(language === "nl" ? "Niet ingelogd" : "Not authenticated");
+        setLoading(false);
+        return;
+      }
 
-      onAddWebhook?.(newWebhook);
-      setFormData({
-        provider: "discord",
-        url: "",
-        events: [],
-        name: "",
+      const response = await fetch("/api/webhooks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          url: formData.url,
+          provider: formData.provider,
+          events: formData.events,
+          name: formData.name || `${formData.provider} Webhook`,
+          enabled: true,
+        }),
       });
-      setShowForm(false);
+
+      if (response.ok) {
+        const data = await response.json();
+        const newWebhook = data.webhook;
+        setWebhooks((prev) => [...prev, newWebhook]);
+        onAddWebhook?.(newWebhook);
+        setFormData({
+          provider: "discord",
+          url: "",
+          events: [],
+          name: "",
+        });
+        setShowForm(false);
+        toast.success(language === "nl" ? "Webhook aangemaakt" : "Webhook created");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || (language === "nl" ? "Webhook maken mislukt" : "Failed to create webhook"));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : (language === "nl" ? "Webhook maken mislukt" : "Failed to create webhook");
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggle = async (webhookId: string, enabled: boolean) => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch(`/api/webhooks?id=${webhookId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ enabled }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setWebhooks((prev) =>
+          prev.map((w) => (w.id === webhookId ? data.webhook : w))
+        );
+        onToggleWebhook?.(webhookId, enabled);
+      }
+    } catch (err) {
+      console.error("Failed to toggle webhook:", err);
+      toast.error(language === "nl" ? "Webhook update mislukt" : "Failed to update webhook");
+    }
+  };
+
+  const handleDelete = async (webhookId: string) => {
+    if (!confirm(language === "nl" ? "Weet je zeker dat je deze webhook wilt verwijderen?" : "Are you sure you want to delete this webhook?")) {
+      return;
+    }
+
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const response = await fetch(`/api/webhooks?id=${webhookId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setWebhooks((prev) => prev.filter((w) => w.id !== webhookId));
+        onDeleteWebhook?.(webhookId);
+        toast.success(language === "nl" ? "Webhook verwijderd" : "Webhook deleted");
+      }
+    } catch (err) {
+      console.error("Failed to delete webhook:", err);
+      toast.error(language === "nl" ? "Webhook verwijderen mislukt" : "Failed to delete webhook");
     }
   };
 
@@ -321,28 +418,24 @@ export default function WebhookSettings({
                 </div>
 
                 <div className="ml-4 flex gap-1">
-                  {onToggleWebhook && (
-                    <button
-                      onClick={() => onToggleWebhook(webhook.id, !webhook.enabled)}
-                      title={webhook.enabled ? "Disable" : "Enable"}
-                      className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
-                    >
-                      {webhook.enabled ? (
-                        <Icons.Check className="h-4 w-4" />
-                      ) : (
-                        <Icons.Close className="h-4 w-4" />
-                      )}
-                    </button>
-                  )}
-                  {onDeleteWebhook && (
-                    <button
-                      onClick={() => onDeleteWebhook(webhook.id)}
-                      title="Delete"
-                      className="rounded p-1 text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
-                    >
-                      <Icons.Trash className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleToggle(webhook.id, !webhook.enabled)}
+                    title={webhook.enabled ? "Disable" : "Enable"}
+                    className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  >
+                    {webhook.enabled ? (
+                      <Icons.Check className="h-4 w-4" />
+                    ) : (
+                      <Icons.Close className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(webhook.id)}
+                    title="Delete"
+                    className="rounded p-1 text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
+                  >
+                    <Icons.Trash className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>

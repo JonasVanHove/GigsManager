@@ -7,6 +7,7 @@ import { getOrCreateUser } from "@/lib/auth-helpers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { notifyPaymentReceived } from "@/lib/notification-service";
 import { webhookPaymentReceived } from "@/lib/webhook-service";
+import { getBandAccess } from "@/lib/band-access";
 
 // Auth middleware
 
@@ -96,6 +97,12 @@ export async function PUT(
     }
 
     const body = await request.json();
+    if (body.bandId && String(body.bandId) !== String(existing.bandId || "")) {
+      const bandAccess = await getBandAccess(prisma, String(body.bandId), user.id);
+      if (!bandAccess) {
+        return NextResponse.json({ error: "You are not a member of this band" }, { status: 403 });
+      }
+    }
     const isTentative = Boolean(body.isTentative);
     const hasBookingDate = Boolean(body.bookingDate && String(body.bookingDate).trim());
 
@@ -190,7 +197,7 @@ export async function PUT(
         bandId: body.bandId ? String(body.bandId) : null,
       },
     });
-    invalidateCache(`${user.id}:gigs`);
+    invalidateCache("gigs:");
 
     // Bidirectional sync: update linked setlist when gig changes
     if (gig.setlistId) {
@@ -250,9 +257,17 @@ export async function PUT(
         select: { bandMemberId: true, paidAmount: true },
       });
       const existingMap = new Map(existingLinks.map((l) => [l.bandMemberId, l]));
+      const ownMembers = await prisma.bandMember.findMany({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      const ownMemberIds = ownMembers.map((member) => member.id);
 
       await prisma.gigBandMember.deleteMany({
-        where: { gigId: gig.id },
+        where: {
+          gigId: gig.id,
+          bandMemberId: { in: ownMemberIds },
+        },
       });
 
       if (members.length > 0) {
@@ -408,7 +423,7 @@ export async function PATCH(
       );
     }
 
-    invalidateCache(`${user.id}:gigs`);
+    invalidateCache("gigs:");
 
     return NextResponse.json({ gig });
   } catch (error) {
@@ -445,7 +460,7 @@ export async function DELETE(
     }
 
     await prisma.gig.delete({ where: { id: params.id } });
-    invalidateCache(`${user.id}:gigs`);
+    invalidateCache("gigs:");
     return NextResponse.json({ message: "Gig deleted successfully" });
   } catch (error) {
     if (

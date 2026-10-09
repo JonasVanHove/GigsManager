@@ -1579,6 +1579,7 @@ export default function Dashboard() {
               }}
               className="min-w-0 flex-shrink-0 rounded-lg bg-gradient-to-br from-brand-600 to-brand-700 p-1.5 text-white shadow-md transition duration-200 hover:from-brand-700 hover:to-brand-800 hover:shadow-lg active:shadow-inner sm:p-0 sm:px-3 sm:py-2"
               title="Add Performance"
+              data-testid="add-performance-button"
             >
               <Icons.Plus className="h-4 w-4 sm:hidden shrink-0" />
               <span className="hidden sm:inline-flex items-center gap-1 text-sm font-medium">

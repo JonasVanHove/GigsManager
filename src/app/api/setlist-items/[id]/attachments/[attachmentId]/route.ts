@@ -24,16 +24,38 @@ async function requireAuth(request: NextRequest) {
   return { user };
 }
 
+async function requireSetlistItemOwnership(itemId: string, userId: string) {
+  const p: any = prisma;
+  const item = await p.setlistItem.findUnique({
+    where: { id: itemId },
+    include: { setlist: true },
+  });
+
+  if (!item) {
+    return NextResponse.json({ error: 'Setlist item not found' }, { status: 404 });
+  }
+
+  if (item.setlist.userId !== userId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return null;
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; attachmentId: string } }
 ) {
   const authResult = await requireAuth(request);
   if (authResult instanceof NextResponse) return authResult;
-  
+  const { user } = authResult as { user: { id: string } };
+
+  const ownershipCheck = await requireSetlistItemOwnership(params.id, user.id);
+  if (ownershipCheck) return ownershipCheck;
+
   try {
     const p: any = prisma;
-    
+
     // Verify the attachment belongs to the setlist item
     const attachment = await p.setlistItemAttachment.findUnique({
       where: { id: params.attachmentId },

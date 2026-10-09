@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getBandAccess } from "@/lib/band-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -84,19 +85,6 @@ function extractBearerToken(request: NextRequest): string | null {
   }
 }
 
-function decodeJWTPayload(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1];
-    const decoded = Buffer.from(payload, "base64").toString("utf-8");
-    return JSON.parse(decoded);
-  } catch (err) {
-    console.error("[Gigs] Failed to decode JWT:", err instanceof Error ? err.message : String(err));
-    return null;
-  }
-}
-
 // Safe wrapper for helper functions that might fail
 // recordMetric signature: (name: string, duration: number, metadata: any) => void
 async function safeRecordMetric(name: string, duration: number, metadata: any) {
@@ -146,6 +134,17 @@ async function safeSetCacheEntry(key: string, value: any, ttl: number) {
   }
 }
 
+async function safeInvalidateCache(pattern: string) {
+  try {
+    const mod = await import("@/lib/cache");
+    if (mod?.invalidateCache && typeof mod.invalidateCache === "function") {
+      return mod.invalidateCache(pattern);
+    }
+  } catch (err) {
+    console.warn("[Gigs] Cache invalidation failed:", err instanceof Error ? err.message : String(err));
+  }
+}
+
 function getCacheKey(userId: string, type: string, params: any) {
   return `${type}:${userId}:${JSON.stringify(params)}`;
 }
@@ -184,32 +183,7 @@ async function requireAuth(
   }
 
   try {
-    // Strategy 1: JWT decode (fast)
-    console.log("[Gigs Auth] Attempting JWT decode...");
-    const jwtPayload = decodeJWTPayload(token);
-
-    if (jwtPayload && jwtPayload.sub) {
-      console.log("[Gigs Auth] JWT decoded, userId:", jwtPayload.sub);
-
-      try {
-        console.log("[Gigs Auth] Creating/retrieving user...");
-        const user = await getOrCreateUser(jwtPayload.sub, jwtPayload.email || "", jwtPayload.name || null);
-
-        if (!user || !user.id) {
-          console.error("[Gigs Auth] Invalid user object returned:", user);
-          return { type: "degraded" };
-        }
-
-        console.log("[Gigs Auth] ✓ User ready, id:", user.id, "email:", user.email);
-        return { type: "success", userId: user.id };
-      } catch (dbErr) {
-        const errMsg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-        console.error("[Gigs Auth] User creation failed:", errMsg);
-        return { type: "degraded" };
-      }
-    }
-
-    // Strategy 2: Supabase admin API
+    // Authenticate through Supabase before resolving the application user.
     console.log("[Gigs Auth] JWT decode failed, trying Supabase...");
 
     if (!supabaseAdmin || !supabaseAdmin.auth) {
@@ -323,7 +297,9 @@ export async function GET(request: NextRequest) {
 
     // 5. Check cache
     const cacheKey = getCacheKey(userId, "gigs", { take, skip });
-    const cached = await safeGetCacheEntry(cacheKey);
+    const requestCacheControl = request.headers.get("cache-control") || "";
+    const bypassCache = /no-cache|no-store/i.test(requestCacheControl);
+    const cached = bypassCache ? null : await safeGetCacheEntry(cacheKey);
     if (cached) {
       console.log("[GET /api/gigs] ✓ Cache hit, returning cached data");
       return NextResponse.json(cached, { headers: { "Cache-Control": "private, max-age=15", Vary: "Authorization" } });
@@ -411,7 +387,7 @@ export async function GET(request: NextRequest) {
       const payload = { data: gigs, total, take, skip };
 
       // Cache the result
-      await safeSetCacheEntry(cacheKey, payload, 15);
+      if (!bypassCache) await safeSetCacheEntry(cacheKey, payload, 15);
 
       console.log("[GET /api/gigs] ✓ Query successful, userId:", userId, "found", gigs.length, "gigs out of", total, "total");
       return NextResponse.json(payload, { headers: { "Cache-Control": "private, max-age=15", Vary: "Authorization" } });
@@ -601,6 +577,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
+    if (body.bandId) {
+      const bandAccess = await getBandAccess(prisma, String(body.bandId), authResult.userId);
+      if (!bandAccess) {
+        return NextResponse.json({ error: "You are not a member of this band" }, { status: 403 });
+      }
+    }
+
     // 6. Create gig
     try {
       console.log("[POST /api/gigs] Creating gig for userId:", authResult.userId);
@@ -613,8 +596,7 @@ export async function POST(request: NextRequest) {
       console.log("[POST /api/gigs] Gig created:", gig.id);
 
       // Invalidate cache
-      const cacheKey = getCacheKey(authResult.userId, "gigs", {});
-      await safeSetCacheEntry(cacheKey + ":invalidated", true, 0); // Mark for invalidation
+      await safeInvalidateCache("gigs:");
 
       return NextResponse.json(gig, { status: 201 });
     } catch (dbErr) {

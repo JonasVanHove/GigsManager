@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { claimUnclaimedMembersForUser } from "@/lib/band-invites";
+import { prisma } from "@/lib/prisma";
 
 export function getUserIdFromHeader(
   request: NextRequest
@@ -31,6 +32,21 @@ export function getUserIdFromHeader(
   }
 }
 
+/** Verify the bearer token with Supabase before using its subject for writes. */
+export async function getVerifiedUserIdFromHeader(
+  request: NextRequest
+): Promise<string | null> {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
 /**
  * Get or create a User in our database from Supabase auth.
  */
@@ -39,21 +55,18 @@ export async function getOrCreateUser(
   email: string,
   name?: string | null
 ) {
-  const { prisma } = await import("@/lib/prisma");
-
-  let user = await prisma.user.findUnique({
+  const user = await prisma.user.upsert({
     where: { supabaseId },
+    update: {
+      email,
+      ...(name ? { name } : {}),
+    },
+    create: {
+      supabaseId,
+      email,
+      name: name || email.split("@")[0],
+    },
   });
-
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        supabaseId,
-        email,
-        name: name || email.split("@")[0],
-      },
-    });
-  }
 
   // A bandmate is usually invited by e-mail long before they have an account,
   // so their member row sits unclaimed. Claim it here — this runs on the first

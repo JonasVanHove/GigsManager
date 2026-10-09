@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdFromHeader } from "@/lib/auth-helpers";
+import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateInviteCode, inviteLink, findBandByInviteCode } from "@/lib/band-invites";
 import { isBandLeaderOrOwner, isBandMember } from "@/lib/band-sharing";
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
  */
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const code = request.nextUrl.searchParams.get("code") || "";
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();

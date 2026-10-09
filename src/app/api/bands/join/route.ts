@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserIdFromHeader } from "@/lib/auth-helpers";
+import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { findBandByInviteCode } from "@/lib/band-invites";
 
@@ -17,7 +17,7 @@ export const runtime = "nodejs";
  */
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserIdFromHeader(request);
+    const userId = await getVerifiedUserIdFromHeader(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
@@ -31,56 +31,83 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unknown invite code" }, { status: 404 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { supabaseId: userId },
-      select: { id: true, email: true, name: true },
-    });
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const { bandGigs, member } = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { supabaseId: userId },
+        select: { id: true, email: true, name: true },
+      });
+      if (!user) throw new Error("JOIN_USER_NOT_FOUND");
+      const memberName = user.name || user.email.split("@")[0] || "Band member";
 
-    // A bandmate's identity is their own account, so reuse the member row this
-    // user already has rather than creating a second one.
-    let member = await prisma.bandMember.findFirst({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-      select: { id: true, bands: true },
-    });
+      // A bandmate's identity is their own account, so reuse the member row
+      // this user already has rather than creating a second one.
+      let member = await tx.bandMember.findFirst({
+        where: { userId: user.id, bands: { has: band.name } },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, bands: true },
+      });
 
-    if (!member) {
-      member = await prisma.bandMember.create({
-        data: {
-          name: user.name || user.email.split("@")[0] || "Band member",
-          email: user.email,
-          userId: user.id,
-          bands: [band.name],
+      if (!member) {
+        const invitedMember = await tx.bandMember.findFirst({
+          where: { userId: null, email: user.email, bands: { has: band.name } },
+          orderBy: { createdAt: "asc" },
+          select: { id: true, bands: true },
+        });
+        if (invitedMember) {
+          member = await tx.bandMember.update({
+            where: { id: invitedMember.id },
+            data: { userId: user.id },
+            select: { id: true, bands: true },
+          });
+        }
+      }
+
+      if (!member) {
+        // The schema enforces one row per account/name. Reuse that same
+        // identity when a repeated local/test run already linked the account
+        // to another band, rather than creating a duplicate member row.
+        member = await tx.bandMember.findFirst({
+          where: { userId: user.id, name: memberName },
+          orderBy: { createdAt: "asc" },
+          select: { id: true, bands: true },
+        });
+      }
+
+      if (!member) {
+        member = await tx.bandMember.create({
+          data: {
+            name: memberName,
+            email: user.email,
+            userId: user.id,
+            bands: [band.name],
+          },
+          select: { id: true, bands: true },
+        });
+      } else if (!member.bands.includes(band.name)) {
+        member = await tx.bandMember.update({
+          where: { id: member.id },
+          data: { bands: [...member.bands, band.name] },
+          select: { id: true, bands: true },
+        });
+      }
+
+      const bandGigs = await tx.gig.findMany({
+        where: {
+          OR: [{ bandId: band.id }, { performers: { equals: band.name, mode: "insensitive" } }],
         },
-        select: { id: true, bands: true },
+        select: { id: true },
       });
-    } else if (!member.bands.includes(band.name)) {
-      member = await prisma.bandMember.update({
-        where: { id: member.id },
-        data: { bands: [...member.bands, band.name] },
-        select: { id: true, bands: true },
-      });
-    }
 
-    // Make sure the shared gigs actually exist on this user's dashboard. Any
-    // gig of this band that they are not yet on becomes a GigBandMember link.
-    const bandGigs = await prisma.gig.findMany({
-      where: {
-        OR: [{ bandId: band.id }, { performers: { equals: band.name, mode: "insensitive" } }],
-      },
-      select: { id: true },
+      for (const gig of bandGigs) {
+        await tx.gigBandMember.upsert({
+          where: { gigId_bandMemberId: { gigId: gig.id, bandMemberId: member.id } },
+          create: { gigId: gig.id, bandMemberId: member.id },
+          update: {},
+        });
+      }
+
+      return { bandGigs, member };
     });
-
-    let linked = 0;
-    for (const gig of bandGigs) {
-      const result = await prisma.gigBandMember.upsert({
-        where: { gigId_bandMemberId: { gigId: gig.id, bandMemberId: member.id } },
-        create: { gigId: gig.id, bandMemberId: member.id },
-        update: {},
-      });
-      if (result) linked++;
-    }
 
     return NextResponse.json({
       joined: true,
@@ -88,6 +115,9 @@ export async function POST(request: NextRequest) {
       gigsLinked: bandGigs.length,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "JOIN_USER_NOT_FOUND") {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
     console.error("POST /api/bands/join error:", error);
     return NextResponse.json({ error: "Failed to join band" }, { status: 500 });
   }

@@ -74,6 +74,7 @@ export default function BandsTab() {
 
   const [bands, setBands] = useState<Band[]>([]);
   const [members, setMembers] = useState<BandMember[]>([]);
+  const [bandMembersByBandId, setBandMembersByBandId] = useState<Record<string, BandMember[]>>({});
   const [memberError, setMemberError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -143,6 +144,26 @@ export default function BandsTab() {
     }
   }, [getAccessToken, t('bands.errorMembers')]);
 
+  const loadBandRosters = useCallback(async () => {
+    if (bands.length === 0) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const results = await Promise.all(
+        bands.map(async (band) => {
+          const response = await fetch(`/api/bands/${band.id}/members`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!response.ok) throw new Error(`Failed to load roster for ${band.id}`);
+          return [band.id, normalizeArrayResponse<BandMember>(await response.json())] as const;
+        })
+      );
+      setBandMembersByBandId(Object.fromEntries(results));
+    } catch (error) {
+      console.error("Failed to load band rosters:", error);
+    }
+  }, [bands, getAccessToken]);
+
   const loadUserAsMember = useCallback(async () => {
     if (!session?.user) return;
     
@@ -211,8 +232,9 @@ export default function BandsTab() {
   useEffect(() => {
     if (bands.length > 0) {
       loadUserAsMember();
+      void loadBandRosters();
     }
-  }, [bands, loadUserAsMember]);
+  }, [bands, loadUserAsMember, loadBandRosters]);
 
   const handleLogoUpload = async (file: File) => {
     setUploadingLogo(true);
@@ -389,6 +411,12 @@ export default function BandsTab() {
           m.id === member.id ? { ...m, isLeader: nextIsLeader } : m
         )
       );
+      setBandMembersByBandId((prev) => ({
+        ...prev,
+        [band.id]: (prev[band.id] || []).map((m) =>
+          m.id === member.id ? { ...m, isLeader: nextIsLeader } : m
+        ),
+      }));
 
       toast.success(
         nextIsLeader
@@ -410,7 +438,9 @@ export default function BandsTab() {
   const getBandMembers = (bandId: string) => {
     const band = bands.find(b => b.id === bandId);
     if (!band) return [];
-    const filtered = members.filter((member) => member.bands?.includes(band.name));
+    const filtered = [
+      ...(bandMembersByBandId[bandId] || members.filter((member) => member.bands?.includes(band.name))),
+    ];
     // Include current user if setting allows it
     const currentUser = members.find(m => m.id === "current-user");
     if (currentUser && !excludeSelfFromMemberCount && !filtered.includes(currentUser)) {

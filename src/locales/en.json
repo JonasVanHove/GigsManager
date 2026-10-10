@@ -341,7 +341,18 @@
     "logoUploadWarning": "Using fallback encoding for logo",
     "logoUploadError": "Failed to upload logo",
     "nameRequired": "Name is required",
-    "confirmDelete": "Are you sure you want to delete this band?"
+    "confirmDelete": "Are you sure you want to delete this band?",
+    "leaveBand": "Leave Band",
+    "confirmLeaveBand": "Are you sure you want to leave \"{{bandName}}\"? You will lose access to shared gigs and setlists for this band.",
+    "confirmLeaveBandOwner": "Are you sure you want to leave \"{{bandName}}\"? Because you are the owner, ownership will be transferred to another member.",
+    "confirmLeaveBandOwnerSole": "Are you sure you want to leave \"{{bandName}}\"? Because you are the only member, the band will be deleted.",
+    "successLeaveBand": "You left the band",
+    "errorLeaveBand": "Failed to leave band",
+    "removeMember": "Remove member",
+    "confirmRemoveMember": "Are you sure you want to remove {{memberName}} from \"{{bandName}}\"? This member will lose access to gigs and setlists for this band.",
+    "successRemoveMember": "{{memberName}} was removed from the band",
+    "errorRemoveMember": "Failed to remove member",
+    "you": "You"
   },
   "auth": {
     "login": "Login",

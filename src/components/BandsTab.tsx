@@ -11,6 +11,7 @@ import BandLogoFrame from "./BandLogoFrame";
 import BandInviteModal from "./BandInviteModal";
 import ToggleSwitch from "./ToggleSwitch";
 import Avatar from "./Avatar";
+import ConfirmationModal from "./ConfirmationModal";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { readAsDataUrl } from "@/lib/file-utils";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
@@ -93,6 +94,10 @@ export default function BandsTab() {
   // Which band's invite dialog is open, if any.
   const [inviteBand, setInviteBand] = useState<Band | null>(null);
   const [togglingMemberId, setTogglingMemberId] = useState<string | null>(null);
+  const [confirmLeaveBand, setConfirmLeaveBand] = useState<Band | null>(null);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ member: BandMember; band: Band } | null>(null);
+  const [isLeavingBand, setIsLeavingBand] = useState(false);
+  const [isRemovingMember, setIsRemovingMember] = useState(false);
 
   const loadBands = useCallback(async () => {
     try {
@@ -431,6 +436,91 @@ export default function BandsTab() {
       toast.error(err.message || "Failed to update leader status");
     } finally {
       setTogglingMemberId(null);
+    }
+  };
+
+  const isMemberCurrentUser = (member: BandMember) => {
+    if (member.id === "current-user") return true;
+    if ((member as any).isCurrentUser) return true;
+    if (session?.user?.id && (member as any).userId === session.user.id) return true;
+    if (session?.user?.email && member.email && member.email.toLowerCase() === session.user.email.toLowerCase()) return true;
+    return false;
+  };
+
+  const isMemberBandOwner = (member: BandMember, band: Band) => {
+    if (band.userId && (member as any).userId === band.userId) return true;
+    if ((member as any).isOwner) return true;
+    if (band.isOwner && isMemberCurrentUser(member)) return true;
+    return false;
+  };
+
+  const handleConfirmLeaveBand = async () => {
+    if (!confirmLeaveBand) return;
+    setIsLeavingBand(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("No auth token");
+
+      const res = await fetch(`/api/bands/${confirmLeaveBand.id}/leave`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || t('bands.errorLeaveBand'));
+      }
+
+      toast.success(t('bands.successLeaveBand'));
+      setConfirmLeaveBand(null);
+      await Promise.all([loadBands(), loadMembers(), loadBandRosters()]);
+    } catch (err: any) {
+      toast.error(err.message || t('bands.errorLeaveBand'));
+    } finally {
+      setIsLeavingBand(false);
+    }
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!confirmRemoveMember) return;
+    const { member, band } = confirmRemoveMember;
+    setIsRemovingMember(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("No auth token");
+
+      const res = await fetch(`/api/bands/${band.id}/members?memberId=${member.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || t('bands.errorRemoveMember'));
+      }
+
+      toast.success(t('bands.successRemoveMember', { memberName: member.name }));
+      setConfirmRemoveMember(null);
+      setBandMembersByBandId((prev) => ({
+        ...prev,
+        [band.id]: (prev[band.id] || []).filter((m) => m.id !== member.id),
+      }));
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === member.id
+            ? { ...m, bands: m.bands.filter((b) => b !== band.name) }
+            : m
+        )
+      );
+      await loadBandRosters();
+    } catch (err: any) {
+      toast.error(err.message || t('bands.errorRemoveMember'));
+    } finally {
+      setIsRemovingMember(false);
     }
   };
 
@@ -869,9 +959,10 @@ export default function BandsTab() {
                             </p>
                           </div>
                         </div>
-                        {isLeaderOrOwner && (
-                          <div className="flex gap-2">
+                        <div className="flex items-center gap-1">
+                          {isLeaderOrOwner && (
                             <button
+                              type="button"
                               onClick={() => handleEdit(band)}
                               className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                               title={language === "nl" ? "Band bewerken" : "Edit band"}
@@ -879,79 +970,131 @@ export default function BandsTab() {
                             >
                               <Icons.Edit className="h-4 w-4" />
                             </button>
-                            {band.isOwner !== false && (
-                              <button
-                                onClick={() => handleDelete(band)}
-                                className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                                title={language === "nl" ? "Band verwijderen" : "Delete band"}
-                                aria-label={language === "nl" ? "Band verwijderen" : "Delete band"}
-                              >
-                                <Icons.Trash className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        )}
+                          )}
+                          <button
+                            type="button"
+                            data-testid={`leave-band-button-${band.id}`}
+                            onClick={() => setConfirmLeaveBand(band)}
+                            className="rounded-lg p-2 text-slate-500 hover:bg-amber-50 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-amber-900/20 dark:hover:text-amber-400 transition-colors"
+                            title={t('bands.leaveBand')}
+                            aria-label={t('bands.leaveBand')}
+                          >
+                            <Icons.Logout className="h-4 w-4" />
+                          </button>
+                          {band.isOwner !== false && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(band)}
+                              className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                              title={language === "nl" ? "Band verwijderen" : "Delete band"}
+                              aria-label={language === "nl" ? "Band verwijderen" : "Delete band"}
+                            >
+                              <Icons.Trash className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {bandMembers.length > 0 ? (
                         <div className="mt-4">
                           <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('bands.bandMembers')}</p>
                           <div className="flex flex-wrap gap-2">
-                            {bandMembers.map((member) => (
-                              <span
-                                key={member.id}
-                                className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs transition-colors ${
-                                  member.isLeader
-                                    ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/40 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/30"
-                                    : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                }`}
-                              >
-                                <BandMemberAvatar
-                                  name={member.name}
-                                  email={member.email}
-                                  avatarUrl={member.avatarUrl}
-                                  fallbackAvatarUrl={session?.user?.user_metadata?.avatar_url || null}
-                                />
-                                <span className="font-medium">{member.name}</span>
-                                {member.isLeader && (
-                                  <span
-                                    data-testid={`leader-badge-${member.id}`}
-                                    className="inline-flex items-center gap-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200"
-                                    title={language === "nl" ? "Bandleider" : "Band Leader"}
-                                  >
-                                    👑 {language === "nl" ? "Leider" : "Leader"}
-                                  </span>
-                                )}
-                                {isLeaderOrOwner && member.id !== "current-user" && (
-                                  <button
-                                    type="button"
-                                    data-testid={`toggle-leader-${member.id}`}
-                                    disabled={togglingMemberId === member.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleLeader(member, band);
-                                    }}
-                                    className={`rounded-full p-0.5 text-xs transition-transform hover:scale-125 disabled:opacity-50 ${
-                                      member.isLeader
-                                        ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
-                                        : "text-slate-400 hover:text-amber-500 opacity-60 hover:opacity-100"
-                                    }`}
-                                    title={
-                                      member.isLeader
-                                        ? (language === "nl" ? "Leidersrol intrekken" : "Revoke leader role")
-                                        : (language === "nl" ? "Maak bandleider" : "Promote to band leader")
-                                    }
-                                    aria-label={
-                                      member.isLeader
-                                        ? (language === "nl" ? `Leidersrol intrekken voor ${member.name}` : `Revoke leader role for ${member.name}`)
-                                        : (language === "nl" ? `Maak ${member.name} bandleider` : `Promote ${member.name} to band leader`)
-                                    }
-                                  >
-                                    👑
-                                  </button>
-                                )}
-                              </span>
-                            ))}
+                            {bandMembers.map((member) => {
+                              const isCurrent = isMemberCurrentUser(member);
+                              const isOwner = isMemberBandOwner(member, band);
+                              return (
+                                <span
+                                  key={member.id}
+                                  className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs transition-colors ${
+                                    member.isLeader
+                                      ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/40 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/30"
+                                      : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  }`}
+                                >
+                                  <BandMemberAvatar
+                                    name={member.name}
+                                    email={member.email}
+                                    avatarUrl={member.avatarUrl}
+                                    fallbackAvatarUrl={session?.user?.user_metadata?.avatar_url || null}
+                                  />
+                                  <span className="font-medium">{member.name}</span>
+                                  {isCurrent && (
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                      ({t('bands.you')})
+                                    </span>
+                                  )}
+                                  {member.isLeader && (
+                                    <span
+                                      data-testid={`leader-badge-${member.id}`}
+                                      className="inline-flex items-center gap-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200"
+                                      title={language === "nl" ? "Bandleider" : "Band Leader"}
+                                    >
+                                      👑 {language === "nl" ? "Leider" : "Leader"}
+                                    </span>
+                                  )}
+                                  {isCurrent && (
+                                    <button
+                                      type="button"
+                                      data-testid={`leave-band-chip-${member.id}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmLeaveBand(band);
+                                      }}
+                                      className="rounded-full p-0.5 text-slate-400 hover:text-amber-600 transition-colors"
+                                      title={t('bands.leaveBand')}
+                                      aria-label={t('bands.leaveBand')}
+                                    >
+                                      <Icons.Logout className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  {isLeaderOrOwner && !isCurrent && member.id !== "current-user" && (
+                                    <div className="flex items-center gap-1 ml-0.5">
+                                      <button
+                                        type="button"
+                                        data-testid={`toggle-leader-${member.id}`}
+                                        disabled={togglingMemberId === member.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleToggleLeader(member, band);
+                                        }}
+                                        className={`rounded-full p-0.5 text-xs transition-transform hover:scale-125 disabled:opacity-50 ${
+                                          member.isLeader
+                                            ? "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                                            : "text-slate-400 hover:text-amber-500 opacity-60 hover:opacity-100"
+                                        }`}
+                                        title={
+                                          member.isLeader
+                                            ? (language === "nl" ? "Leidersrol intrekken" : "Revoke leader role")
+                                            : (language === "nl" ? "Maak bandleider" : "Promote to band leader")
+                                        }
+                                        aria-label={
+                                          member.isLeader
+                                            ? (language === "nl" ? `Leidersrol intrekken voor ${member.name}` : `Revoke leader role for ${member.name}`)
+                                            : (language === "nl" ? `Maak ${member.name} bandleider` : `Promote ${member.name} to band leader`)
+                                        }
+                                      >
+                                        👑
+                                      </button>
+                                      {!isOwner && (
+                                        <button
+                                          type="button"
+                                          data-testid={`remove-member-${member.id}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setConfirmRemoveMember({ member, band });
+                                          }}
+                                          className="rounded-full p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 transition-colors"
+                                          title={language === "nl" ? `${member.name} uit band verwijderen` : `Remove ${member.name} from band`}
+                                          aria-label={language === "nl" ? `${member.name} uit band verwijderen` : `Remove ${member.name} from band`}
+                                        >
+                                          <Icons.X className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       ) : (
@@ -991,6 +1134,41 @@ export default function BandsTab() {
           isDutch={language === "nl"}
           readOnly={!Boolean(inviteBand.isOwner || inviteBand.isLeader)}
           onClose={() => setInviteBand(null)}
+        />
+      )}
+
+      {confirmLeaveBand && (
+        <ConfirmationModal
+          isOpen={Boolean(confirmLeaveBand)}
+          title={t('bands.leaveBand')}
+          message={
+            confirmLeaveBand.isOwner
+              ? getBandMembers(confirmLeaveBand.id).filter((m) => !isMemberCurrentUser(m)).length > 0
+                ? t('bands.confirmLeaveBandOwner', { bandName: confirmLeaveBand.name })
+                : t('bands.confirmLeaveBandOwnerSole', { bandName: confirmLeaveBand.name })
+              : t('bands.confirmLeaveBand', { bandName: confirmLeaveBand.name })
+          }
+          confirmText={t('bands.leaveBand')}
+          cancelText={t('bands.cancel')}
+          isLoading={isLeavingBand}
+          onConfirm={handleConfirmLeaveBand}
+          onCancel={() => setConfirmLeaveBand(null)}
+        />
+      )}
+
+      {confirmRemoveMember && (
+        <ConfirmationModal
+          isOpen={Boolean(confirmRemoveMember)}
+          title={t('bands.removeMember')}
+          message={t('bands.confirmRemoveMember', {
+            memberName: confirmRemoveMember.member.name,
+            bandName: confirmRemoveMember.band.name,
+          })}
+          confirmText={t('bands.removeMember')}
+          cancelText={t('bands.cancel')}
+          isLoading={isRemovingMember}
+          onConfirm={handleConfirmRemoveMember}
+          onCancel={() => setConfirmRemoveMember(null)}
         />
       )}
     </div>

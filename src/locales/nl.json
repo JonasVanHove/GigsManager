@@ -339,7 +339,18 @@
     "logoUploadWarning": "Gebruik fallback encoding voor logo",
     "logoUploadError": "Logo uploaden mislukt",
     "nameRequired": "Naam is verplicht",
-    "confirmDelete": "Weet je zeker dat je deze band wilt verwijderen?"
+    "confirmDelete": "Weet je zeker dat je deze band wilt verwijderen?",
+    "leaveBand": "Band verlaten",
+    "confirmLeaveBand": "Weet je zeker dat je \"{{bandName}}\" wilt verlaten? Je verliest toegang tot gedeelde optredens en setlists van deze band.",
+    "confirmLeaveBandOwner": "Weet je zeker dat je \"{{bandName}}\" wilt verlaten? Omdat je eigenaar bent, wordt het eigenaarschap overgedragen aan een ander bandlid.",
+    "confirmLeaveBandOwnerSole": "Weet je zeker dat je \"{{bandName}}\" wilt verlaten? Omdat je het enige lid bent, zal de band worden verwijderd.",
+    "successLeaveBand": "Je hebt de band verlaten",
+    "errorLeaveBand": "Fout bij verlaten van de band",
+    "removeMember": "Lid verwijderen",
+    "confirmRemoveMember": "Weet je zeker dat je {{memberName}} uit \"{{bandName}}\" wilt verwijderen? Dit lid verliest toegang tot optredens en setlists van deze band.",
+    "successRemoveMember": "{{memberName}} is verwijderd uit de band",
+    "errorRemoveMember": "Fout bij verwijderen van bandlid",
+    "you": "Jij"
   },
   "auth": {
     "login": "Inloggen",

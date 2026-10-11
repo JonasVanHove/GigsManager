@@ -15,6 +15,7 @@ import ConfirmationModal from "./ConfirmationModal";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { readAsDataUrl } from "@/lib/file-utils";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
+import { composeBandRoster, isRosterMemberCurrentUser } from "@/lib/band-roster";
 
 interface Band {
   id: string;
@@ -169,60 +170,12 @@ export default function BandsTab() {
     }
   }, [bands, getAccessToken]);
 
-  const loadUserAsMember = useCallback(async () => {
-    if (!session?.user) return;
-    
-    try {
-      const token = await getAccessToken();
-      if (!token) return;
-
-      const setlistsResponse = await fetch("/api/setlists", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!setlistsResponse.ok) return;
-      
-      const setlists = await setlistsResponse.json();
-      const userBandIds = new Set(
-        setlists
-          .filter((s: any) => s.bandId)
-          .map((s: any) => s.bandId)
-      );
-      const currentUserAvatar = session.user.user_metadata?.avatar_url || null;
-      
-      if (userBandIds.size > 0) {
-        const userBandNames = bands
-          .filter(b => userBandIds.has(b.id))
-          .map(b => b.name);
-        
-        if (userBandNames.length > 0) {
-          const currentUserName = session.user.user_metadata?.name || session.user.email || "You";
-          const userMember: BandMember = {
-            id: "current-user",
-            name: currentUserName,
-            email: session.user.email,
-            phone: null,
-            notes: null,
-            avatarUrl: getBandMemberAvatarUrl(currentUserName, currentUserAvatar, currentUserAvatar),
-            bands: userBandNames,
-            isLeader: true,
-            updatedAt: new Date().toISOString(),
-          };
-          
-          setMembers(prev => {
-            const existingIndex = prev.findIndex(m => m.id === "current-user");
-            if (existingIndex >= 0) {
-              const updated = [...prev];
-              updated[existingIndex] = userMember;
-              return updated;
-            }
-            return [...prev, userMember];
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load user as member:", error);
-    }
-  }, [session, getAccessToken, bands]);
+  // NOTE: The synthetic "current-user" BandMember that used to be injected here
+  // has been removed. The canonical, band-scoped roster from
+  // GET /api/bands/[id]/members already lists the signed-in user as a real
+  // member row (flagged `isCurrentUser`). Injecting a synthetic entry made the
+  // viewer appear twice and, because it hard-coded `isLeader: true`, hid the
+  // actual band leader from the joining member.
 
   useEffect(() => {
     const loadData = async () => {
@@ -233,13 +186,11 @@ export default function BandsTab() {
     loadData();
   }, [loadBands, loadMembers]);
 
-  // Load user as member after bands are loaded
   useEffect(() => {
     if (bands.length > 0) {
-      loadUserAsMember();
       void loadBandRosters();
     }
-  }, [bands, loadUserAsMember, loadBandRosters]);
+  }, [bands, loadBandRosters]);
 
   const handleLogoUpload = async (file: File) => {
     setUploadingLogo(true);
@@ -439,13 +390,10 @@ export default function BandsTab() {
     }
   };
 
-  const isMemberCurrentUser = (member: BandMember) => {
-    if (member.id === "current-user") return true;
-    if ((member as any).isCurrentUser) return true;
-    if (session?.user?.id && (member as any).userId === session.user.id) return true;
-    if (session?.user?.email && member.email && member.email.toLowerCase() === session.user.email.toLowerCase()) return true;
-    return false;
-  };
+  // Delegate to the shared roster helper so the "(you)", owner and leader
+  // badges resolve identity the same way the roster list is composed.
+  const isMemberCurrentUser = (member: BandMember) =>
+    isRosterMemberCurrentUser(member, session?.user ?? null);
 
   const isMemberBandOwner = (member: BandMember, band: Band) => {
     if (band.userId && (member as any).userId === band.userId) return true;
@@ -528,15 +476,14 @@ export default function BandsTab() {
   const getBandMembers = (bandId: string) => {
     const band = bands.find(b => b.id === bandId);
     if (!band) return [];
-    const filtered = [
-      ...(bandMembersByBandId[bandId] || members.filter((member) => member.bands?.includes(band.name))),
-    ];
-    // Include current user if setting allows it
-    const currentUser = members.find(m => m.id === "current-user");
-    if (currentUser && !excludeSelfFromMemberCount && !filtered.includes(currentUser)) {
-      filtered.push(currentUser);
-    }
-    return filtered;
+    // Prefer the canonical, band-scoped roster. Fall back to the account-scoped
+    // member list only while the roster request is still in flight.
+    const roster =
+      bandMembersByBandId[bandId] ??
+      members.filter((member) => member.bands?.includes(band.name));
+    return composeBandRoster(roster, session?.user ?? null, {
+      excludeSelf: excludeSelfFromMemberCount,
+    });
   };
 
   if (loading) {

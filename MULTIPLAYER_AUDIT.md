@@ -50,9 +50,9 @@ No RLS policies were found for the Prisma application tables. Authorization is e
 
 **Evidence:** `/api/band-members` filters `where: { userId }`, but `BandsTab` filtered that result by band name and displayed it as the roster. A joined user therefore saw their own rows, while the owner saw rows owned by the owner; neither response represented the same canonical band roster. The component also added a synthetic `current-user` object in client state.
 
-**Fix:** Added `GET /api/bands/[id]/members`, authorizing the viewer against the requested band and querying all `BandMember` rows containing that band name. `BandsTab` now loads and renders this band-scoped response, retaining the legacy endpoint only for personal management data and a loading fallback.
+**Fix:** Added `GET /api/bands/[id]/members`, authorizing the viewer against the requested band and querying all `BandMember` rows containing that band name. `BandsTab` now loads and renders this band-scoped response, retaining the legacy endpoint only for personal management data and a loading fallback. The synthetic `current-user` client object that duplicated the viewer and hard-coded `isLeader: true` has been removed; the roster already contains the signed-in user as a real row flagged `isCurrentUser`, so the leader crown now shows correctly for the joining member. The roster view logic lives in `src/lib/band-roster.ts`.
 
-**Tests:** `test/band-roster-route.test.ts` proves non-members are denied and that a band roster returns stable member IDs independent of viewer identity.
+**Tests:** `test/band-roster-route.test.ts` proves non-members are denied and that a band roster returns stable member IDs independent of viewer identity. `test/band-roster-view.test.ts` proves the view never duplicates the viewer and honours the exclude-self preference.
 
 ### Medium: Join could attach a band to an unrelated first member row
 

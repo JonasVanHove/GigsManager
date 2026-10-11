@@ -41,7 +41,6 @@ export async function GET(
 
     const members = await prisma.bandMember.findMany({
       where: { bands: { has: band.name } },
-      orderBy: [{ isLeader: "desc" }, { name: "asc" }],
       select: {
         id: true,
         name: true,
@@ -56,17 +55,34 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(
-      members.map(({ userId, ...member }) => ({
+    const roster = members.map(({ userId, ...member }) => {
+      // The band owner is the canonical leader. The denormalized
+      // BandMember.isLeader flag can drift from ownership (legacy rows created
+      // before the flag existed, a reused member identity at join time, or a
+      // revoked flag), so derive the owner's leader status from bands.userId
+      // rather than trusting the stored flag alone. This guarantees a joining
+      // member sees the creator's crown no matter which account asks.
+      const isOwner = Boolean(userId && userId === band.userId);
+      return {
         ...member,
+        isLeader: isOwner || Boolean(member.isLeader),
         claimed: Boolean(userId),
         isCurrentUser: Boolean(
           (userId && userId === viewer.id) ||
           (viewer.email && member.email && member.email.toLowerCase() === viewer.email.toLowerCase())
         ),
-        isOwner: Boolean(userId && userId === band.userId),
-      }))
-    );
+        isOwner,
+      };
+    });
+
+    // Sort on the derived leader status so the owner's crown leads the roster
+    // even when the stored flag drifted, then alphabetically for the rest.
+    roster.sort((a, b) => {
+      if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return NextResponse.json(roster);
   } catch (error) {
     console.error(`GET /api/bands/${params.id}/members error:`, error);
     return NextResponse.json({ error: "Failed to load band members" }, { status: 500 });

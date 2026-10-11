@@ -5,6 +5,24 @@ const nextConfig = {
   
   // Headers for security and caching
   async headers() {
+    // Kept in sync with the Content-Security-Policy in netlify.toml so both
+    // hosts emit identical policy. connect-src allows Supabase (API + realtime);
+    // img-src stays permissive because band logos/avatars come from Supabase
+    // storage, Gravatar and DiceBear. 'unsafe-eval' is required by some charting
+    // and PDF dependencies in the client bundle.
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' fonts.googleapis.com https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+      "font-src 'self' fonts.gstatic.com data:",
+      "img-src 'self' data: https: blob:",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+    ].join("; ");
+
     return [
       {
         source: "/:path*",
@@ -20,6 +38,24 @@ const nextConfig = {
           {
             key: "X-Content-Type-Options",
             value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+          {
+            // Force HTTPS for two years, including subdomains. Safe to enable
+            // only on a host that terminates TLS end-to-end (Vercel/Netlify do).
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: csp,
           },
         ],
       },

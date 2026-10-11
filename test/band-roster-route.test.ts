@@ -55,4 +55,42 @@ describe("GET /api/bands/[id]/members", () => {
       where: { bands: { has: "The Notes" } },
     }));
   });
+
+  it("marks the band creator as leader for a joining member even when the stored isLeader flag drifted to false", async () => {
+    // The invite-joined viewer (user-b) asks for the roster. The creator's row
+    // (user-a) exists but its denormalized isLeader flag drifted to false — the
+    // kind of legacy/reused-identity state that hides the crown in the UI.
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-b", name: "Bob", email: "b@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-b" },
+    ]);
+
+    const response = await GET(request, params);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    const creator = body.find((member: { id: string }) => member.id === "member-a");
+    expect(creator.isLeader).toBe(true);
+    expect(creator.isOwner).toBe(true);
+    // The joining member is not promoted to leader just for asking.
+    const joiner = body.find((member: { id: string }) => member.id === "member-b");
+    expect(joiner.isLeader).toBe(false);
+  });
+
+  it("leads the roster with the owner even when another member carries the stale leader flag", async () => {
+    // Sorting must follow the derived owner-leader status, not the raw flag, so
+    // the creator's crown stays first regardless of row order from the DB.
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-c", name: "Cara", email: "c@example.com", phone: null, notes: null, avatarUrl: null, isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-03"), userId: "user-c" },
+      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+    ]);
+
+    const body = await (await GET(request, params)).json();
+
+    expect(body[0].id).toBe("member-a");
+    expect(body[0].isLeader).toBe(true);
+    expect(body[0].isOwner).toBe(true);
+  });
 });

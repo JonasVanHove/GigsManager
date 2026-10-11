@@ -18,6 +18,7 @@
     "test:e2e:headed": "playwright test --headed",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "smoke": "node scripts/post-deploy-smoke.mjs",
     "db:apply-settings-schema": "node scripts/apply-settings-schema.js",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",

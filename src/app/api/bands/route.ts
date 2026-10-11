@@ -84,12 +84,50 @@ export async function POST(request: NextRequest) {
     const { name, logoUrl, color, chatType, chatUrl } = body;
     if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
 
-    const user = await prisma.user.findUnique({ where: { supabaseId: userId }, select: { id: true } });
+    const user = await prisma.user.findUnique({
+      where: { supabaseId: userId },
+      select: { id: true, name: true, email: true },
+    });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const id = crypto.randomUUID();
-    await prisma.$executeRaw`INSERT INTO bands (id, name, "logoUrl", color, "chatType", "chatUrl", "userId", "createdAt") VALUES (${id}, ${name}, ${logoUrl || null}, ${color || '#6366f1'}, ${chatType || null}, ${chatUrl || null}, ${user.id}, NOW())`;
-    return NextResponse.json({ id, name, logoUrl, color, chatType, chatUrl, isOwner: true, isLeader: true }, { status: 201 });
+    const trimmedName = name.trim();
+    await prisma.$executeRaw`INSERT INTO bands (id, name, "logoUrl", color, "chatType", "chatUrl", "userId", "createdAt") VALUES (${id}, ${trimmedName}, ${logoUrl || null}, ${color || '#6366f1'}, ${chatType || null}, ${chatUrl || null}, ${user.id}, NOW())`;
+
+    // Ensure creator is recorded in BandMember as band leader
+    const creatorName = user.name || user.email?.split("@")[0] || "Band leader";
+    let creatorMember = await prisma.bandMember.findFirst({
+      where: { userId: user.id, bands: { has: trimmedName } },
+    });
+    if (!creatorMember) {
+      creatorMember = await prisma.bandMember.findFirst({
+        where: { userId: user.id, name: creatorName },
+      });
+    }
+    if (!creatorMember) {
+      await prisma.bandMember.create({
+        data: {
+          name: creatorName,
+          email: user.email,
+          userId: user.id,
+          bands: [trimmedName],
+          isLeader: true,
+        },
+      });
+    } else {
+      const nextBands = creatorMember.bands.includes(trimmedName)
+        ? creatorMember.bands
+        : [...creatorMember.bands, trimmedName];
+      await prisma.bandMember.update({
+        where: { id: creatorMember.id },
+        data: {
+          bands: nextBands,
+          isLeader: true,
+        },
+      });
+    }
+
+    return NextResponse.json({ id, name: trimmedName, logoUrl, color, chatType, chatUrl, isOwner: true, isLeader: true }, { status: 201 });
   } catch (err) {
     console.error("POST /api/bands error:", err);
     return NextResponse.json({ error: "Failed to create band" }, { status: 500 });

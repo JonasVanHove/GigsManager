@@ -11,6 +11,18 @@ describe("band member avatar rules", () => {
     expect(getBandMemberAvatarUrl("Alex", "https://example.com/alex.png", "https://example.com/jonas.png")).toBe("https://example.com/alex.png");
   });
 
+  it("falls back to the supplied fallback when the member has no own avatar", () => {
+    // The signed-in viewer passes their Supabase profile image as the fallback so
+    // their photo shows even when no BandMember row stores an avatar.
+    expect(getBandMemberAvatarUrl("Bob", null, "https://example.com/bob.png")).toBe("https://example.com/bob.png");
+    expect(getBandMemberAvatarUrl("Bob", "", "https://example.com/bob.png")).toBe("https://example.com/bob.png");
+  });
+
+  it("returns null (initials badge) when neither own nor fallback avatar exists", () => {
+    expect(getBandMemberAvatarUrl("Bob", null, null)).toBeNull();
+    expect(getBandMemberAvatarUrl("Bob", null, undefined)).toBeNull();
+  });
+
   it("uses the first letter of the name for the fallback badge", () => {
     expect(getBandMemberInitial("Alex")).toBe("A");
     expect(getBandMemberInitial(" mark ")).toBe("M");

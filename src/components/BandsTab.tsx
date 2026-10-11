@@ -962,7 +962,15 @@ export default function BandsTab() {
                                     name={member.name}
                                     email={member.email}
                                     avatarUrl={member.avatarUrl}
-                                    fallbackAvatarUrl={session?.user?.user_metadata?.avatar_url || null}
+                                    // The signed-in user's own profile image always
+                                    // falls back to their Supabase session avatar,
+                                    // even when no BandMember row stores one (e.g. the
+                                    // owner projection with avatarUrl=null).
+                                    fallbackAvatarUrl={
+                                      isCurrent
+                                        ? session?.user?.user_metadata?.avatar_url || null
+                                        : null
+                                    }
                                   />
                                   <span className="font-medium">{member.name}</span>
                                   {isCurrent && (

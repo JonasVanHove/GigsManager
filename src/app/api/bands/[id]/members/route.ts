@@ -21,7 +21,7 @@ export async function GET(
 
     const viewer = await prisma.user.findUnique({
       where: { supabaseId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, name: true },
     });
     if (!viewer) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -56,16 +56,15 @@ export async function GET(
     });
 
     const roster = members.map(({ userId, ...member }) => {
-      // The band owner is the canonical leader. The denormalized
-      // BandMember.isLeader flag can drift from ownership (legacy rows created
-      // before the flag existed, a reused member identity at join time, or a
-      // revoked flag), so derive the owner's leader status from bands.userId
-      // rather than trusting the stored flag alone. This guarantees a joining
-      // member sees the creator's crown no matter which account asks.
       const isOwner = Boolean(userId && userId === band.userId);
       return {
         ...member,
-        isLeader: isOwner || Boolean(member.isLeader),
+        // Leadership comes from the member's own isLeader flag only. It must NOT
+        // be derived from `userId === band.userId`: in this data model a band's
+        // members routinely all share the owner's userId, so an
+        // `isOwner || isLeader` expression crowned every single member. Ownership
+        // is reported separately as `isOwner` for the "you own this band" affordance.
+        isLeader: Boolean(member.isLeader),
         claimed: Boolean(userId),
         isCurrentUser: Boolean(
           (userId && userId === viewer.id) ||
@@ -75,8 +74,32 @@ export async function GET(
       };
     });
 
-    // Sort on the derived leader status so the owner's crown leads the roster
-    // even when the stored flag drifted, then alphabetically for the rest.
+    // The signed-in owner must always see themselves in their own band, even when
+    // they never created a BandMember row for it (a real data state: e.g. a band
+    // seeded or joined where the owner has no member entry). Without this the
+    // owner was missing from their own roster. This is a server-side projection
+    // of the viewer, not a persisted row, so it never duplicates a real member.
+    const viewerInRoster = roster.some((m) => m.isCurrentUser);
+    if (!viewerInRoster && band.userId === viewer.id) {
+      roster.push({
+        id: `owner-${viewer.id}`,
+        name: viewer.name || viewer.email?.split("@")[0] || "You",
+        email: viewer.email ?? null,
+        phone: null,
+        notes: null,
+        // The User table has no avatar column; the client supplies the owner's
+        // profile image from the Supabase session as the avatar fallback.
+        avatarUrl: null,
+        isLeader: false,
+        bands: [band.name],
+        updatedAt: new Date(),
+        claimed: true,
+        isCurrentUser: true,
+        isOwner: true,
+      });
+    }
+
+    // Leaders first, then alphabetical — matching the original ordering contract.
     roster.sort((a, b) => {
       if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
       return a.name.localeCompare(b.name);

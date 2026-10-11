@@ -56,41 +56,73 @@ describe("GET /api/bands/[id]/members", () => {
     }));
   });
 
-  it("marks the band creator as leader for a joining member even when the stored isLeader flag drifted to false", async () => {
-    // The invite-joined viewer (user-b) asks for the roster. The creator's row
-    // (user-a) exists but its denormalized isLeader flag drifted to false — the
-    // kind of legacy/reused-identity state that hides the crown in the UI.
+  it("does not crown every member when they all share the owner's userId", async () => {
+    // Regression guard for v1.49.4. In this data model a band's members routinely
+    // all carry the owner's userId (they are not separate accounts). Deriving
+    // isLeader from `userId === band.userId` therefore crowned the whole roster.
+    // Leadership must come from the member's own isLeader flag only.
     prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
     prisma.bandMember.findMany.mockResolvedValue([
-      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
-      { id: "member-b", name: "Bob", email: "b@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-b" },
-    ]);
-
-    const response = await GET(request, params);
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    const creator = body.find((member: { id: string }) => member.id === "member-a");
-    expect(creator.isLeader).toBe(true);
-    expect(creator.isOwner).toBe(true);
-    // The joining member is not promoted to leader just for asking.
-    const joiner = body.find((member: { id: string }) => member.id === "member-b");
-    expect(joiner.isLeader).toBe(false);
-  });
-
-  it("leads the roster with the owner even when another member carries the stale leader flag", async () => {
-    // Sorting must follow the derived owner-leader status, not the raw flag, so
-    // the creator's crown stays first regardless of row order from the DB.
-    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
-    prisma.bandMember.findMany.mockResolvedValue([
-      { id: "member-c", name: "Cara", email: "c@example.com", phone: null, notes: null, avatarUrl: null, isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-03"), userId: "user-c" },
-      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-a", name: "Alice", email: "alice@example.com", phone: null, notes: null, avatarUrl: null, isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-b", name: "Bob", email: "bob@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-a" },
+      { id: "member-c", name: "Cara", email: "cara@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-03"), userId: "user-a" },
     ]);
 
     const body = await (await GET(request, params)).json();
 
-    expect(body[0].id).toBe("member-a");
-    expect(body[0].isLeader).toBe(true);
-    expect(body[0].isOwner).toBe(true);
+    const leaders = body.filter((m: { isLeader: boolean }) => m.isLeader);
+    expect(leaders.map((m: { id: string }) => m.id)).toEqual(["member-a"]);
+    // Ownership is still reported per row for the "you own this band" affordance,
+    // but it must not be conflated with the leader crown.
+    expect(body.every((m: { isOwner: boolean }) => m.isOwner)).toBe(true);
+    expect(body.filter((m: { isLeader: boolean }) => m.isLeader)).toHaveLength(1);
+  });
+
+  it("keeps leadership strictly on the isLeader flag regardless of ownership", async () => {
+    // A viewer (user-b) is the band owner in this scenario but their own member
+    // row is not flagged as leader; only member-c carries the leader flag. The
+    // crown must follow the flag, never the owner id.
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-b", name: "Bob", email: "b@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-b" },
+      { id: "member-c", name: "Cara", email: "c@example.com", phone: null, notes: null, avatarUrl: null, isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-03"), userId: "user-a" },
+    ]);
+
+    const body = await (await GET(request, params)).json();
+
+    expect(body.filter((m: { isLeader: boolean }) => m.isLeader).map((m: { id: string }) => m.id)).toEqual(["member-c"]);
+    // Leader sorts first even though another row precedes it in the source array.
+    expect(body[0].id).toBe("member-c");
+  });
+
+  it("flags the viewer's own row as isCurrentUser so the member sees themselves", async () => {
+    // Symptom guard: the signed-in user must be identifiable in the roster.
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: null, isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-b", name: "Bob", email: "b@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-b" },
+    ]);
+
+    const body = await (await GET(request, params)).json();
+
+    const self = body.find((m: { id: string }) => m.id === "member-b");
+    expect(self.isCurrentUser).toBe(true);
+    expect(body.find((m: { id: string }) => m.id === "member-a").isCurrentUser).toBe(false);
+  });
+
+  it("passes through each member's stored avatarUrl so profile images render", async () => {
+    // Symptom guard: avatars are whatever the roster row stores; the route must
+    // not strip or overwrite them.
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-b" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-a", name: "Alice", email: "a@example.com", phone: null, notes: null, avatarUrl: "https://cdn.example.com/alice.png", isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-b", name: "Bob", email: "b@example.com", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-b" },
+    ]);
+
+    const body = await (await GET(request, params)).json();
+
+    expect(body.find((m: { id: string }) => m.id === "member-a").avatarUrl).toBe("https://cdn.example.com/alice.png");
+    expect(body.find((m: { id: string }) => m.id === "member-b").avatarUrl).toBeNull();
   });
 });

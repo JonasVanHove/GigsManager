@@ -44,6 +44,12 @@ interface BandMember {
   bands: string[];
   isLeader?: boolean;
   updatedAt: string;
+  /** Set by the roster API: this row is the band owner (canonical leader). */
+  isOwner?: boolean;
+  /** Set by the roster API: this row is the signed-in viewer. */
+  isCurrentUser?: boolean;
+  /** Set by the roster API: this row is linked to an account. */
+  claimed?: boolean;
 }
 
 function BandMemberAvatar({
@@ -395,12 +401,13 @@ export default function BandsTab() {
   const isMemberCurrentUser = (member: BandMember) =>
     isRosterMemberCurrentUser(member, session?.user ?? null);
 
-  const isMemberBandOwner = (member: BandMember, band: Band) => {
-    if (band.userId && (member as any).userId === band.userId) return true;
-    if ((member as any).isOwner) return true;
-    if (band.isOwner && isMemberCurrentUser(member)) return true;
-    return false;
-  };
+  // Ownership is decided by the API's `isOwner` flag, which the roster route
+  // derives from `bands.userId` (the canonical owner). We deliberately do NOT
+  // re-derive it from `userId === band.userId` here: a band's virtual members
+  // share the owner's userId, so that comparison would mark every one of them
+  // as the owner.
+  const isMemberBandOwner = (member: BandMember, _band: Band) =>
+    Boolean(member.isOwner);
 
   const handleConfirmLeaveBand = async () => {
     if (!confirmLeaveBand) return;

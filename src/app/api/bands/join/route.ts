@@ -74,12 +74,17 @@ export async function POST(request: NextRequest) {
       }
 
       if (!member) {
+        // A fresh joiner is a plain member, never a leader. The band owner is
+        // the account in `bands.userId`; joining through an invite never touches
+        // that ownership or grants leadership. Explicit isLeader:false keeps the
+        // intent unambiguous even though it is the column default.
         member = await tx.bandMember.create({
           data: {
             name: memberName,
             email: user.email,
             userId: user.id,
             bands: [band.name],
+            isLeader: false,
           },
           select: { id: true, bands: true },
         });

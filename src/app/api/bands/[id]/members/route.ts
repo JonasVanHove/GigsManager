@@ -3,6 +3,7 @@ import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 import { invalidateCache } from "@/lib/cache";
+import { buildCanonicalBandRoster } from "@/lib/band-roster";
 
 export const runtime = "nodejs";
 
@@ -55,54 +56,25 @@ export async function GET(
       },
     });
 
-    const roster = members.map(({ userId, ...member }) => {
-      const isOwner = Boolean(userId && userId === band.userId);
-      return {
-        ...member,
-        // Leadership comes from the member's own isLeader flag only. It must NOT
-        // be derived from `userId === band.userId`: in this data model a band's
-        // members routinely all share the owner's userId, so an
-        // `isOwner || isLeader` expression crowned every single member. Ownership
-        // is reported separately as `isOwner` for the "you own this band" affordance.
-        isLeader: Boolean(member.isLeader),
-        claimed: Boolean(userId),
-        isCurrentUser: Boolean(
-          (userId && userId === viewer.id) ||
-          (viewer.email && member.email && member.email.toLowerCase() === viewer.email.toLowerCase())
-        ),
-        isOwner,
-      };
-    });
+    // Resolve the band owner account. `bands.userId` is the canonical owner and
+    // is a leader by definition; the owner's own member row (if any) is matched
+    // to it by e-mail, because BandMember.userId is shared with virtual members
+    // and cannot be used to identify the owner's row.
+    const owner = band.userId
+      ? await prisma.user.findUnique({
+          where: { id: band.userId },
+          select: { id: true, email: true, name: true },
+        })
+      : null;
 
-    // The signed-in owner must always see themselves in their own band, even when
-    // they never created a BandMember row for it (a real data state: e.g. a band
-    // seeded or joined where the owner has no member entry). Without this the
-    // owner was missing from their own roster. This is a server-side projection
-    // of the viewer, not a persisted row, so it never duplicates a real member.
-    const viewerInRoster = roster.some((m) => m.isCurrentUser);
-    if (!viewerInRoster && band.userId === viewer.id) {
-      roster.push({
-        id: `owner-${viewer.id}`,
-        name: viewer.name || viewer.email?.split("@")[0] || "You",
-        email: viewer.email ?? null,
-        phone: null,
-        notes: null,
-        // The User table has no avatar column; the client supplies the owner's
-        // profile image from the Supabase session as the avatar fallback.
-        avatarUrl: null,
-        isLeader: false,
-        bands: [band.name],
-        updatedAt: new Date(),
-        claimed: true,
-        isCurrentUser: true,
-        isOwner: true,
-      });
-    }
-
-    // Leaders first, then alphabetical — matching the original ordering contract.
-    roster.sort((a, b) => {
-      if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
-      return a.name.localeCompare(b.name);
+    const roster = buildCanonicalBandRoster(members, {
+      owner: {
+        id: band.userId,
+        email: owner?.email ?? null,
+        name: owner?.name ?? null,
+      },
+      viewer: { id: viewer.id, email: viewer.email },
+      bandName: band.name,
     });
 
     return NextResponse.json(roster);

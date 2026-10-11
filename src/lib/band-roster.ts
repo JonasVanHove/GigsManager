@@ -22,14 +22,30 @@ export interface RosterMember {
   isLeader?: boolean;
   /** Flagged by the API when this row is the signed-in viewer. */
   isCurrentUser?: boolean;
-  /** Internal user id, stripped from the API payload but kept on legacy rows. */
+  /** Which account administers this row (shared with virtual members). */
   userId?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  avatarUrl?: string | null;
+  bands?: string[];
+  updatedAt?: Date | string;
+  claimed?: boolean;
 }
 
 export interface RosterViewer {
   id?: string | null;
   email?: string | null;
 }
+
+/** The band owner account (`bands.userId` resolved to a User). */
+export interface RosterOwner extends RosterViewer {
+  name?: string | null;
+  /** Owner profile image; supplied client-side from the Supabase session. */
+  avatarUrl?: string | null;
+}
+
+const normEmail = (email?: string | null): string =>
+  (email || "").trim().toLowerCase();
 
 /** Synthetic ids that must never be treated as real member rows. */
 const SYNTHETIC_MEMBER_IDS = new Set(["current-user"]);
@@ -46,14 +62,104 @@ export function isRosterMemberCurrentUser(
   if (SYNTHETIC_MEMBER_IDS.has(member.id)) return true;
   if (member.isCurrentUser) return true;
   if (viewer?.id && member.userId && member.userId === viewer.id) return true;
-  if (
-    viewer?.email &&
-    member.email &&
-    member.email.toLowerCase() === viewer.email.toLowerCase()
-  ) {
-    return true;
-  }
+  if (viewer?.email && normEmail(member.email) === normEmail(viewer.email)) return true;
   return false;
+}
+
+/**
+ * Build the canonical, owner-inclusive roster for a band card.
+ *
+ * Guarantees, for every viewer:
+ *   - the band owner (`owner.id`) appears exactly once as `isOwner` + `isLeader`;
+ *   - every other member has `isOwner: false` and `isLeader` equal to their own
+ *     stored flag (a promoted leader stays a leader, everyone else does not);
+ *   - the viewer recognises themselves on exactly one row via `isCurrentUser`,
+ *     whether they are the owner or joined through an invite.
+ *
+ * The owner is matched to their own member row by e-mail (the only reliable
+ * per-person key); when no such row exists, the owner is projected from the
+ * owner account rather than duplicating a virtual member that merely shares the
+ * owner's userId.
+ */
+export function buildCanonicalBandRoster<T extends RosterMember>(
+  members: T[] | null | undefined,
+  options: { owner: RosterOwner; viewer?: RosterViewer | null; bandName: string }
+): Array<T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean }> {
+  const rows = Array.isArray(members) ? members : [];
+  const { owner, viewer, bandName } = options;
+  const ownerEmail = normEmail(owner.email);
+  const viewerEmail = normEmail(viewer?.email);
+  const viewerIsOwner = Boolean(viewer?.id && owner.id && viewer.id === owner.id);
+
+  // The owner's own member row, if present, is identified by e-mail — userId is
+  // shared with virtual members and must not be used to pick "the owner row".
+  const ownerRow = ownerEmail
+    ? rows.find((m) => normEmail(m.email) === ownerEmail)
+    : undefined;
+
+  const roster: Array<T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean }> =
+    rows
+      .filter((m) => m !== ownerRow)
+      .map((m) => {
+        const row = {
+          ...m,
+        } as T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean };
+        // Strip userId at runtime: the client must rely on the flags we compute,
+        // never on the internal id (it is shared with every virtual member).
+        delete (row as unknown as Record<string, unknown>).userId;
+        row.isLeader = Boolean(m.isLeader);
+        row.isOwner = false;
+        // Only a regular row can be "me" when the viewer is NOT the owner: the
+        // owner shares userId with every virtual member, so a userId match would
+        // flag all of them. A joiner's userId is unique to their own row.
+        row.isCurrentUser =
+          !viewerIsOwner &&
+          Boolean(
+            (m.userId != null && viewer?.id && m.userId === viewer.id) ||
+              (viewerEmail && normEmail(m.email) === viewerEmail)
+          );
+        row.claimed = Boolean(m.userId);
+        return row;
+      });
+
+  // The owner is always present exactly once: their real row when it exists,
+  // otherwise a projection from the owner account (never a persisted duplicate).
+  if (ownerRow) {
+    const ownerEntry = {
+      ...ownerRow,
+    } as T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean };
+    delete (ownerEntry as unknown as Record<string, unknown>).userId;
+    ownerEntry.isLeader = true;
+    ownerEntry.isOwner = true;
+    ownerEntry.isCurrentUser =
+      viewerIsOwner || (Boolean(viewerEmail) && normEmail(ownerRow.email) === viewerEmail);
+    ownerEntry.claimed = true;
+    roster.push(ownerEntry);
+  } else {
+    roster.push({
+      ...({} as T),
+      id: `owner-${owner.id ?? "unknown"}`,
+      name: owner.name || owner.email?.split("@")[0] || "You",
+      email: owner.email ?? null,
+      phone: null,
+      notes: null,
+      avatarUrl: owner.avatarUrl ?? null,
+      bands: [bandName],
+      updatedAt: new Date().toISOString(),
+      isLeader: true,
+      isOwner: true,
+      isCurrentUser: viewerIsOwner || (Boolean(viewerEmail) && ownerEmail === viewerEmail),
+      claimed: true,
+    } as T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean });
+  }
+
+  // Leader first, then alphabetical — matching the original ordering contract.
+  roster.sort((a, b) => {
+    if (a.isLeader !== b.isLeader) return a.isLeader ? -1 : 1;
+    return (a.name || "").localeCompare(b.name || "");
+  });
+
+  return roster;
 }
 
 /**

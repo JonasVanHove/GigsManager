@@ -192,6 +192,29 @@ export function composeBandRoster<T extends RosterMember>(
 }
 
 /**
+ * Compose the member list for one band card from the map of canonical,
+ * band-scoped rosters (BandsTab's `bandMembersByBandId`).
+ *
+ * The roster from `GET /api/bands/[id]/members` is the ONLY valid source for
+ * "who is in this band": the legacy account-scoped member list
+ * (`/api/band-members`) holds just the viewer's own rows, so falling back to
+ * it showed a joining member only themselves instead of the band's full
+ * lineup. When a band's roster has not loaded yet — or failed to load — this
+ * returns an empty list so the card can show a loading or error placeholder
+ * rather than a misleading account-scoped roster.
+ */
+export function composeBandCardRoster<T extends RosterMember>(
+  rostersByBandId: Readonly<Record<string, T[] | null | undefined>>,
+  bandId: string,
+  viewer?: RosterViewer | null,
+  options: { excludeSelf?: boolean } = {}
+): T[] {
+  const canonical = rostersByBandId[bandId];
+  if (!Array.isArray(canonical)) return [];
+  return composeBandRoster(canonical, viewer, options);
+}
+
+/**
  * Fill blank member avatars with the linked account's profile image — the
  * application-layer join with the account/user table. `BandMember` has no
  * database relation to `User` and `User` stores no avatar column, so the

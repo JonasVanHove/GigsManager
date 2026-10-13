@@ -15,7 +15,7 @@ import ConfirmationModal from "./ConfirmationModal";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { readAsDataUrl } from "@/lib/file-utils";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
-import { composeBandRoster, isRosterMemberCurrentUser } from "@/lib/band-roster";
+import { composeBandCardRoster, isRosterMemberCurrentUser } from "@/lib/band-roster";
 
 interface Band {
   id: string;
@@ -84,6 +84,9 @@ export default function BandsTab() {
   const [members, setMembers] = useState<BandMember[]>([]);
   const [bandMembersByBandId, setBandMembersByBandId] = useState<Record<string, BandMember[]>>({});
   const [memberError, setMemberError] = useState<string | null>(null);
+  /** Load error for the band-scoped rosters (distinct from the legacy member list). */
+  const [rosterError, setRosterError] = useState<string | null>(null);
+  const [loadingRosters, setLoadingRosters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingBand, setEditingBand] = useState<Band | null>(null);
@@ -161,20 +164,40 @@ export default function BandsTab() {
     try {
       const token = await getAccessToken();
       if (!token) return;
+      setLoadingRosters(true);
+      setRosterError(null);
+      // Resolve every band's roster independently: one failing request must
+      // not discard the others, and a failed band must keep its card empty
+      // (with an error) instead of silently rendering the account-scoped
+      // member list, which only ever holds the viewer's own rows.
       const results = await Promise.all(
         bands.map(async (band) => {
-          const response = await fetch(`/api/bands/${band.id}/members`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!response.ok) throw new Error(`Failed to load roster for ${band.id}`);
-          return [band.id, normalizeArrayResponse<BandMember>(await response.json())] as const;
+          try {
+            const response = await fetch(`/api/bands/${band.id}/members`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) throw new Error(`Failed to load roster for ${band.id}`);
+            return [band.id, normalizeArrayResponse<BandMember>(await response.json()), null] as const;
+          } catch (error) {
+            return [band.id, null, error] as const;
+          }
         })
       );
-      setBandMembersByBandId(Object.fromEntries(results));
+      const loaded: Record<string, BandMember[]> = {};
+      let failed = 0;
+      for (const [bandId, roster, error] of results) {
+        if (roster) loaded[bandId] = roster;
+        else if (error) failed += 1;
+      }
+      setBandMembersByBandId((prev) => ({ ...prev, ...loaded }));
+      if (failed > 0) setRosterError(t('bands.errorMembers'));
     } catch (error) {
       console.error("Failed to load band rosters:", error);
+      setRosterError(t('bands.errorMembers'));
+    } finally {
+      setLoadingRosters(false);
     }
-  }, [bands, getAccessToken]);
+  }, [bands, getAccessToken, t]);
 
   // NOTE: The synthetic "current-user" BandMember that used to be injected here
   // has been removed. The canonical, band-scoped roster from
@@ -480,18 +503,16 @@ export default function BandsTab() {
   };
 
 
-  const getBandMembers = (bandId: string) => {
-    const band = bands.find(b => b.id === bandId);
-    if (!band) return [];
-    // Prefer the canonical, band-scoped roster. Fall back to the account-scoped
-    // member list only while the roster request is still in flight.
-    const roster =
-      bandMembersByBandId[bandId] ??
-      members.filter((member) => member.bands?.includes(band.name));
-    return composeBandRoster(roster, session?.user ?? null, {
+  const getBandMembers = (bandId: string) =>
+    // Only the canonical, band-scoped roster may be rendered as "the band".
+    // The legacy account-scoped /api/band-members list is never a fallback:
+    // it holds just the viewer's own rows, which showed a joining member only
+    // themselves instead of the band's full lineup. While the roster is still
+    // loading (or after it failed) the card shows a loading/error placeholder
+    // instead of a misleading partial roster.
+    composeBandCardRoster(bandMembersByBandId, bandId, session?.user ?? null, {
       excludeSelf: excludeSelfFromMemberCount,
     });
-  };
 
   if (loading) {
     return (
@@ -501,29 +522,34 @@ export default function BandsTab() {
     );
   }
 
-  const renderMemberEmptyState = () => (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
-      <Icons.People className="mx-auto mb-3 h-10 w-10 text-slate-500" />
-      <p className="text-base font-medium text-slate-700 dark:text-slate-200">
-        {memberError ? "Couldn’t load band members" : t('bands.noMembersYet') || "No band members yet"}
-      </p>
-      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-        {memberError ? "Please retry to refresh the list." : "Add a member to this band to start tracking payments."}
-      </p>
-      {memberError && (
-        <button
-          type="button"
-          onClick={() => {
-            setMemberError(null);
-            loadMembers();
-          }}
-          className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-        >
-          Retry
-        </button>
-      )}
-    </div>
-  );
+  const renderMemberEmptyState = () => {
+    const loadError = memberError || rosterError;
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
+        <Icons.People className="mx-auto mb-3 h-10 w-10 text-slate-500" />
+        <p className="text-base font-medium text-slate-700 dark:text-slate-200">
+          {loadError ? "Couldn’t load band members" : t('bands.noMembersYet') || "No band members yet"}
+        </p>
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          {loadError ? "Please retry to refresh the list." : "Add a member to this band to start tracking payments."}
+        </p>
+        {loadError && (
+          <button
+            type="button"
+            onClick={() => {
+              setMemberError(null);
+              setRosterError(null);
+              loadMembers();
+              void loadBandRosters();
+            }}
+            className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -909,7 +935,11 @@ export default function BandsTab() {
                           <div>
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{band.name}</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                              {bandMembers.length} {language === "nl" ? "leden" : "members"}
+                              {bandMembersByBandId[band.id] === undefined && loadingRosters
+                                ? language === "nl"
+                                  ? "leden laden…"
+                                  : "loading members…"
+                                : `${bandMembers.length} ${language === "nl" ? "leden" : "members"}`}
                             </p>
                           </div>
                         </div>
@@ -949,7 +979,12 @@ export default function BandsTab() {
                         </div>
                       </div>
 
-                      {bandMembers.length > 0 ? (
+                      {bandMembersByBandId[band.id] === undefined && loadingRosters ? (
+                        <div className="mt-4 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                          {language === "nl" ? "Bandleden laden…" : "Loading band members…"}
+                        </div>
+                      ) : bandMembers.length > 0 ? (
                         <div className="mt-4">
                           <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('bands.bandMembers')}</p>
                           <div className="flex flex-wrap gap-2">

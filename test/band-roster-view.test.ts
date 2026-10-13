@@ -3,6 +3,7 @@ import type { RosterMember } from "@/lib/band-roster";
 import {
   applyProfileAvatars,
   buildCanonicalBandRoster,
+  composeBandCardRoster,
   composeBandRoster,
   isRosterMemberCurrentUser,
   rosterEmailKey,
@@ -207,6 +208,48 @@ describe("band roster view", () => {
   it("tolerates a missing roster payload", () => {
     expect(composeBandRoster(undefined)).toEqual([]);
     expect(composeBandRoster(null, { id: "user-a" }, { excludeSelf: true })).toEqual([]);
+  });
+});
+
+/**
+ * Regression: a band card must render the canonical, band-scoped roster —
+ * never the account-scoped member list (`/api/band-members`). That legacy list
+ * only ever holds the viewer's own rows, so a joiner who receives it as their
+ * "roster" sees just themselves instead of the band's full lineup. While a
+ * band's roster is unloaded (or failed) the card must show a placeholder, not
+ * a misleading account-scoped roster.
+ */
+describe("composeBandCardRoster", () => {
+  const roster: RosterMember[] = [
+    { id: "m-1", name: "Elias", email: "elias@band.be", isLeader: true, claimed: true },
+    { id: "m-2", name: "Master", email: "master@band.be", isLeader: true },
+    { id: "m-4", name: "Joiner", email: "joiner@band.be", isCurrentUser: true },
+  ];
+  const joiner = { id: "user-b", email: "joiner@band.be" };
+  const owner = { id: "user-a", email: "elias@band.be" };
+
+  it("gives a joiner the whole band roster, not only their own row", () => {
+    const forJoiner = composeBandCardRoster({ "band-1": roster }, "band-1", joiner);
+    expect(forJoiner.map((m) => m.id)).toEqual(["m-1", "m-2", "m-4"]);
+    const current = forJoiner.filter((m) => m.isCurrentUser);
+    expect(current).toHaveLength(1);
+    expect(current[0].id).toBe("m-4");
+  });
+
+  it("renders the same full roster for owner and joiner alike", () => {
+    const forOwner = composeBandCardRoster({ "band-1": roster }, "band-1", owner);
+    const forJoiner = composeBandCardRoster({ "band-1": roster }, "band-1", joiner);
+    expect(forOwner.map((m) => m.id)).toEqual(forJoiner.map((m) => m.id));
+    expect(forOwner).toHaveLength(3);
+    expect(forJoiner).toHaveLength(3);
+  });
+
+  it("never substitutes the account-scoped member list for a missing roster", () => {
+    // Unloaded, failed and foreign bands all yield an empty list so the card
+    // shows a loading/error placeholder instead of the viewer's own rows.
+    expect(composeBandCardRoster({}, "band-1", joiner)).toEqual([]);
+    expect(composeBandCardRoster({ "band-1": null }, "band-1", joiner)).toEqual([]);
+    expect(composeBandCardRoster({ "band-2": roster }, "band-1", joiner)).toEqual([]);
   });
 });
 

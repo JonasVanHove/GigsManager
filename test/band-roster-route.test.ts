@@ -168,6 +168,41 @@ describe("GET /api/bands/[id]/members", () => {
     expect(owners[0].isCurrentUser).toBe(false);
   });
 
+  it("a joiner receives the whole band roster, never account-scoped rows", async () => {
+    // Regression: the roster query must be scoped to the band only (every
+    // BandMember row containing the band name). Filtering it by the viewer's
+    // userId would hand a joiner just their own rows — they would see only
+    // themselves instead of the owner and the rest of the lineup.
+    getVerifiedUserIdFromHeader.mockResolvedValue("supabase-joiner");
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-4" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-1", name: "Elias", email: "elias@band.be", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-2", name: "Master", email: "master@band.be", phone: null, notes: null, avatarUrl: null, isLeader: true, bands: ["The Notes"], updatedAt: new Date("2026-01-02"), userId: "user-a" },
+      { id: "member-4", name: "Joiner Two", email: "joiner@band.be", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-04"), userId: "user-b" },
+    ]);
+
+    const body = await (await GET(request, params)).json();
+
+    // The band-scoped query carries no viewer filter whatsoever.
+    expect(prisma.bandMember.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.bandMember.findMany.mock.calls[0][0]?.where).toEqual({
+      bands: { has: "The Notes" },
+    });
+
+    // The joiner sees the owner (projected), the other members and themselves
+    // — the array is never reduced to the joiner alone.
+    const ids = body.map((m: { id: string }) => m.id);
+    expect(ids).toContain("owner-user-a");
+    expect(ids).toContain("member-1");
+    expect(ids).toContain("member-2");
+    expect(ids).toContain("member-4");
+    expect(ids.length).toBeGreaterThan(1);
+    // Only the joiner's own row is flagged as the current user.
+    const current = body.filter((m: { isCurrentUser: boolean }) => m.isCurrentUser);
+    expect(current).toHaveLength(1);
+    expect(current[0].id).toBe("member-4");
+  });
+
   it("reuses the owner's real member row (e-mail match) instead of duplicating", async () => {
     // When the owner DOES have a persisted member row carrying their own e-mail,
     // that row becomes the owner entry — no projected duplicate is added.

@@ -1,19 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { getVerifiedUserIdFromHeader, prisma } = vi.hoisted(() => ({
-  getVerifiedUserIdFromHeader: vi.fn(),
-  prisma: {
-    user: { findUnique: vi.fn() },
-    bands: { findUnique: vi.fn() },
-    bandMember: { findFirst: vi.fn(), findMany: vi.fn() },
-  },
-}));
+const { getVerifiedUserIdFromHeader, prisma, getSupabaseAdminMock, listUsersMock } =
+  vi.hoisted(() => ({
+    getVerifiedUserIdFromHeader: vi.fn(),
+    listUsersMock: vi.fn(),
+    getSupabaseAdminMock: vi.fn(),
+    prisma: {
+      user: { findUnique: vi.fn() },
+      bands: { findUnique: vi.fn() },
+      bandMember: { findFirst: vi.fn(), findMany: vi.fn() },
+    },
+  }));
 
 vi.mock("@/lib/auth-helpers", () => ({ getVerifiedUserIdFromHeader }));
 vi.mock("@/lib/prisma", () => ({ prisma }));
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: getSupabaseAdminMock }));
 
 import { GET } from "@/app/api/bands/[id]/members/route";
+import { clearProfileAvatarCache } from "@/lib/roster-profile-avatars";
 
 const request = new NextRequest("http://localhost/api/bands/band-1/members", {
   headers: { Authorization: "Bearer verified" },
@@ -51,6 +56,12 @@ beforeEach(() => {
   getVerifiedUserIdFromHeader.mockResolvedValue("supabase-owner");
   setUsers({ "user-a": OWNER, "user-b": JOINER });
   prisma.bands.findUnique.mockResolvedValue({ id: "band-1", name: "The Notes", userId: "user-a" });
+  // Account-profile avatar join: fresh cache and a configurable admin client.
+  clearProfileAvatarCache();
+  getSupabaseAdminMock.mockImplementation(() => ({
+    auth: { admin: { listUsers: listUsersMock } },
+  }));
+  listUsersMock.mockResolvedValue({ data: { users: [] }, error: null });
 });
 
 
@@ -186,5 +197,107 @@ describe("GET /api/bands/[id]/members", () => {
     const body = await (await GET(request, params)).json();
 
     expect(body.find((m: { id: string }) => m.id === "member-1").avatarUrl).toBe("https://cdn.example.com/elias.png");
+  });
+
+  it("joiner view: sees owner, other members and self exactly once — with linked-account avatars", async () => {
+    // Symptom guard: a joiner gets the full roster (owner + every member +
+    // themselves, no duplicate rows), and each member with a linked account
+    // shows that account's Supabase profile image.
+    getVerifiedUserIdFromHeader.mockResolvedValue("supabase-joiner");
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-4" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-1", name: "Elias", email: "elias@band.be", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+      { id: "member-4", name: "Joiner Two", email: "joiner@band.be", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-04"), userId: "user-b" },
+    ]);
+    listUsersMock.mockResolvedValue({
+      data: {
+        users: [
+          { id: "supabase-owner", email: "owner@band.be", user_metadata: { avatar_url: "https://cdn.example.com/owner.png" } },
+          { id: "supabase-joiner", email: "joiner@band.be", user_metadata: { avatar_url: "https://cdn.example.com/joiner.png" } },
+          // Auth e-mail casing differs from the member row — normalisation must match.
+          { id: "supabase-elias", email: "Elias@Band.be", user_metadata: { avatar_url: "https://cdn.example.com/elias-profile.png" } },
+        ],
+      },
+      error: null,
+    });
+
+    const body = await (await GET(request, params)).json();
+
+    // Owner (projected) + two members: every roster row appears exactly once.
+    expect(body).toHaveLength(3);
+    expect(new Set(body.map((m: { id: string }) => m.id)).size).toBe(3);
+
+    const owner = body.find((m: { isOwner: boolean }) => m.isOwner);
+    expect(owner.email).toBe("owner@band.be");
+    expect(owner.avatarUrl).toBe("https://cdn.example.com/owner.png");
+
+    // The joiner sees the other members with their profile images …
+    expect(body.find((m: { id: string }) => m.id === "member-1").avatarUrl).toBe(
+      "https://cdn.example.com/elias-profile.png"
+    );
+    // … and themselves as the single current user, with their own avatar.
+    const current = body.filter((m: { isCurrentUser: boolean }) => m.isCurrentUser);
+    expect(current).toHaveLength(1);
+    expect(current[0].id).toBe("member-4");
+    expect(current[0].avatarUrl).toBe("https://cdn.example.com/joiner.png");
+    expect(current[0].isOwner).toBe(false);
+    // The account join ran exactly once: the second read hits the avatar cache.
+    expect(listUsersMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a member's own stored avatarUrl over the linked profile image", async () => {
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-1" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-1", name: "Elias", email: "elias@band.be", phone: null, notes: null, avatarUrl: "https://cdn.example.com/custom-elias.png", isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+    ]);
+    listUsersMock.mockResolvedValue({
+      data: { users: [{ id: "supabase-elias", email: "elias@band.be", user_metadata: { avatar_url: "https://cdn.example.com/profile-elias.png" } }] },
+      error: null,
+    });
+
+    const body = await (await GET(request, params)).json();
+
+    expect(body.find((m: { id: string }) => m.id === "member-1").avatarUrl).toBe(
+      "https://cdn.example.com/custom-elias.png"
+    );
+  });
+
+  it("does not leak the owner's profile avatar onto virtual members sharing the owner's userId", async () => {
+    // Virtual rows carry bands.userId but their own e-mail; only e-mail may
+    // match profile avatars, otherwise the owner's photo shows on every member.
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-virtual" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-virtual", name: "Session Musician", email: "session@band.be", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+    ]);
+    listUsersMock.mockResolvedValue({
+      data: { users: [{ id: "supabase-owner", email: "owner@band.be", user_metadata: { avatar_url: "https://cdn.example.com/owner.png" } }] },
+      error: null,
+    });
+
+    const body = await (await GET(request, params)).json();
+
+    const virtualMember = body.find((m: { id: string }) => m.id === "member-virtual");
+    expect(virtualMember.avatarUrl).toBeNull();
+    // The projected owner still receives their own profile image.
+    const owner = body.find((m: { isOwner: boolean }) => m.isOwner);
+    expect(owner.avatarUrl).toBe("https://cdn.example.com/owner.png");
+  });
+
+  it("still serves the roster when the Supabase admin API is unavailable", async () => {
+    // Stub client without an admin API (missing service-role key): the account
+    // join degrades to "no profile avatars" — the roster itself must not fail.
+    getSupabaseAdminMock.mockReturnValue({
+      auth: { getUser: async () => ({ data: null, error: { message: "not configured" } }) },
+    });
+    prisma.bandMember.findFirst.mockResolvedValue({ id: "member-1" });
+    prisma.bandMember.findMany.mockResolvedValue([
+      { id: "member-1", name: "Elias", email: "elias@band.be", phone: null, notes: null, avatarUrl: null, isLeader: false, bands: ["The Notes"], updatedAt: new Date("2026-01-01"), userId: "user-a" },
+    ]);
+
+    const response = await GET(request, params);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.find((m: { id: string }) => m.id === "member-1").avatarUrl).toBeNull();
   });
 });

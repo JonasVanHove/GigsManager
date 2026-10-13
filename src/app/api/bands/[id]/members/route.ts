@@ -3,7 +3,8 @@ import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 import { invalidateCache } from "@/lib/cache";
-import { buildCanonicalBandRoster } from "@/lib/band-roster";
+import { applyProfileAvatars, buildCanonicalBandRoster, rosterEmailKey } from "@/lib/band-roster";
+import { fetchProfileAvatarsByEmail } from "@/lib/roster-profile-avatars";
 
 export const runtime = "nodejs";
 
@@ -67,11 +68,21 @@ export async function GET(
         })
       : null;
 
-    const roster = buildCanonicalBandRoster(members, {
+    // Application-layer account join: BandMember has no DB relation to User
+    // and User stores no avatar column, so profile images come from Supabase
+    // auth (user_metadata.avatar_url), keyed by e-mail — the only per-person
+    // key (BandMember.userId is shared with virtual members). Rows keep their
+    // own stored avatarUrl; blank ones get the linked profile image, and the
+    // owner projection below carries the owner's profile image too.
+    const profileAvatars = await fetchProfileAvatarsByEmail();
+
+    const roster = buildCanonicalBandRoster(applyProfileAvatars(members, profileAvatars), {
       owner: {
         id: band.userId,
         email: owner?.email ?? null,
         name: owner?.name ?? null,
+        avatarUrl:
+          (owner?.email && profileAvatars.get(rosterEmailKey(owner.email))) || null,
       },
       viewer: { id: viewer.id, email: viewer.email },
       bandName: band.name,

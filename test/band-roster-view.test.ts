@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { RosterMember } from "@/lib/band-roster";
 import {
+  applyProfileAvatars,
   buildCanonicalBandRoster,
   composeBandRoster,
   isRosterMemberCurrentUser,
+  rosterEmailKey,
 } from "@/lib/band-roster";
 
 /**
@@ -205,5 +207,74 @@ describe("band roster view", () => {
   it("tolerates a missing roster payload", () => {
     expect(composeBandRoster(undefined)).toEqual([]);
     expect(composeBandRoster(null, { id: "user-a" }, { excludeSelf: true })).toEqual([]);
+  });
+});
+
+/**
+ * The roster route resolves profile images through the application-layer
+ * account join (Supabase auth keyed by e-mail). These helpers guarantee the
+ * avatar precedence and e-mail normalisation that keep that join correct.
+ */
+describe("applyProfileAvatars", () => {
+  const profileAvatars = new Map([
+    ["elias@band.be", "https://cdn.example.com/elias-profile.png"],
+    ["owner@band.be", "https://cdn.example.com/owner.png"],
+  ]);
+
+  it("fills a blank avatarUrl from the linked account's profile image", () => {
+    const rows = applyProfileAvatars<RosterMember>(
+      [{ id: "m-1", name: "Elias", email: "elias@band.be" }],
+      profileAvatars
+    );
+    expect(rows[0].avatarUrl).toBe("https://cdn.example.com/elias-profile.png");
+  });
+
+  it("matches e-mail case-insensitively and ignores surrounding whitespace", () => {
+    const rows = applyProfileAvatars<RosterMember>(
+      [{ id: "m-1", name: "Elias", email: "  Elias@Band.be " }],
+      profileAvatars
+    );
+    expect(rows[0].avatarUrl).toBe("https://cdn.example.com/elias-profile.png");
+    expect(rosterEmailKey(" Elias@Band.be ")).toBe("elias@band.be");
+  });
+
+  it("keeps the member's own stored avatarUrl (stored avatar wins)", () => {
+    const rows = applyProfileAvatars<RosterMember>(
+      [{ id: "m-1", name: "Elias", email: "elias@band.be", avatarUrl: "https://cdn.example.com/custom.png" }],
+      profileAvatars
+    );
+    expect(rows[0].avatarUrl).toBe("https://cdn.example.com/custom.png");
+  });
+
+  it("keeps null for rows without a stored avatar or linked profile (initials badge)", () => {
+    const rows = applyProfileAvatars<RosterMember>(
+      [{ id: "m-1", name: "Virtual", email: "virtual@band.be" }],
+      profileAvatars
+    );
+    expect(rows[0].avatarUrl).toBeNull();
+  });
+
+  it("never matches on userId: virtual rows sharing the owner stay avatar-less", () => {
+    const rows = applyProfileAvatars<RosterMember & { userId?: string | null }>(
+      [{ id: "m-1", name: "Virtual", email: "virtual@band.be", userId: "user-owner" }],
+      profileAvatars
+    );
+    // profileAvatars has no entry for virtual@band.be — even though the owner's
+    // account (user-owner) does have an avatar.
+    expect(rows[0].avatarUrl).toBeNull();
+  });
+
+  it("preserves the generic row shape (no lost fields)", () => {
+    const rows = applyProfileAvatars<RosterMember>(
+      [{ id: "m-1", name: "Elias", email: "elias@band.be", isLeader: true, bands: ["The Notes"] }],
+      profileAvatars
+    );
+    expect(rows[0]).toMatchObject({
+      id: "m-1",
+      name: "Elias",
+      isLeader: true,
+      bands: ["The Notes"],
+      avatarUrl: "https://cdn.example.com/elias-profile.png",
+    });
   });
 });

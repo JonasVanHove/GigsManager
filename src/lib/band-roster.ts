@@ -40,11 +40,21 @@ export interface RosterViewer {
 /** The band owner account (`bands.userId` resolved to a User). */
 export interface RosterOwner extends RosterViewer {
   name?: string | null;
-  /** Owner profile image; supplied client-side from the Supabase session. */
+  /**
+   * Owner profile image. Resolved server-side from the linked account's
+   * Supabase profile (see `applyProfileAvatars`); when the viewer is the
+   * owner, BandsTab additionally falls back to their session avatar.
+   */
   avatarUrl?: string | null;
 }
 
-const normEmail = (email?: string | null): string =>
+/**
+ * Shared normalisation for e-mail identity keys. E-mail is the only reliable
+ * per-person key across member rows, viewer sessions and linked accounts
+ * (BandMember.userId is shared with virtual members), so every identity match
+ * — including profile-avatar resolution — normalises through this function.
+ */
+export const rosterEmailKey = (email?: string | null): string =>
   (email || "").trim().toLowerCase();
 
 /** Synthetic ids that must never be treated as real member rows. */
@@ -62,7 +72,7 @@ export function isRosterMemberCurrentUser(
   if (SYNTHETIC_MEMBER_IDS.has(member.id)) return true;
   if (member.isCurrentUser) return true;
   if (viewer?.id && member.userId && member.userId === viewer.id) return true;
-  if (viewer?.email && normEmail(member.email) === normEmail(viewer.email)) return true;
+  if (viewer?.email && rosterEmailKey(member.email) === rosterEmailKey(viewer.email)) return true;
   return false;
 }
 
@@ -87,14 +97,14 @@ export function buildCanonicalBandRoster<T extends RosterMember>(
 ): Array<T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean }> {
   const rows = Array.isArray(members) ? members : [];
   const { owner, viewer, bandName } = options;
-  const ownerEmail = normEmail(owner.email);
-  const viewerEmail = normEmail(viewer?.email);
+  const ownerEmail = rosterEmailKey(owner.email);
+  const viewerEmail = rosterEmailKey(viewer?.email);
   const viewerIsOwner = Boolean(viewer?.id && owner.id && viewer.id === owner.id);
 
   // The owner's own member row, if present, is identified by e-mail — userId is
   // shared with virtual members and must not be used to pick "the owner row".
   const ownerRow = ownerEmail
-    ? rows.find((m) => normEmail(m.email) === ownerEmail)
+    ? rows.find((m) => rosterEmailKey(m.email) === ownerEmail)
     : undefined;
 
   const roster: Array<T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean }> =
@@ -116,7 +126,7 @@ export function buildCanonicalBandRoster<T extends RosterMember>(
           !viewerIsOwner &&
           Boolean(
             (m.userId != null && viewer?.id && m.userId === viewer.id) ||
-              (viewerEmail && normEmail(m.email) === viewerEmail)
+              (viewerEmail && rosterEmailKey(m.email) === viewerEmail)
           );
         row.claimed = Boolean(m.userId);
         return row;
@@ -132,7 +142,7 @@ export function buildCanonicalBandRoster<T extends RosterMember>(
     ownerEntry.isLeader = true;
     ownerEntry.isOwner = true;
     ownerEntry.isCurrentUser =
-      viewerIsOwner || (Boolean(viewerEmail) && normEmail(ownerRow.email) === viewerEmail);
+      viewerIsOwner || (Boolean(viewerEmail) && rosterEmailKey(ownerRow.email) === viewerEmail);
     ownerEntry.claimed = true;
     roster.push(ownerEntry);
   } else {
@@ -179,4 +189,31 @@ export function composeBandRoster<T extends RosterMember>(
   const members = Array.isArray(roster) ? roster : [];
   if (!options.excludeSelf) return members;
   return members.filter((member) => !isRosterMemberCurrentUser(member, viewer));
+}
+
+/**
+ * Fill blank member avatars with the linked account's profile image — the
+ * application-layer join with the account/user table. `BandMember` has no
+ * database relation to `User` and `User` stores no avatar column, so the
+ * roster route resolves profile images from Supabase auth
+ * (`user_metadata.avatar_url`, keyed by e-mail) and passes them in here.
+ *
+ * Matching is done on e-mail only: `BandMember.userId` is shared with virtual
+ * members, so a userId match would leak the owner's avatar onto unrelated
+ * rows. A row's own stored `avatarUrl` always wins; rows without a stored
+ * avatar and without a matching linked profile keep `null`, which the UI
+ * renders as an initials badge.
+ */
+export function applyProfileAvatars<T extends RosterMember>(
+  rows: T[],
+  profileAvatars: ReadonlyMap<string, string>
+): Array<T & { avatarUrl: string | null }> {
+  return rows.map((row) => {
+    const withAvatar = {
+      ...row,
+      avatarUrl:
+        row.avatarUrl || profileAvatars.get(rosterEmailKey(row.email)) || null,
+    } as T & { avatarUrl: string | null };
+    return withAvatar;
+  });
 }

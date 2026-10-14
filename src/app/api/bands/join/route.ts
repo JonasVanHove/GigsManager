@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { findBandByInviteCode } from "@/lib/band-invites";
+import { invalidateCache } from "@/lib/cache";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unknown invite code" }, { status: 404 });
     }
 
-    const { bandGigs, member } = await prisma.$transaction(async (tx) => {
+    const { bandGigs, member, user } = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { supabaseId: userId },
         select: { id: true, email: true, name: true },
@@ -111,8 +112,17 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      return { bandGigs, member };
+      return { bandGigs, member, user };
     });
+
+    // Invalidate cache for the joiner's band-members and gigs
+    invalidateCache(`${user.id}:band-members`);
+    invalidateCache(`${user.id}:gigs`);
+    // Also invalidate cache for the band owner so they see the new member immediately
+    if (band.userId && band.userId !== user.id) {
+      invalidateCache(`${band.userId}:band-members`);
+      invalidateCache(`${band.userId}:gigs`);
+    }
 
     return NextResponse.json({
       joined: true,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
+import { invalidateCache } from "@/lib/cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -126,6 +127,9 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+
+    invalidateCache(`${user.id}:band-members`);
+    invalidateCache(`${user.id}:gigs`);
 
     return NextResponse.json({ id, name: trimmedName, logoUrl, color, chatType, chatUrl, isOwner: true, isLeader: true }, { status: 201 });
   } catch (err) {

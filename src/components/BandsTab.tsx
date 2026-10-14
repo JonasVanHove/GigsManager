@@ -115,6 +115,7 @@ export default function BandsTab() {
       if (!token) throw new Error("No auth token");
       const response = await fetch("/api/bands", {
         headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       });
       if (!response.ok) throw new Error(t('bands.errorLoad'));
       const data = await response.json();
@@ -135,6 +136,7 @@ export default function BandsTab() {
 
       const response = await fetch("/api/band-members", {
         headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -175,6 +177,7 @@ export default function BandsTab() {
           try {
             const response = await fetch(`/api/bands/${band.id}/members`, {
               headers: { Authorization: `Bearer ${token}` },
+              cache: "no-store",
             });
             if (!response.ok) throw new Error(`Failed to load roster for ${band.id}`);
             return [band.id, normalizeArrayResponse<BandMember>(await response.json()), null] as const;

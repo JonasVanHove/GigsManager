@@ -4,6 +4,8 @@ import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 import { invalidateCache } from "@/lib/cache";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const userId = await getVerifiedUserIdFromHeader(request);

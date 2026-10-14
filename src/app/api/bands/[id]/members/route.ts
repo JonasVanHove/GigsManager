@@ -7,6 +7,7 @@ import { applyProfileAvatars, buildCanonicalBandRoster, rosterEmailKey } from "@
 import { fetchProfileAvatarsByEmail } from "@/lib/roster-profile-avatars";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /**
  * Return the canonical roster for one band. The legacy /api/band-members

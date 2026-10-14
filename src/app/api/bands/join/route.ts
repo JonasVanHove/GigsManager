@@ -5,6 +5,7 @@ import { findBandByInviteCode } from "@/lib/band-invites";
 import { invalidateCache } from "@/lib/cache";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /**
  * POST /api/bands/join  { code }

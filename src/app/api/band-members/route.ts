@@ -8,6 +8,8 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCacheEntry, setCacheEntry, invalidateCache, getCacheKey, getApiCacheHeaders } from "@/lib/cache";
 import { isDbConnectionError, getErrorStatusCode, formatErrorResponse } from "@/lib/error-detection";
 
+export const dynamic = "force-dynamic";
+
 async function requireAuth(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {

@@ -99,7 +99,9 @@ function JoinContent() {
         setError(body?.error || copy.unknownCode);
         return;
       }
-      router.push("/app");
+      // Force refresh to ensure Next.js revalidates and fetches fresh data
+      router.refresh();
+      router.push("/app?tab=bands");
     } catch {
       setError(copy.unknownCode);
     } finally {

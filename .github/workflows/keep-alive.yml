@@ -1,38 +1,148 @@
-name: Keep Supabase Active (health endpoint)
+name: Keep Supabase awake
 
-# Supabase free-tier pauses an inactive database after seven days. This
-# workflow pings the deployed health endpoint twice a week. Each successful
-# request executes a real SELECT 1 against Supabase Postgres via Prisma.
+# A Free-plan Supabase project is paused when it sees too little *user database
+# activity* over a rolling 7-day window
+# (https://supabase.com/docs/guides/platform/free-project-pausing).
+# A paused project also drops its tenant from Supavisor, so every client —
+# including the `prisma migrate deploy` step of the Netlify build — fails with:
+#
+#   FATAL: (ENOTFOUND) tenant/user postgres.<ref> not found
+#
+# This workflow runs once a day and does two things:
+#  1. Executes a real query against the database (PostgREST), so the project is
+#     never idle for a week in the first place.
+#  2. If it is paused anyway, restores it through the Supabase Management API
+#     (requires the SUPABASE_ACCESS_TOKEN secret).
+#
+# Note: GitHub disables *scheduled* workflows after 60 days without repository
+# activity. Push something (or run this job by hand) before then, otherwise the
+# schedule silently stops and Supabase pauses a week later.
+
 on:
   schedule:
-    - cron: "0 12 * * 1,4" # Monday & Thursday at 12:00 UTC
+    # Daily at 05:17 UTC. Supabase looks at "user database activity over the past
+    # week", so one real query a day is plenty; the odd minute keeps this off the
+    # top-of-the-hour cron peak.
+    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Do not let a manual check overlap a scheduled check against the endpoint.
+# Never let a manual run overlap a scheduled run against the same project.
 concurrency:
   group: supabase-keep-alive
   cancel-in-progress: false
 
 jobs:
-  ping:
-    name: Verify Supabase database health
+  keep-awake:
+    name: Query Supabase and restore it when paused
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
+    env:
+      # Public project URL. Override it with a repository variable
+      # (Settings → Secrets and variables → Actions → Variables → SUPABASE_URL)
+      # if the project ever moves; the default is the current production project.
+      SUPABASE_URL: ${{ vars.SUPABASE_URL || 'https://utiwfoloemukfzifzmmz.supabase.co' }}
+      # Any valid API key makes PostgREST run a real query. The service-role key
+      # is preferred (it bypasses RLS), the anon key works as well. Without a key
+      # the API answers 401 *before* touching Postgres, so no activity is
+      # registered and this workflow falls back to the deployed health endpoint.
+      SUPABASE_API_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_ANON_KEY }}
+      # Optional. Account → Access Tokens. Only needed to auto-restore a project
+      # that is already paused.
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      # The health endpoint runs SELECT 1 through Prisma, so it is a second,
+      # independent way to register activity on the database.
+      HEALTHCHECK_URL: ${{ vars.KEEP_ALIVE_URL || 'https://gigsmanager.netlify.app/api/health' }}
+
     steps:
-      - name: Ping and validate the health endpoint
+      - name: Query the database through PostgREST
+        id: ping
+        continue-on-error: true
         shell: bash
-        env:
-          # Optional: Settings -> Secrets and variables -> Actions -> Variables.
-          # KEEP_ALIVE_URL is a public endpoint URL, not a secret. The default
-          # keeps this workflow working when no repository variable is set.
-          HEALTHCHECK_URL: ${{ vars.KEEP_ALIVE_URL || 'https://gigsmanager.netlify.app/api/health' }}
         run: |
           set -euo pipefail
-          response_file="$(mktemp)"
-          trap 'rm -f "$response_file"' EXIT
+
+          if [ -z "${SUPABASE_API_KEY}" ]; then
+            echo "::warning title=No Supabase API key::Add the SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) secret so this workflow can run a real database query. Falling back to the app health endpoint."
+            exit 1
+          fi
+
+          url="${SUPABASE_URL}/rest/v1/bands?select=id&limit=1"
+          for attempt in 1 2 3; do
+            status="$(curl --silent --show-error --output /tmp/ping.json --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              --header "apikey: ${SUPABASE_API_KEY}" \
+              --header "Authorization: Bearer ${SUPABASE_API_KEY}" \
+              "${url}" || true)"
+            echo "attempt ${attempt}: HTTP ${status} $(head -c 200 /tmp/ping.json 2>/dev/null || true)"
+
+            if [ "${status}" = "200" ] || [ "${status}" = "206" ]; then
+              echo "Database query executed — activity registered."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "::warning title=Supabase did not answer::The PostgREST query failed, the project is most likely paused."
+          exit 1
+
+      - name: Restore the project when it is paused
+        id: restore
+        if: steps.ping.outcome == 'failure'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_ACCESS_TOKEN}" ]; then
+            echo "::warning title=No Management API token::Set the SUPABASE_ACCESS_TOKEN secret (Account → Access Tokens) so this workflow can restore a paused project on its own. Restore it manually from the dashboard in the meantime."
+            exit 1
+          fi
+
+          ref="${SUPABASE_URL#https://}"
+          ref="${ref%%.*}"
+
+          echo "Requesting a restore of project ${ref}..."
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --connect-timeout 10 --max-time 60 \
+            "https://api.supabase.com/v1/projects/${ref}/restore"
+
+          if [ -z "${SUPABASE_API_KEY}" ]; then
+            echo "::warning title=Restore not verified::The restore was requested but there is no API key to verify it with. Re-run this workflow (or check the dashboard) to confirm."
+            exit 1
+          fi
+
+          # A restore is asynchronous, so poll until PostgREST answers again.
+          for attempt in $(seq 1 30); do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 20 \
+              --header "apikey: ${SUPABASE_API_KEY}" \
+              --header "Authorization: Bearer ${SUPABASE_API_KEY}" \
+              "${SUPABASE_URL}/rest/v1/bands?select=id&limit=1" || true)"
+            echo "poll ${attempt}: HTTP ${status}"
+
+            if [ "${status}" = "200" ] || [ "${status}" = "206" ]; then
+              echo "Project restored and answering queries again."
+              exit 0
+            fi
+
+            sleep 20
+          done
+
+          echo "::warning title=Restore still running::Project ${ref} did not answer within 10 minutes. Check the Supabase dashboard or https://status.supabase.com."
+          exit 1
+
+      - name: Verify the deployed health endpoint
+        id: health
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
 
           echo "Checking ${HEALTHCHECK_URL} (runs SELECT 1 on Supabase)..."
           curl --fail --silent --show-error \
@@ -41,19 +151,43 @@ jobs:
             --retry-max-time 60 \
             --connect-timeout 10 \
             --max-time 30 \
-            --output "$response_file" \
+            --output /tmp/health.json \
             --write-out 'HTTP status: %{http_code}\n' \
-            "$HEALTHCHECK_URL"
-          echo
-          cat "$response_file"
+            "${HEALTHCHECK_URL}"
           echo
 
           node -e '
             const fs = require("fs");
-            const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const payload = JSON.parse(fs.readFileSync("/tmp/health.json", "utf8"));
             if (payload.status !== "healthy" || payload.database !== "connected") {
               console.error("Health endpoint did not confirm a healthy Supabase connection.");
               process.exit(1);
             }
             console.log("Health endpoint OK — database activity registered.");
-          ' "$response_file"
+          '
+
+      - name: Result
+        if: always()
+        shell: bash
+        env:
+          PING: ${{ steps.ping.outcome }}
+          RESTORE: ${{ steps.restore.outcome }}
+          HEALTH: ${{ steps.health.outcome }}
+        run: |
+          {
+            echo "### Supabase keep-alive"
+            echo ""
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| PostgREST database query | ${PING} |"
+            echo "| Management API restore | ${RESTORE} |"
+            echo "| Deployed health endpoint | ${HEALTH} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${PING}" = "success" ] || [ "${HEALTH}" = "success" ]; then
+            echo "Supabase is awake: at least one real database query succeeded."
+            exit 0
+          fi
+
+          echo "::error title=Supabase unreachable::Neither the direct database query nor the health endpoint succeeded. Restore the project from the Supabase dashboard."
+          exit 1

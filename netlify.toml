@@ -12,14 +12,23 @@
   #    `migrate deploy` never prompts and never resets data, so it is safe to
   #    run on every build. Note it deliberately does NOT run `prisma generate`:
   #    that comes next, after the schema is current.
+  #    It runs through scripts/prisma-migrate.mjs instead of the raw command,
+  #    because a paused Supabase Free-plan project answers the pooler with
+  #    "FATAL: (ENOTFOUND) tenant/user postgres.<ref> not found" and that used
+  #    to fail the whole build. The wrapper retries connectivity failures, wakes
+  #    the project with a real query and (with SUPABASE_ACCESS_TOKEN) restores it
+  #    through the Management API, while still failing fast on broken SQL.
   # 3. Explicit prisma generate (ensure client is generated)
   # 4. npm run build (Next.js build bundles everything correctly)
   # postinstall will also run prisma generate as redundant safety net
-  command   = "npm ci --include=dev && npx prisma migrate deploy && npm run db:generate && npm run build"
+  command   = "npm ci --include=dev && npm run db:migrate:deploy:safe && npm run db:generate && npm run build"
   publish   = ".next"
 
 [build.environment]
-  NODE_VERSION                  = "20"
+  # Must match CI (.github/workflows/ci.yml): Prisma 7, @supabase/* and
+  # pdfjs-dist all declare node >=22, and Node 20 logs EBADENGINE warnings
+  # (and may break at runtime) for them.
+  NODE_VERSION                  = "22"
   NODE_ENV                      = "production"
   # Prisma query engine: use "library" for serverless (not "binary")
   # This ensures Prisma uses the libquery_engine-*.so.node binary for Netlify Lambda
@@ -43,6 +52,12 @@
 #   - Direct database connection for migrations (without pooler)
 #   - Format: postgresql://user:password@host:5432/database
 #   - Source: Supabase Dashboard → Settings → Database → Connection Pooling → Session pooler
+#
+# SUPABASE_ACCESS_TOKEN (optional, but recommended)
+#   - Personal access token for the Supabase Management API, used by
+#     scripts/prisma-migrate.mjs to restore a paused Free-plan project
+#     automatically mid-build. Without it the build only retries and then fails.
+#   - Source: Supabase Dashboard → Account → Access Tokens
 #
 # NEXT_PUBLIC_SUPABASE_URL
 #   - Your Supabase project URL

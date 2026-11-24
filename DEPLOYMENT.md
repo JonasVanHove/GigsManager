@@ -103,7 +103,16 @@ npx prisma migrate deploy
 
 On **Netlify** this already happens automatically: the build command in
 [`netlify.toml`](./netlify.toml) is
-`npm ci --include=dev && npx prisma migrate deploy && npm run db:generate && npm run build`.
+`npm ci --include=dev && npm run db:migrate:deploy:safe && npm run db:generate && npm run build`.
+
+`db:migrate:deploy:safe` runs [`scripts/prisma-migrate.mjs`](./scripts/prisma-migrate.mjs),
+which wraps `prisma migrate deploy` and retries connectivity failures (a paused
+Free-plan Supabase project answers the pooler with
+`FATAL: (ENOTFOUND) tenant/user postgres.<ref> not found`). It wakes the project
+with a real query and, when `SUPABASE_ACCESS_TOKEN` is configured, restores it
+through the Supabase Management API. Real migration errors still fail the build.
+The scheduled [`keep-alive.yml`](./.github/workflows/keep-alive.yml) workflow
+keeps the project from pausing in the first place.
 
 On **Vercel**, either add `prisma migrate deploy` to the build command
 (Project → Settings → Build Command), or run it once from CI against `DIRECT_URL`

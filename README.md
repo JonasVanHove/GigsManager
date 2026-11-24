@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/favicon.png" alt="GigsManager logo" width="140" />
+
 # 🎵 GigsManager
 
 ### The Modern Performance Tracking Platform for Musicians

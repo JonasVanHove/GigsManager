@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 import { invalidateCache } from "@/lib/cache";
+import { parseBandStatus, embedStatusInChatUrl, cleanChatUrl, BandStatus } from "@/lib/band-status";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,12 @@ export async function GET(request: NextRequest) {
     const bandsWithPermissions = bands.map((band) => {
       const isOwner = band.userId === user.id;
       const isLeader = isOwner || leaderBandNames.has(band.name);
+      const statusDetails = parseBandStatus({
+        status: (band as any).status,
+        disbandedAt: (band as any).disbandedAt,
+        chatUrl: band.chatUrl,
+      });
+
       return {
         id: band.id,
         name: band.name,
@@ -63,7 +70,10 @@ export async function GET(request: NextRequest) {
         canMembersEdit: band.canMembersEdit,
         inviteCode: band.inviteCode,
         chatType: band.chatType,
-        chatUrl: band.chatUrl,
+        chatUrl: cleanChatUrl(band.chatUrl),
+        status: statusDetails.status,
+        disbandedAt: statusDetails.disbandedAt,
+        statusNote: statusDetails.statusNote,
         createdAt: band.createdAt,
         updatedAt: band.updatedAt,
         isOwner,
@@ -161,6 +171,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const existingBand = await prisma.bands.findUnique({
+      where: { id },
+      select: { chatUrl: true },
+    });
+
     const data: { logoUrl?: string | null; color?: string; canMembersEdit?: boolean; name?: string; chatType?: string | null; chatUrl?: string | null } = {};
     if ("logoUrl" in body) data.logoUrl = body.logoUrl || null;
     if ("color" in body) data.color = body.color || "#6366f1";
@@ -168,6 +183,18 @@ export async function PATCH(request: NextRequest) {
     if ("name" in body && body.name) data.name = body.name.trim();
     if ("chatType" in body) data.chatType = body.chatType || null;
     if ("chatUrl" in body) data.chatUrl = body.chatUrl || null;
+
+    if ("status" in body) {
+      const currentStatus = parseBandStatus({ chatUrl: data.chatUrl !== undefined ? data.chatUrl : existingBand?.chatUrl });
+      const nextStatus: BandStatus = body.status === "inactive" || body.status === "disbanded" ? body.status : "active";
+      const nextDisbandedAt = nextStatus === "disbanded" ? (body.disbandedAt || new Date().toISOString()) : null;
+      const baseChatUrl = data.chatUrl !== undefined ? data.chatUrl : (existingBand?.chatUrl || null);
+      data.chatUrl = embedStatusInChatUrl(baseChatUrl, {
+        status: nextStatus,
+        disbandedAt: nextDisbandedAt,
+        statusNote: body.statusNote || currentStatus.statusNote || null,
+      });
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(
@@ -180,6 +207,9 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data,
     });
+
+    invalidateCache(`${user.id}:band-members`);
+    invalidateCache(`${user.id}:gigs`);
 
     return NextResponse.json({ success: true });
   } catch (err) {

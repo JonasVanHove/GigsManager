@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { invalidateCache } from "@/lib/cache";
 import { resolveMemberUserId } from "@/lib/band-invites";
+import { parseMemberLineup, serializeMemberLineupNotes } from "@/lib/lineup-manager";
 import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 
 async function requireAuth(request: NextRequest) {
@@ -102,7 +103,7 @@ export async function PATCH(
     // revoke the isLeader flag.
     const currentMember = await prisma.bandMember.findUnique({
       where: { id: params.id },
-      select: { id: true, userId: true, bands: true },
+      select: { id: true, userId: true, bands: true, notes: true },
     });
     if (!currentMember) {
       return NextResponse.json({ error: "Band member not found" }, { status: 404 });
@@ -138,13 +139,27 @@ export async function PATCH(
         ? await resolveMemberUserId(params.id, nextEmail, user.id)
         : currentMember.userId;
 
+    let nextNotes = notes !== undefined ? (notes?.trim() || null) : currentMember.notes;
+    if (body.lineup && body.bandName) {
+      const { cleanNotes, lineupByBand } = parseMemberLineup(nextNotes);
+      lineupByBand[body.bandName] = {
+        status: body.lineup.status || "active",
+        startDate: body.lineup.startDate || null,
+        departureDate: body.lineup.departureDate || null,
+        absenceStartDate: body.lineup.absenceStartDate || null,
+        absenceEndDate: body.lineup.absenceEndDate || null,
+        notes: body.lineup.notes || null,
+      };
+      nextNotes = serializeMemberLineupNotes(notes !== undefined ? notes : cleanNotes, lineupByBand);
+    }
+
     const bandMember = await prisma.bandMember.update({
       where: { id: params.id },
       data: {
         ...(name !== undefined && { name: name.trim() }),
         ...(email !== undefined && { email: email?.trim() || null }),
         ...(phone !== undefined && { phone: phone?.trim() || null }),
-        ...(notes !== undefined && { notes: notes?.trim() || null }),
+        ...(nextNotes !== undefined && { notes: nextNotes }),
         ...(body.isLeader !== undefined && { isLeader: Boolean(body.isLeader) }),
         ...(avatarUrl !== undefined && {
           avatarUrl: typeof avatarUrl === "string" && avatarUrl.trim() ? avatarUrl.trim() : null,

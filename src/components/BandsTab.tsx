@@ -12,10 +12,13 @@ import BandInviteModal from "./BandInviteModal";
 import ToggleSwitch from "./ToggleSwitch";
 import Avatar from "./Avatar";
 import ConfirmationModal from "./ConfirmationModal";
+import LineupModal from "./LineupModal";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { readAsDataUrl } from "@/lib/file-utils";
 import { getBandMemberAvatarUrl, getBandMemberInitial } from "@/lib/member-avatar";
 import { composeBandCardRoster, isRosterMemberCurrentUser } from "@/lib/band-roster";
+import { MemberLineup, AvailabilityResult, evaluateMemberAvailability } from "@/lib/lineup-manager";
+import { BandStatus } from "@/lib/band-status";
 
 interface Band {
   id: string;
@@ -28,6 +31,9 @@ interface Band {
   inviteCode?: string | null;
   chatType?: string | null;
   chatUrl?: string | null;
+  status?: BandStatus;
+  disbandedAt?: string | null;
+  statusNote?: string | null;
   isOwner?: boolean;
   isLeader?: boolean;
   createdAt: string;
@@ -44,6 +50,8 @@ interface BandMember {
   bands: string[];
   isLeader?: boolean;
   updatedAt: string;
+  lineup?: MemberLineup;
+  availability?: AvailabilityResult;
   /** Set by the roster API: this row is the band owner (canonical leader). */
   isOwner?: boolean;
   /** Set by the roster API: this row is the signed-in viewer. */
@@ -98,11 +106,15 @@ export default function BandsTab() {
     canMembersEdit: false,
     chatType: "",
     chatUrl: "",
+    status: "active" as BandStatus,
+    disbandedAt: "",
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // Which band's invite dialog is open, if any.
   const [inviteBand, setInviteBand] = useState<Band | null>(null);
+  const [selectedLineupMember, setSelectedLineupMember] = useState<{ member: BandMember; band: Band } | null>(null);
+  const [bandStatusFilter, setBandStatusFilter] = useState<"all" | "active" | "inactive_disbanded">("all");
   const [togglingMemberId, setTogglingMemberId] = useState<string | null>(null);
   const [confirmLeaveBand, setConfirmLeaveBand] = useState<Band | null>(null);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ member: BandMember; band: Band } | null>(null);
@@ -283,6 +295,8 @@ export default function BandsTab() {
             canMembersEdit: formData.canMembersEdit,
             chatType: formData.chatType || null,
             chatUrl: formData.chatUrl || null,
+            status: formData.status,
+            disbandedAt: formData.status === "disbanded" ? (formData.disbandedAt || new Date().toISOString()) : null,
           }),
         });
 
@@ -302,6 +316,8 @@ export default function BandsTab() {
             color: formData.color,
             chatType: formData.chatType || null,
             chatUrl: formData.chatUrl || null,
+            status: formData.status,
+            disbandedAt: formData.status === "disbanded" ? (formData.disbandedAt || new Date().toISOString()) : null,
           }),
         });
 
@@ -312,7 +328,7 @@ export default function BandsTab() {
       setShowForm(false);
       setEditingBand(null);
       setExpandedBandId(null);
-      setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "" });
+      setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "", status: "active", disbandedAt: "" });
       setLogoPreview(null);
       loadBands();
     } catch (error) {
@@ -329,6 +345,8 @@ export default function BandsTab() {
       canMembersEdit: Boolean(band.canMembersEdit),
       chatType: band.chatType || "",
       chatUrl: band.chatUrl || "",
+      status: band.status || "active",
+      disbandedAt: band.disbandedAt ? band.disbandedAt.slice(0, 10) : "",
     });
     setLogoPreview(band.logoUrl || null);
     setExpandedBandId(band.id);
@@ -337,7 +355,7 @@ export default function BandsTab() {
   const handleCancelEdit = () => {
     setEditingBand(null);
     setExpandedBandId(null);
-    setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "" });
+    setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "", status: "active", disbandedAt: "" });
     setLogoPreview(null);
   };
 
@@ -561,7 +579,7 @@ export default function BandsTab() {
         <button
           onClick={() => {
             setEditingBand(null);
-            setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "" });
+            setFormData({ name: "", logoUrl: "", color: "#bfdbfe", canMembersEdit: false, chatType: "", chatUrl: "", status: "active", disbandedAt: "" });
             setLogoPreview(null);
             setShowForm(true);
           }}
@@ -715,6 +733,60 @@ export default function BandsTab() {
               </div>
             )}
 
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {language === "nl" ? "Band status" : "Band Status"}
+              </label>
+              <div className="mt-1 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, status: "active", disbandedAt: "" }))}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    formData.status === "active"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  🟢 {language === "nl" ? "Actief" : "Active"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, status: "inactive", disbandedAt: "" }))}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    formData.status === "inactive"
+                      ? "border-amber-500 bg-amber-50 text-amber-700 dark:border-amber-500/50 dark:bg-amber-950/40 dark:text-amber-300"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  🟡 {language === "nl" ? "Non-actief" : "Inactive"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, status: "disbanded", disbandedAt: prev.disbandedAt || new Date().toISOString().slice(0, 10) }))}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    formData.status === "disbanded"
+                      ? "border-rose-500 bg-rose-50 text-rose-700 dark:border-rose-500/50 dark:bg-rose-950/40 dark:text-rose-300"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  }`}
+                >
+                  🔴 {language === "nl" ? "Gestopt" : "Disbanded"}
+                </button>
+              </div>
+              {formData.status === "disbanded" && (
+                <div className="mt-2">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
+                    {language === "nl" ? "Gestopt sinds datum" : "Disbanded as of date"}
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.disbandedAt ? formData.disbandedAt.slice(0, 10) : ""}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, disbandedAt: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Only meaningful when editing: a brand new band has no members
                 to grant anything to yet. */}
             {editingBand && (
@@ -744,7 +816,7 @@ export default function BandsTab() {
                 onClick={() => {
                   setShowForm(false);
                   setEditingBand(null);
-                  setFormData({ name: "", logoUrl: "", color: "#6366f1", canMembersEdit: false, chatType: "", chatUrl: "" });
+                  setFormData({ name: "", logoUrl: "", color: "#6366f1", canMembersEdit: false, chatType: "", chatUrl: "", status: "active", disbandedAt: "" });
                   setLogoPreview(null);
                 }}
                 className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -770,8 +842,53 @@ export default function BandsTab() {
           <p className="mt-2 text-sm text-slate-500">{t('bands.addFirstBand')}</p>
         </div>
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {bands.map((band) => {
+        <>
+          <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => setBandStatusFilter("all")}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                bandStatusFilter === "all"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              }`}
+            >
+              {language === "nl" ? "Alle bands" : "All bands"} ({bands.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setBandStatusFilter("active")}
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                bandStatusFilter === "active"
+                  ? "bg-emerald-600 text-white dark:bg-emerald-500"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+              }`}
+            >
+              🟢 {language === "nl" ? "Actief" : "Active"} ({bands.filter((b) => !b.status || b.status === "active").length})
+            </button>
+            {bands.some((b) => b.status === "inactive" || b.status === "disbanded") && (
+              <button
+                type="button"
+                onClick={() => setBandStatusFilter("inactive_disbanded")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  bandStatusFilter === "inactive_disbanded"
+                    ? "bg-amber-600 text-white dark:bg-amber-500"
+                    : "bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                }`}
+              >
+                🟡 {language === "nl" ? "Non-actief / Gestopt" : "Inactive / Disbanded"} ({bands.filter((b) => b.status === "inactive" || b.status === "disbanded").length})
+              </button>
+            )}
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {bands
+              .filter((b) => {
+                if (bandStatusFilter === "active") return !b.status || b.status === "active";
+                if (bandStatusFilter === "inactive_disbanded") return b.status === "inactive" || b.status === "disbanded";
+                return true;
+              })
+              .map((band) => {
             const bandMembers = getBandMembers(band.id);
             const isExpanded = expandedBandId === band.id;
             const isEditing = editingBand?.id === band.id;
@@ -909,6 +1026,60 @@ export default function BandsTab() {
                         </div>
                       )}
 
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {language === "nl" ? "Band status" : "Band Status"}
+                        </label>
+                        <div className="mt-1 grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, status: "active", disbandedAt: "" }))}
+                            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                              formData.status === "active"
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                            }`}
+                          >
+                            🟢 {language === "nl" ? "Actief" : "Active"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, status: "inactive", disbandedAt: "" }))}
+                            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                              formData.status === "inactive"
+                                ? "border-amber-500 bg-amber-50 text-amber-700 dark:border-amber-500/50 dark:bg-amber-950/40 dark:text-amber-300"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                            }`}
+                          >
+                            🟡 {language === "nl" ? "Non-actief" : "Inactive"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, status: "disbanded", disbandedAt: prev.disbandedAt || new Date().toISOString().slice(0, 10) }))}
+                            className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                              formData.status === "disbanded"
+                                ? "border-rose-500 bg-rose-50 text-rose-700 dark:border-rose-500/50 dark:bg-rose-950/40 dark:text-rose-300"
+                                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                            }`}
+                          >
+                            🔴 {language === "nl" ? "Gestopt" : "Disbanded"}
+                          </button>
+                        </div>
+                        {formData.status === "disbanded" && (
+                          <div className="mt-2">
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400">
+                              {language === "nl" ? "Gestopt sinds datum" : "Disbanded as of date"}
+                            </label>
+                            <input
+                              type="date"
+                              value={formData.disbandedAt ? formData.disbandedAt.slice(0, 10) : ""}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, disbandedAt: e.target.value }))}
+                              className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
@@ -936,7 +1107,24 @@ export default function BandsTab() {
                             <BandLogoFrame src={band.logoUrl} alt={band.name} size="md" />
                           )}
                           <div>
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{band.name}</h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{band.name}</h3>
+                              {band.status === "inactive" && (
+                                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                  {language === "nl" ? "Non-actief" : "Inactive"}
+                                </span>
+                              )}
+                              {band.status === "disbanded" && (
+                                <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-400" title={band.disbandedAt ? `Gestopt: ${band.disbandedAt.slice(0, 10)}` : undefined}>
+                                  {language === "nl" ? "Gestopt" : "Disbanded"}
+                                </span>
+                              )}
+                              {(!band.status || band.status === "active") && (
+                                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                  {language === "nl" ? "Actief" : "Active"}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                               {bandMembersByBandId[band.id] === undefined && loadingRosters
                                 ? language === "nl"
@@ -1032,6 +1220,14 @@ export default function BandsTab() {
                                       👑 {language === "nl" ? "Leider" : "Leader"}
                                     </span>
                                   )}
+                                  {member.availability && !member.availability.available && (
+                                    <span
+                                      className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                                      title={member.availability.reason}
+                                    >
+                                      {member.availability.badgeLabel || (language === "nl" ? "Afwezig" : "Away")}
+                                    </span>
+                                  )}
                                   {isCurrent && (
                                     <button
                                       type="button"
@@ -1049,6 +1245,18 @@ export default function BandsTab() {
                                   )}
                                   {isLeaderOrOwner && !isCurrent && member.id !== "current-user" && (
                                     <div className="flex items-center gap-1 ml-0.5">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedLineupMember({ member, band });
+                                        }}
+                                        className="rounded-full p-0.5 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                                        title={language === "nl" ? "Samenstelling & Beschikbaarheid bewerken" : "Edit lineup & availability"}
+                                        aria-label={language === "nl" ? "Samenstelling & Beschikbaarheid bewerken" : "Edit lineup & availability"}
+                                      >
+                                        <Icons.Calendar className="h-3 w-3" />
+                                      </button>
                                       <button
                                         type="button"
                                         data-testid={`toggle-leader-${member.id}`}
@@ -1103,28 +1311,52 @@ export default function BandsTab() {
                         </div>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => setInviteBand(band)}
-                        data-testid="band-invite-button"
-                        className="touch-target mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70 dark:border-brand-800/70 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40"
-                      >
-                        <Icons.Plus className="h-4 w-4 shrink-0" />
-                        {isLeaderOrOwner
-                          ? language === "nl"
-                            ? "Uitnodigings-QR genereren"
-                            : "Generate invite QR code"
-                          : language === "nl"
-                            ? "Uitnodigingscode bekijken"
-                            : "View invite code"}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                        {isLeaderOrOwner && (
+                          <button
+                            type="button"
+                            onClick={() => setInviteBand(band)}
+                            data-testid="band-invite-button"
+                            className="touch-target mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/70 dark:border-brand-800/70 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40"
+                          >
+                            <Icons.Plus className="h-4 w-4 shrink-0" />
+                            {language === "nl"
+                              ? "Bandlid uitnodigen (QR / Link)"
+                              : "Invite band member (QR / Link)"}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {selectedLineupMember && (
+        <LineupModal
+          member={selectedLineupMember.member}
+          bandName={selectedLineupMember.band.name}
+          isDutch={language === "nl"}
+          onClose={() => setSelectedLineupMember(null)}
+          onSaved={(updatedLineup) => {
+            const bandId = selectedLineupMember.band.id;
+            const memberId = selectedLineupMember.member.id;
+            setBandMembersByBandId((prev) => ({
+              ...prev,
+              [bandId]: (prev[bandId] || []).map((m) => {
+                if (m.id !== memberId) return m;
+                const availability = evaluateMemberAvailability(updatedLineup);
+                return {
+                  ...m,
+                  lineup: updatedLineup,
+                  availability,
+                };
+              }),
+            }));
+          }}
+        />
       )}
 
       {inviteBand && (

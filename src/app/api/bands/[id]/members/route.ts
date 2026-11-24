@@ -5,6 +5,7 @@ import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 import { invalidateCache } from "@/lib/cache";
 import { applyProfileAvatars, buildCanonicalBandRoster, rosterEmailKey } from "@/lib/band-roster";
 import { fetchProfileAvatarsByEmail } from "@/lib/roster-profile-avatars";
+import { getMemberLineupForBand, evaluateMemberAvailability, parseMemberLineup } from "@/lib/lineup-manager";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,7 +90,19 @@ export async function GET(
       bandName: band.name,
     });
 
-    return NextResponse.json(roster);
+    const enrichedRoster = roster.map((member) => {
+      const lineup = getMemberLineupForBand(member.notes, band.name);
+      const availability = evaluateMemberAvailability(lineup);
+      const { cleanNotes } = parseMemberLineup(member.notes);
+      return {
+        ...member,
+        notes: cleanNotes || null,
+        lineup,
+        availability,
+      };
+    });
+
+    return NextResponse.json(enrichedRoster);
   } catch (error) {
     console.error(`GET /api/bands/${params.id}/members error:`, error);
     return NextResponse.json({ error: "Failed to load band members" }, { status: 500 });

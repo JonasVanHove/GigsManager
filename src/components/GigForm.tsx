@@ -13,11 +13,13 @@ import { GigAttachmentsPanel } from "./GigAttachmentsPanel";
 import ToggleSwitch from "./ToggleSwitch";
 import { GigScheduleHelper } from "./GigScheduleHelper";
 import { AI_BOX_TEXT } from "@/lib/ai-ui";
+import { getMemberLineupForBand, evaluateMemberAvailability } from "@/lib/lineup-manager";
 
 interface BandMemberOption {
   id: string;
   name: string;
   bands?: string[];
+  notes?: string | null;
 }
 
 /**
@@ -148,7 +150,7 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
   const [bandMembers, setBandMembers] = useState<BandMemberOption[]>([]);
   const [bandMembersLoading, setBandMembersLoading] = useState(false);
   const [allGigs, setAllGigs] = useState<Gig[]>([]);
-  const [bandsList, setBandsList] = useState<Array<{ id: string; name: string; logoUrl?: string; color?: string | null }>>([]);
+  const [bandsList, setBandsList] = useState<Array<{ id: string; name: string; logoUrl?: string; color?: string | null; status?: string }>>([]);
   const [setlistsList, setSetlistsList] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
@@ -798,7 +800,13 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                     <label className={labelCls}>Select Band (optional)</label>
                     <select className={inputCls} value={form.bandId || ""} onChange={(e) => set("bandId", e.target.value || null)}>
                       <option value="">No band selected</option>
-                      {bandsList.map((band) => <option key={band.id} value={band.id}>{band.name}</option>)}
+                      {bandsList.map((band) => (
+                        <option key={band.id} value={band.id}>
+                          {band.name}
+                          {band.status === "inactive" ? (isDutch ? " (Non-actief)" : " (Inactive)") : ""}
+                          {band.status === "disbanded" ? (isDutch ? " (Gestopt)" : " (Disbanded)") : ""}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -893,15 +901,27 @@ export default function GigForm({ gig, onSubmit, onCancel, onDelete }: GigFormPr
                 </div>
 
                 <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
-                  {bandMembersLoading ? <div className="text-xs text-slate-500 dark:text-slate-400">Loading band members...</div> : filteredMembers.length === 0 ? <div className="text-xs text-slate-500 dark:text-slate-400">No band members found.</div> : filteredMembers.map((member) => (
-                    <label key={member.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
-                      <div className="flex items-center gap-2">
-                        <input type="checkbox" checked={selectedMemberIds.includes(member.id)} onChange={() => toggleMember(member.id)} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
-                        <span className="font-medium">{member.name}</span>
-                      </div>
-                      {member.bands && member.bands.length > 0 && <span className="text-xs text-slate-500">{member.bands.join(", ")}</span>}
-                    </label>
-                  ))}
+                  {bandMembersLoading ? <div className="text-xs text-slate-500 dark:text-slate-400">Loading band members...</div> : filteredMembers.length === 0 ? <div className="text-xs text-slate-500 dark:text-slate-400">No band members found.</div> : filteredMembers.map((member) => {
+                    const lineup = getMemberLineupForBand(member.notes, form.performers);
+                    const availability = evaluateMemberAvailability(lineup, form.date);
+                    return (
+                      <label key={member.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" checked={selectedMemberIds.includes(member.id)} onChange={() => toggleMember(member.id)} className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+                          <span className="font-medium">{member.name}</span>
+                          {availability && !availability.available && (
+                            <span
+                              className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400"
+                              title={availability.reason}
+                            >
+                              {availability.badgeLabel || (isDutch ? "Afwezig" : "Away")}
+                            </span>
+                          )}
+                        </div>
+                        {member.bands && member.bands.length > 0 && <span className="text-xs text-slate-500">{member.bands.join(", ")}</span>}
+                      </label>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">

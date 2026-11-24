@@ -162,7 +162,11 @@
     "showTuningPanel": "Show tuning panel",
     "hideTuningPanel": "Hide tuning panel",
     "showSongPicker": "Show song picker",
-    "hideSongPicker": "Hide song picker"
+    "hideSongPicker": "Hide song picker",
+    "personalNoteLabel": "My personal note (Private)",
+    "privateAttachment": "Private",
+    "sharedWithBand": "Shared with band",
+    "sharingToggle": "Toggle sharing"
   },
   "songs": {
     "title": "Songs",
@@ -352,7 +356,21 @@
     "confirmRemoveMember": "Are you sure you want to remove {{memberName}} from \"{{bandName}}\"? This member will lose access to gigs and setlists for this band.",
     "successRemoveMember": "{{memberName}} was removed from the band",
     "errorRemoveMember": "Failed to remove member",
-    "you": "You"
+    "you": "You",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "statusDisbanded": "Disbanded",
+    "lineup": "Lineup",
+    "lineupActive": "Active member",
+    "lineupAbsent": "Temporarily absent",
+    "lineupDeparted": "Departed",
+    "shareAttachment": "Share attachment",
+    "inviteOnly": "Only leaders can send invites",
+    "kickOnly": "Only leaders can remove members",
+    "roleLeader": "Leader",
+    "roleMember": "Band member",
+    "acceptInvite": "Accept invite",
+    "invitePending": "Invite sent"
   },
   "auth": {
     "login": "Login",

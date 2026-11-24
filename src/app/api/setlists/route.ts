@@ -73,8 +73,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached, { headers: getApiCacheHeaders(30, "HIT") });
     }
 
-    const setlists = await (prisma.setlist.findMany as any)({
+    const myMemberships = await prisma.bandMember.findMany({
       where: { userId: user.id },
+      select: { bands: true },
+    });
+    const myBandNames = new Set(
+      myMemberships.flatMap((m) => (Array.isArray(m.bands) ? m.bands : []))
+    );
+    const myBands = await prisma.bands.findMany({
+      where: {
+        OR: [
+          { userId: user.id },
+          ...(myBandNames.size > 0 ? [{ name: { in: Array.from(myBandNames) } }] : []),
+        ],
+      },
+      select: { id: true, name: true },
+    });
+    const userBandIds = myBands.map((b) => b.id);
+    const userBandNames = myBands.map((b) => b.name);
+
+    const whereClause: any = {
+      OR: [
+        { userId: user.id },
+        ...(userBandIds.length > 0 ? [{ bandId: { in: userBandIds } }] : []),
+        ...(userBandNames.length > 0 ? [{ band: { name: { in: userBandNames } } }] : []),
+      ],
+    };
+
+    const setlists = await (prisma.setlist.findMany as any)({
+      where: whereClause,
       include: {
         items: {
           orderBy: { order: "asc" },

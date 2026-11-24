@@ -79,38 +79,20 @@ export async function POST(request: NextRequest) {
     if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 });
 
     const isLeaderOrOwnerUser = await isBandLeaderOrOwner(bandId, owner.id);
+    if (!isLeaderOrOwnerUser) {
+      return NextResponse.json(
+        { error: "Forbidden: Only band leaders or owners can generate or view invite codes" },
+        { status: 403 }
+      );
+    }
 
     if (body.regenerate) {
-      if (!isLeaderOrOwnerUser) {
-        return NextResponse.json(
-          { error: "Forbidden: Only band leaders or owners can regenerate invite codes" },
-          { status: 403 }
-        );
-      }
       if (band.inviteCode) {
         await prisma.bands.update({
           where: { id: bandId },
           data: { inviteCode: null },
         });
       }
-    } else if (!isLeaderOrOwnerUser) {
-      // Non-leader members view the invite code in read-only mode if code exists.
-      const isMember = await isBandMember(band.name, owner.id);
-      if (!isMember) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      if (!band.inviteCode) {
-        return NextResponse.json(
-          { error: "No invite code generated yet. Ask a band leader to generate one." },
-          { status: 403 }
-        );
-      }
-      return NextResponse.json({
-        code: band.inviteCode,
-        link: inviteLink(band.inviteCode),
-        bandName: band.name,
-        readOnly: true,
-      });
     }
 
     const code = await getOrCreateInviteCode(bandId);

@@ -393,7 +393,7 @@ export default function SetlistsTab() {
   const [error, setError] = useState("");
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [drawerSongId, setDrawerSongId] = useState<string | null>(null);
-  const [itemAttachments, setItemAttachments] = useState<Map<string, Array<{ id: string; url: string; type: string; title?: string }>>>(new Map());
+  const [itemAttachments, setItemAttachments] = useState<Map<string, Array<{ id: string; url: string; type: string; title?: string; userId?: string; uploaderName?: string; sharingScope?: string }>>>(new Map());
   const [uploadingAttachment, setUploadingAttachment] = useState<string | null>(null);
   const [showSongPicker, setShowSongPicker] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -1844,6 +1844,28 @@ export default function SetlistsTab() {
     }
   };
 
+  const handleUpdateAttachmentSharing = async (itemId: string, attachmentId: string, nextScope: string) => {
+    if (!session?.user) return;
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const response = await fetch(`/api/setlist-items/${itemId}/attachments/${attachmentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sharingScope: nextScope }),
+      });
+      if (response.ok) {
+        await loadItemAttachments(itemId);
+        toast.success(nextScope === 'band' ? t('setlists.sharedWithBand') : t('setlists.privateAttachment'));
+      }
+    } catch (error) {
+      console.error('Failed to update attachment sharing:', error);
+    }
+  };
+
   const handleReorderAttachments = async (itemId: string, attachmentIds: string[]) => {
     if (!session?.user) return;
 
@@ -2028,7 +2050,12 @@ export default function SetlistsTab() {
 
         {item.expanded && (
           <div className="mt-4 grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <input value={item.notitie} onChange={(e) => updateItem(item.id, { notitie: e.target.value })} placeholder={t('setlists.inlineNote')} className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            <div className="sm:col-span-2">
+              <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                🔒 {t('setlists.personalNoteLabel')}
+              </label>
+              <input value={item.notitie} onChange={(e) => updateItem(item.id, { notitie: e.target.value })} placeholder={t('setlists.inlineNote')} className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            </div>
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               <input value={item.tuning} onChange={(e) => updateItem(item.id, { tuning: e.target.value })} placeholder={t('setlists.tuning')} className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
               <input value={item.key} onChange={(e) => updateItem(item.id, { key: e.target.value })} placeholder={t('setlists.key')} className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
@@ -2065,7 +2092,10 @@ export default function SetlistsTab() {
                 {(() => {
                   const attachments = itemAttachments.get(item.id);
                   console.log('[DEBUG SetlistsTab] Rendering attachments for item:', item.id, attachments?.length, attachments);
-                  return attachments?.map((att) => (
+                  return attachments?.map((att) => {
+                    const isOwn = att.userId === session?.user?.id;
+                    const sharingScope: string = att.sharingScope || 'private';
+                    return (
                     <div key={att.id} data-testid="attachment-item" className="relative group">
                       {att.type === 'image' ? (
                         <img src={att.url} alt={att.title || ''} className="h-16 w-16 rounded-lg object-cover border border-slate-200 dark:border-slate-700" />
@@ -2074,6 +2104,22 @@ export default function SetlistsTab() {
                           📄
                         </div>
                       )}
+                      {/* Sharing scope badge / toggle */}
+                      {isOwn ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateAttachmentSharing(item.id, att.id, sharingScope === 'private' ? 'band' : 'private')}
+                          className={`absolute -left-1 -bottom-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-sm border transition-colors ${sharingScope === 'band' ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40' : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}
+                          title={sharingScope === 'band' ? t('setlists.sharedWithBand') : t('setlists.privateAttachment')}
+                        >
+                          {sharingScope === 'band' ? '👥' : '🔒'}
+                        </button>
+                      ) : att.uploaderName ? (
+                        <span className="absolute -left-1 -bottom-1 rounded-full bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/40 px-1.5 py-0.5 text-[9px] font-bold shadow-sm" title={att.uploaderName}>
+                          👤 {att.uploaderName.split(' ')[0]}
+                        </span>
+                      ) : null}
+                      {isOwn && (
                       <button
                         type="button"
                         onClick={() => handleDeleteAttachment(item.id, att.id)}
@@ -2082,8 +2128,10 @@ export default function SetlistsTab() {
                       >
                         ×
                       </button>
+                      )}
                     </div>
-                  )) || null;
+                    );
+                  }) || null;
                 })()}
                 {itemAttachments.get(item.id)?.length === 0 && (
                   <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -2453,7 +2501,17 @@ export default function SetlistsTab() {
                         <button type="button" onClick={() => selectSetlist(setlist)} className="w-full text-left">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
-                              <div className="break-words text-xs sm:text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">{setlist.naam}</div>
+                              <div className="break-words text-xs sm:text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+                                {setlist.naam}
+                                {setlist.bandId && (() => {
+                                  const slBand = bandsList.find(b => b.id === setlist.bandId);
+                                  return slBand ? (
+                                    <span className="ml-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border" style={{ borderColor: slBand.color || '#e2e8f0', color: slBand.color || '#6366f1', backgroundColor: slBand.color ? `${slBand.color}15` : '#f5f3ff' }}>
+                                      {slBand.name}
+                                    </span>
+                                  ) : null;
+                                })()}
+                              </div>
                               <div className="mt-0.5 line-clamp-1 text-[10px] sm:text-xs leading-snug text-slate-500 dark:text-slate-400">{[setlist.datum, setlist.locatie].filter(Boolean).join(" · ")}</div>
                               <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">{setlist.items.filter((item) => item.kind === "song").length} {t('setlists.songs')}</div>
                             </div>
@@ -2540,9 +2598,12 @@ export default function SetlistsTab() {
                     }}
                     className="max-w-[200px] rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 truncate dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
                   >
-                    {filteredSetlists.map((setlist) => (
-                      <option key={setlist.id} value={setlist.id}>{setlist.naam}</option>
-                    ))}
+                    {filteredSetlists.map((setlist) => {
+                      const slBand = setlist.bandId ? bandsList.find(b => b.id === setlist.bandId) : null;
+                      return (
+                        <option key={setlist.id} value={setlist.id}>{setlist.naam}{slBand ? ` [${slBand.name}]` : ''}</option>
+                      );
+                    })}
                   </select>
                   <input value={activeDraft.naam} onChange={(e) => updateDraft({ naam: e.target.value })} className="flex-1 min-w-0 border-0 bg-transparent p-0 text-lg sm:text-xl font-semibold tracking-tight text-slate-900 outline-none dark:text-slate-100" />
                   {activeDraft.bandId && (() => {

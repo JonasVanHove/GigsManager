@@ -163,7 +163,11 @@
     "showTuningPanel": "Toon tuning paneel",
     "hideTuningPanel": "Verberg tuning paneel",
     "showSongPicker": "Toon songkiezer",
-    "hideSongPicker": "Verberg songkiezer"
+    "hideSongPicker": "Verberg songkiezer",
+    "personalNoteLabel": "Mijn persoonlijke notitie (Privé)",
+    "privateAttachment": "Privé",
+    "sharedWithBand": "Gedeeld met band",
+    "sharingToggle": "Delen aan/uit"
   },
   "songs": {
     "title": "Nummers",
@@ -350,7 +354,21 @@
     "confirmRemoveMember": "Weet je zeker dat je {{memberName}} uit \"{{bandName}}\" wilt verwijderen? Dit lid verliest toegang tot optredens en setlists van deze band.",
     "successRemoveMember": "{{memberName}} is verwijderd uit de band",
     "errorRemoveMember": "Fout bij verwijderen van bandlid",
-    "you": "Jij"
+    "you": "Jij",
+    "statusActive": "Actief",
+    "statusInactive": "Non-actief",
+    "statusDisbanded": "Gestopt",
+    "lineup": "Samenstelling",
+    "lineupActive": "Actief lid",
+    "lineupAbsent": "Tijdelijk afwezig",
+    "lineupDeparted": "Vertrokken",
+    "shareAttachment": "Bijlage delen",
+    "inviteOnly": "Alleen leaders kunnen uitnodigingen versturen",
+    "kickOnly": "Alleen leaders kunnen leden verwijderen",
+    "roleLeader": "Leader",
+    "roleMember": "Bandlid",
+    "acceptInvite": "Uitnodiging accepteren",
+    "invitePending": "Uitnodiging verstuurd"
   },
   "auth": {
     "login": "Inloggen",

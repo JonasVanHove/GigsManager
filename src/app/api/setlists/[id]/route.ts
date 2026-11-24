@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/auth-helpers";
 import { invalidateCache } from "@/lib/cache";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getUserNoteForViewer } from "@/lib/setlist-user-notes";
 
 type SetlistItemInput = {
   type?: string;
@@ -70,8 +71,8 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const includeAttachments = searchParams.get("includeAttachments") === "true";
 
-    const setlist = await (prisma.setlist.findFirst as any)({
-      where: { id: params.id, userId: user.id },
+    const setlist = await (prisma.setlist.findUnique as any)({
+      where: { id: params.id },
       include: {
         items: {
           orderBy: { order: "asc" },
@@ -82,7 +83,7 @@ export async function GET(
           } : undefined,
         },
         gigs: { select: { id: true, eventName: true, date: true } },
-        band: { select: { id: true, name: true, color: true, logoUrl: true } },
+        band: { select: { id: true, name: true, color: true, logoUrl: true, userId: true, canMembersEdit: true } },
       },
     });
 
@@ -90,7 +91,36 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json(setlist);
+    // Check access: user is owner OR user belongs to the setlist's band
+    let hasAccess = setlist.userId === user.id;
+    if (!hasAccess && setlist.band) {
+      const membership = await prisma.bandMember.findFirst({
+        where: { userId: user.id, bands: { has: setlist.band.name } },
+        select: { id: true },
+      });
+      if (membership || setlist.band.userId === user.id) {
+        hasAccess = true;
+      }
+    }
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const enrichedItems = (setlist.items || []).map((item: any) => {
+      const { generalNote, userNote } = getUserNoteForViewer(item.notes, user.id);
+      return {
+        ...item,
+        notes: userNote || generalNote || null,
+        userNote,
+        generalNote,
+      };
+    });
+
+    return NextResponse.json({
+      ...setlist,
+      items: enrichedItems,
+    });
   } catch (error) {
     console.error("GET /api/setlists/[id] error:", error);
     return NextResponse.json(
@@ -110,13 +140,35 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const existing = await prisma.setlist.findFirst({
-      where: { id: params.id, userId: user.id },
-      include: { items: true },
+    const existing = await (prisma.setlist.findUnique as any)({
+      where: { id: params.id },
+      include: {
+        items: true,
+        band: { select: { id: true, name: true, userId: true, canMembersEdit: true } },
+      },
     });
 
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    let canEdit = existing.userId === user.id;
+    if (!canEdit && existing.band) {
+      if (existing.band.userId === user.id) {
+        canEdit = true;
+      } else {
+        const member = await prisma.bandMember.findFirst({
+          where: { userId: user.id, bands: { has: existing.band.name } },
+          select: { isLeader: true },
+        });
+        if (member?.isLeader || (existing.band.canMembersEdit && member)) {
+          canEdit = true;
+        }
+      }
+    }
+
+    if (!canEdit) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const title = body.title ? String(body.title).trim() : existing.title;
@@ -249,7 +301,7 @@ export async function PATCH(
     }
 
     const refreshed = await (prisma.setlist.findFirst as any)({
-      where: { id: existing.id, userId: user.id },
+      where: { id: existing.id },
       include: {
         items: {
           orderBy: { order: "asc" },
@@ -265,6 +317,9 @@ export async function PATCH(
     });
 
     invalidateCache(`${user.id}:setlists`);
+    if (existing.userId !== user.id) {
+      invalidateCache(`${existing.userId}:setlists`);
+    }
     return NextResponse.json(refreshed ?? updated);
   } catch (error) {
     console.error("PATCH /api/setlists/[id] error:", error);
@@ -284,9 +339,33 @@ export async function DELETE(
   const { user } = authResult as { user: { id: string } };
 
   try {
-    const existing = await prisma.setlist.findFirst({
-      where: { id: params.id, userId: user.id },
+    const existing = await (prisma.setlist.findUnique as any)({
+      where: { id: params.id },
+      include: { band: { select: { id: true, name: true, userId: true } } },
     });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    let canDelete = existing.userId === user.id;
+    if (!canDelete && existing.band) {
+      if (existing.band.userId === user.id) {
+        canDelete = true;
+      } else {
+        const member = await prisma.bandMember.findFirst({
+          where: { userId: user.id, bands: { has: existing.band.name } },
+          select: { isLeader: true },
+        });
+        if (member?.isLeader) {
+          canDelete = true;
+        }
+      }
+    }
+
+    if (!canDelete) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

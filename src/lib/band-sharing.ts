@@ -52,18 +52,47 @@ export function redactGigForBandmate<T extends Record<string, any>>(
 }
 
 /**
- * Gigs shared with the user because they play on them.
+ * Gigs shared with the user.
  *
- * A gig qualifies when one of the viewer's own BandMember rows is attached to
- * it. That is deliberately narrower than "every gig of the band": a bandmate
- * sees the shows they are actually on, not the whole tour history.
+ * In accordance with multiplayer rules, band members can see ALL gigs
+ * linked to the bands they are a member of, as well as any gigs they
+ * are explicitly attached to in GigBandMember.
  */
 export async function findSharedGigIds(userId: string): Promise<Set<string>> {
-  const links = await prisma.gigBandMember.findMany({
-    where: { bandMember: { userId } },
-    select: { gigId: true },
-  });
-  return new Set(links.map((link) => link.gigId));
+  const [links, myMembers] = await Promise.all([
+    prisma.gigBandMember.findMany({
+      where: { bandMember: { userId } },
+      select: { gigId: true },
+    }),
+    prisma.bandMember.findMany({
+      where: { userId },
+      select: { bands: true },
+    }),
+  ]);
+
+  const gigIds = new Set(links.map((link) => link.gigId));
+
+  const memberBandNames = new Set(
+    myMembers.flatMap((m) => (Array.isArray(m.bands) ? m.bands : []))
+  );
+
+  if (memberBandNames.size > 0) {
+    const bandNamesList = Array.from(memberBandNames);
+    const bandGigs = await prisma.gig.findMany({
+      where: {
+        OR: [
+          { performers: { in: bandNamesList } },
+          { band: { name: { in: bandNamesList } } },
+        ],
+      },
+      select: { id: true },
+    });
+    for (const g of bandGigs) {
+      gigIds.add(g.id);
+    }
+  }
+
+  return gigIds;
 }
 
 /**

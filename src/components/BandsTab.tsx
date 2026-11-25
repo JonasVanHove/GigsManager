@@ -524,9 +524,11 @@ export default function BandsTab() {
   };
 
 
-  // The "Bandleden" list on a band card NEVER contains the signed-in viewer:
-  // you cannot be a band member of yourself, so a joining member must not see
-  // their own row listed among the band's members.
+  // The "Bandleden" list on a band card never lists a plain joining member's
+  // own row: you cannot be a band member of yourself. A leader is always kept,
+  // though — the band owner is a leader by definition, so hiding them removed
+  // the leader crown (and emptied the card for a solo band). The helper enforces
+  // exactly that rule.
   const getBandMembers = (bandId: string) =>
     // Only the canonical, band-scoped roster may be rendered as "the band".
     // The legacy account-scoped /api/band-members list is never a fallback:
@@ -538,9 +540,8 @@ export default function BandsTab() {
       excludeSelf: true,
     });
 
-  // The member COUNT is a separate, user-configurable concern: it still honours
-  // the "include me in the band member count" preference even though the list
-  // above always drops the viewer.
+  // The member COUNT is a separate, user-configurable concern: it honours the
+  // "include me in the band member count" preference independently of the list.
   const getBandMemberCount = (bandId: string) =>
     composeBandCardRoster(bandMembersByBandId, bandId, session?.user ?? null, {
       excludeSelf: excludeSelfFromMemberCount,
@@ -1356,7 +1357,7 @@ export default function BandsTab() {
           title={t('bands.leaveBand')}
           message={
             confirmLeaveBand.isOwner
-              ? getBandMembers(confirmLeaveBand.id).length > 0
+              ? getBandMembers(confirmLeaveBand.id).filter((m) => !isMemberCurrentUser(m)).length > 0
                 ? t('bands.confirmLeaveBandOwner', { bandName: confirmLeaveBand.name })
                 : t('bands.confirmLeaveBandOwnerSole', { bandName: confirmLeaveBand.name })
               : t('bands.confirmLeaveBand', { bandName: confirmLeaveBand.name })

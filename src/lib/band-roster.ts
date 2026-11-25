@@ -178,6 +178,12 @@ export function buildCanonicalBandRoster<T extends RosterMember>(
  * transformation is honouring the "exclude me" preference, which removes the
  * viewer's own row without duplicating anyone.
  *
+ * A leader is NEVER removed, even when the viewer is that leader. The band
+ * owner is a leader by definition, so dropping them removed the leader crown
+ * from the card — and a band whose owner is its only member showed "no band
+ * members yet" even though the owner leads it. Only a plain member stops
+ * seeing their own row.
+ *
  * Generic over the member shape so callers keep their richer row type (the
  * render path relies on avatar/phone/bands fields beyond the identity fields).
  */
@@ -188,7 +194,7 @@ export function composeBandRoster<T extends RosterMember>(
 ): T[] {
   const members = Array.isArray(roster) ? roster : [];
   if (!options.excludeSelf) return members;
-  return members.filter((member) => !isRosterMemberCurrentUser(member, viewer));
+  return members.filter((member) => member.isLeader || !isRosterMemberCurrentUser(member, viewer));
 }
 
 /**

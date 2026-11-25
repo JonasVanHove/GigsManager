@@ -254,6 +254,123 @@ describe("composeBandCardRoster", () => {
 });
 
 /**
+ * Band-card rendering regression suite.
+ *
+ * A band card is the canonical, band-scoped roster composed through the card's
+ * own "exclude me" rule. The band owner is a leader by definition, so the card
+ * must NEVER hide them: doing so stripped the leader crown from the card and,
+ * for a band whose owner is its only member, emptied the card entirely
+ * ("no band members yet" on a band you lead). Only a plain member stops seeing
+ * their own row.
+ *
+ * These scenarios mirror the real-world shapes that broke:
+ *  - the demo band ("Demo Band Manager") where every virtual member shares the
+ *    owner's userId,
+ *  - a solo band whose roster holds only the owner's own row,
+ *  - an owner + members band with one explicitly promoted leader,
+ *  - an invite-joined member viewing someone else's band.
+ */
+describe("band card roster: excludeSelf must preserve the leader", () => {
+  const owner = { id: "user-owner", email: "owner@band.be", name: "Demo Band Manager" };
+
+  // Exactly what a band card renders: canonical roster -> card list.
+  const cardFor = (
+    members: RosterMember[],
+    viewer: { id?: string; email?: string | null } | null,
+    excludeSelf = true
+  ) =>
+    composeBandCardRoster(
+      { "band-1": buildCanonicalBandRoster(members, { owner, viewer, bandName: "The Notes" }) },
+      "band-1",
+      viewer,
+      { excludeSelf }
+    );
+
+  const demoMembers: RosterMember[] = [
+    { id: "m-elias", name: "Elias", email: "elias@band.be" },
+    { id: "m-maya", name: "Maya", email: "maya@band.be" },
+    { id: "m-nora", name: "Nora", email: "nora@band.be" },
+  ];
+
+  it("shows the owner as the crowned leader on their own band card", () => {
+    const viewer = { id: "user-owner", email: "owner@band.be" };
+    const card = cardFor([...demoMembers], viewer);
+    expect(card.map((m) => m.name)).toEqual(["Demo Band Manager", "Elias", "Maya", "Nora"]);
+    const leaders = card.filter((m) => m.isLeader);
+    expect(leaders).toHaveLength(1);
+    expect(leaders[0].isOwner).toBe(true);
+  });
+
+  it("does not empty a solo band whose roster holds only the owner", () => {
+    const viewer = { id: "user-owner", email: "owner@band.be" };
+    const card = cardFor([], viewer);
+    expect(card).toHaveLength(1);
+    expect(card[0].isOwner).toBe(true);
+    expect(card[0].isLeader).toBe(true);
+  });
+
+  it("keeps the owner visible even when every member shares the owner's userId", () => {
+    // Demo shape: virtual members carry the owner's userId; the owner row is
+    // identified by e-mail, so it must survive the excludeSelf filter.
+    const shared = demoMembers.map((m) => ({ ...m, userId: "user-owner" }));
+    const viewer = { id: "user-owner", email: "owner@band.be" };
+    const card = cardFor(shared, viewer);
+    expect(card).toHaveLength(4);
+    expect(card.filter((m) => m.isOwner)).toHaveLength(1);
+    expect(card[0].isLeader).toBe(true);
+  });
+
+  it("hides a plain joiner's own row while keeping both leaders", () => {
+    const members: RosterMember[] = [
+      { id: "m-bob", name: "Bob", email: "bob@band.be", isLeader: true },
+      ...demoMembers,
+      { id: "m-joiner", name: "Joiner", email: "joiner@band.be" },
+    ];
+    const viewer = { id: "user-joiner", email: "joiner@band.be" };
+    const card = cardFor(members, viewer);
+    expect(card.some((m) => m.id === "m-joiner")).toBe(false);
+    const leaders = card.filter((m) => m.isLeader);
+    expect(leaders).toHaveLength(2);
+    expect(leaders.filter((m) => m.isOwner)).toHaveLength(1);
+    expect(leaders.some((m) => m.id === "m-bob")).toBe(true);
+  });
+
+  it("keeps the joiner's own row when excludeSelf is off", () => {
+    const members: RosterMember[] = [
+      ...demoMembers,
+      { id: "m-joiner", name: "Joiner", email: "joiner@band.be" },
+    ];
+    const viewer = { id: "user-joiner", email: "joiner@band.be" };
+    const card = cardFor(members, viewer, false);
+    expect(card.some((m) => m.id === "m-joiner")).toBe(true);
+    expect(card).toHaveLength(5);
+  });
+
+  it("never drops a leader, even when the leader is the viewer (unit)", () => {
+    const roster: RosterMember[] = [
+      { id: "leader", name: "Leader", email: "leader@band.be", isLeader: true, isCurrentUser: true },
+      { id: "plain", name: "Plain", email: "plain@band.be", isCurrentUser: true },
+    ];
+    const viewer = { id: "user-x", email: "leader@band.be" };
+    expect(composeBandRoster(roster, viewer, { excludeSelf: true }).map((m) => m.id)).toEqual([
+      "leader",
+    ]);
+  });
+
+  it("lets the count preference include the viewer without touching the list", () => {
+    const members: RosterMember[] = [
+      ...demoMembers,
+      { id: "m-joiner", name: "Joiner", email: "joiner@band.be" },
+    ];
+    const viewer = { id: "user-joiner", email: "joiner@band.be" };
+    const cardList = cardFor(members, viewer, true);
+    const countIncludingSelf = cardFor(members, viewer, false).length;
+    expect(cardList.some((m) => m.id === "m-joiner")).toBe(false);
+    expect(countIncludingSelf).toBe(cardList.length + 1);
+  });
+});
+
+/**
  * The roster route resolves profile images through the application-layer
  * account join (Supabase auth keyed by e-mail). These helpers guarantee the
  * avatar precedence and e-mail normalisation that keep that join correct.

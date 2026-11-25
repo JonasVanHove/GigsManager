@@ -590,6 +590,7 @@ model song_attachments {
   content_type String
   caption      String?
   order        Int       @default(1)
+  roles        String[]  @default([]) // Roles for which this attachment is relevant (e.g., ["guitarist", "vocalist"])
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   deletedAt    DateTime? @db.Timestamptz(6)
   songs        songs     @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "song_attachments_songid_fkey")

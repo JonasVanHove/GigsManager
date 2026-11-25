@@ -37,11 +37,25 @@ type SongRow = {
   notes: string | null;
   date: string;
   tags?: Array<{ name: string }>;
-  attachments?: Array<{ id: string; publicUrl: string; contentType?: string; caption?: string | null }>;
+  attachments?: Array<{ id: string; publicUrl: string; contentType?: string; caption?: string | null; roles?: string[] }>;
 };
 
 const isImageAttachment = (attachment: NonNullable<SongRow["attachments"]>[number]) =>
   attachment.contentType?.startsWith("image/") || /\.(avif|gif|jpe?g|png|webp)(?:[?#]|$)/i.test(attachment.publicUrl);
+
+const COMMON_ROLES = [
+  "guitarist",
+  "bassist",
+  "drummer",
+  "vocalist",
+  "keyboardist",
+  "percussionist",
+  "saxophonist",
+  "trumpeter",
+  "violinist",
+  "dj",
+  "all"
+];
 
 type SongMeta = {
   bandProject: string;
@@ -70,7 +84,7 @@ type ApiSongRow = {
   notes?: string | null;
   date: string;
   tags?: Array<{ name: string }>;
-  attachments?: Array<{ id: string; publicUrl: string; contentType?: string; caption?: string | null }>;
+  attachments?: Array<{ id: string; publicUrl: string; contentType?: string; caption?: string | null; roles?: string[] }>;
 };
 
 type ApiSetlistRow = {
@@ -361,6 +375,7 @@ export default function SetlistsTab() {
   const [statusFilter, setStatusFilter] = useState<"alle" | SetlistMeta["status"]>("alle");
   const [songSearch, setSongSearch] = useState("");
   const [attachmentFilter, setAttachmentFilter] = useState<"all" | "with" | "without">("all");
+  const [roleFilter, setRoleFilter] = useState<string>("");
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [aiOptimizing, setAiOptimizing] = useState(false);
@@ -561,11 +576,19 @@ export default function SetlistsTab() {
       const song = 'song' in item ? item.song : item;
       const parsed = parseSongNotes(song.notes);
       const tuning = parsed.meta.keySignature || "Onbekend";
-      const hasImages = Boolean(song.attachments?.some(isImageAttachment));
-      
+
+      // Filter attachments by role
+      const filteredAttachments = roleFilter
+        ? (song.attachments || []).filter(att =>
+            !att.roles || att.roles.length === 0 || att.roles.includes(roleFilter) || att.roles.includes("all")
+          )
+        : (song.attachments || []);
+
+      const hasImages = Boolean(filteredAttachments.some(isImageAttachment));
+
       // Attachment filter
       if ((attachmentFilter === "with" && !hasImages) || (attachmentFilter === "without" && hasImages)) continue;
-      
+
       // Tag filter (multi-select)
       if (tagFilter.length > 0) {
         const songTags = (song.tags || []).map((tag) => tag.name).filter(Boolean);
@@ -582,7 +605,7 @@ export default function SetlistsTab() {
     return Array.from(songsByGroup.entries())
       .map(([tuning, list]) => [tuning, list.slice().sort((a, b) => a.title.localeCompare(b.title))] as const)
       .sort((a, b) => tuningIndex(a[0]) - tuningIndex(b[0]));
-  }, [attachmentFilter, songSearch, songs, t, tagFilter]);
+  }, [attachmentFilter, songSearch, songs, t, tagFilter, roleFilter]);
 
   const repertoireImageStats = useMemo(() => {
     const withImages = songs.filter((song) => song.attachments?.some(isImageAttachment)).length;
@@ -2951,13 +2974,13 @@ export default function SetlistsTab() {
                         ["with", "Met PDF/img"],
                         ["without", "Zonder"],
                       ] as const).map(([value, label]) => (
-                        <button 
-                          key={value} 
-                          type="button" 
-                          onClick={() => setAttachmentFilter(value)} 
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setAttachmentFilter(value)}
                           className={`rounded-lg border px-2 py-1 text-[10px] font-semibold leading-tight transition shrink-0 ${
-                            attachmentFilter === value 
-                              ? "border-cyan-500 bg-cyan-500 text-white" 
+                            attachmentFilter === value
+                              ? "border-cyan-500 bg-cyan-500 text-white"
                               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
                           }`}
                         >
@@ -2965,6 +2988,18 @@ export default function SetlistsTab() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Role Filter */}
+                    <select
+                      value={roleFilter}
+                      onChange={(e) => setRoleFilter(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 shrink-0 outline-none focus:border-cyan-500"
+                    >
+                      <option value="">All roles</option>
+                      {COMMON_ROLES.map(role => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
 
                     {/* Multi-Select Tag Filter */}
                     <div className="relative">

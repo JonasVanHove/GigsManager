@@ -4,6 +4,20 @@ import { useState } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 import { readAsDataUrl as readFileAsDataUrl } from "@/lib/file-utils";
 
+const COMMON_ROLES = [
+  "guitarist",
+  "bassist",
+  "drummer",
+  "vocalist",
+  "keyboardist",
+  "percussionist",
+  "saxophonist",
+  "trumpeter",
+  "violinist",
+  "dj",
+  "all"
+];
+
 type SongAttachment = {
   id: string;
   storagePath: string;
@@ -11,6 +25,7 @@ type SongAttachment = {
   contentType: string;
   caption?: string | null;
   order: number;
+  roles?: string[];
 };
 
 interface SongMediaManagerProps {
@@ -65,6 +80,10 @@ export function SongMediaManager({ attachments, onChange }: SongMediaManagerProp
 
   const updateCaption = (id: string, caption: string) => {
     onChange(attachments.map((attachment) => (attachment.id === id ? { ...attachment, caption } : attachment)));
+  };
+
+  const updateRoles = (id: string, roles: string[]) => {
+    onChange(attachments.map((attachment) => (attachment.id === id ? { ...attachment, roles } : attachment)));
   };
 
   const removeAttachment = (id: string) => {
@@ -126,6 +145,32 @@ export function SongMediaManager({ attachments, onChange }: SongMediaManagerProp
                   placeholder="Caption"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
+                <div>
+                  <label className="text-xs text-slate-600 dark:text-slate-400 mb-1 block">Roles (leave empty for all)</label>
+                  <div className="flex flex-wrap gap-1">
+                    {COMMON_ROLES.map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => {
+                          const currentRoles = attachment.roles || [];
+                          const isSelected = currentRoles.includes(role);
+                          const newRoles = isSelected
+                            ? currentRoles.filter((r) => r !== role)
+                            : [...currentRoles, role];
+                          updateRoles(attachment.id, newRoles);
+                        }}
+                        className={`rounded px-2 py-1 text-xs ${
+                          (attachment.roles || []).includes(role)
+                            ? "bg-cyan-600 text-white"
+                            : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => moveAttachment(index, -1)} className="rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-700">
                     ↑

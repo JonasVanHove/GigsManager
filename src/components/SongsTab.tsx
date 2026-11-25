@@ -20,6 +20,7 @@ type SongAttachment = {
   contentType: string;
   caption?: string | null;
   order: number;
+  roles?: string[];
 };
 
 type SongRecord = {
@@ -50,6 +51,20 @@ const META_START = "[[song-meta]]";
 const META_END = "[[/song-meta]]";
 
 const defaultMeta = (): SongMeta => ({ bandProject: "", genre: "", keySignature: "", bpm: "", comments: "" });
+
+const COMMON_ROLES = [
+  "guitarist",
+  "bassist",
+  "drummer",
+  "vocalist",
+  "keyboardist",
+  "percussionist",
+  "saxophonist",
+  "trumpeter",
+  "violinist",
+  "dj",
+  "all"
+];
 
 const parseSongNotes = (raw: string | null | undefined) => {
   const fallback = { meta: defaultMeta(), body: raw || "" };
@@ -105,6 +120,7 @@ export default function SongsTab() {
   const [tuningFilter, setTuningFilter] = useState<string>("");
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [keyFilter, setKeyFilter] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<"title" | "date" | "attachments">("title");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -341,20 +357,26 @@ export default function SongsTab() {
     let result = songs.filter((song) => {
       const parsed = parseSongNotes(song.notes);
       if (showOnlyWithNotes && !parsed.body.trim()) return false;
-      
-      // Attachment filter
-      if (attachmentFilter === "with" && (!song.attachments || song.attachments.length === 0)) return false;
-      if (attachmentFilter === "without" && song.attachments && song.attachments.length > 0) return false;
-      
+
+      // Attachment filter with role filtering
+      const filteredAttachments = roleFilter
+        ? (song.attachments || []).filter(att =>
+            !att.roles || att.roles.length === 0 || att.roles.includes(roleFilter) || att.roles.includes("all")
+          )
+        : (song.attachments || []);
+
+      if (attachmentFilter === "with" && filteredAttachments.length === 0) return false;
+      if (attachmentFilter === "without" && filteredAttachments.length > 0) return false;
+
       // Tuning filter
       if (tuningFilter && parsed.meta.keySignature.toLowerCase() !== tuningFilter.toLowerCase()) return false;
-      
+
       // Tag filter (multi-select)
       if (tagFilter.length > 0 && (!song.tags || !tagFilter.some(tf => song.tags?.some(t => t.name.toLowerCase() === tf.toLowerCase())))) return false;
-      
+
       // Key signature filter
       if (keyFilter && parsed.meta.keySignature.toLowerCase() !== keyFilter.toLowerCase()) return false;
-      
+
       if (!query) return true;
       return (
         song.title.toLowerCase().includes(query) ||
@@ -380,7 +402,7 @@ export default function SongsTab() {
     });
 
     return result;
-  }, [songs, songSearch, showOnlyWithNotes, attachmentFilter, tuningFilter, tagFilter, keyFilter, sortBy, sortOrder]);
+  }, [songs, songSearch, showOnlyWithNotes, attachmentFilter, tuningFilter, tagFilter, keyFilter, roleFilter, sortBy, sortOrder]);
 
   const openEditor = (song?: SongRecord) => {
     if (!song) {
@@ -698,6 +720,18 @@ export default function SongsTab() {
               ))}
             </select>
 
+            {/* Role Filter */}
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="rounded-lg border border-neutral-800 bg-black px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+            >
+              <option value="">All roles</option>
+              {COMMON_ROLES.map(role => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+
             {/* Sort Controls */}
             <select
               value={sortBy}
@@ -718,13 +752,14 @@ export default function SongsTab() {
           </div>
           
           {/* Reset Filters Button */}
-          {(attachmentFilter !== "all" || tuningFilter || tagFilter.length > 0 || keyFilter) && (
+          {(attachmentFilter !== "all" || tuningFilter || tagFilter.length > 0 || keyFilter || roleFilter) && (
             <button
               onClick={() => {
                 setAttachmentFilter("all");
                 setTuningFilter("");
                 setTagFilter([]);
                 setKeyFilter("");
+                setRoleFilter("");
               }}
               className="self-start rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs text-slate-300 hover:bg-neutral-800 transition"
             >

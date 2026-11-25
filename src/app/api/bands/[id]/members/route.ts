@@ -35,8 +35,17 @@ export async function GET(
     });
     if (!band) return NextResponse.json({ error: "Band not found" }, { status: 404 });
 
+    // A joiner is recognised either by their linked account (userId) or, for a
+    // row that was never claimed, by e-mail — the only reliable per-person key
+    // (BandMember.userId is shared with virtual members).
     const membership = await prisma.bandMember.findFirst({
-      where: { userId: viewer.id, bands: { has: band.name } },
+      where: {
+        bands: { has: band.name },
+        OR: [
+          { userId: viewer.id },
+          ...(viewer.email ? [{ email: viewer.email }] : []),
+        ],
+      },
       select: { id: true },
     });
     if (band.userId !== viewer.id && !membership) {

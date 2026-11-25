@@ -371,6 +371,56 @@ describe("band card roster: excludeSelf must preserve the leader", () => {
 });
 
 /**
+ * Regression: a joining member whose account id is shared with other band rows
+ * (the demo shape, where virtual members carry the owner's userId) must still
+ * see every bandmate. Previously the API flagged EVERY row with a matching
+ * userId as "me" and the card dropped them all, leaving the joiner with only
+ * the leaders — the exact "joiner sees nobody but the leader" bug.
+ */
+describe("band card roster: a joiner sharing an account id still sees the band", () => {
+  const owner = { id: "user-owner", email: "owner@band.be", name: "Owner One" };
+
+  // The joiner's own row shares its userId with two virtual members, so a
+  // userId-only match would flag all three and hide them all.
+  const members: RosterMember[] = [
+    { id: "m-owner", name: "Owner One", email: "owner@band.be", userId: "user-owner" },
+    { id: "m-v1", name: "Virtual One", email: null, userId: "user-joiner" },
+    { id: "m-v2", name: "Virtual Two", email: null, userId: "user-joiner" },
+    { id: "m-joiner", name: "Joiner", email: "joiner@band.be", userId: "user-joiner" },
+  ];
+  const viewer = { id: "user-joiner", email: "joiner@band.be" };
+
+  const canonical = buildCanonicalBandRoster(members, { owner, viewer, bandName: "The Notes" });
+
+  it("flags exactly one row as the current user (matched by e-mail, not userId)", () => {
+    const current = canonical.filter((m) => m.isCurrentUser);
+    expect(current).toHaveLength(1);
+    expect(current[0].id).toBe("m-joiner");
+  });
+
+  it("keeps every bandmate on the joiner's card", () => {
+    const card = composeBandCardRoster({ "band-1": canonical }, "band-1", viewer, {
+      excludeSelf: true,
+    });
+    expect(card.map((m) => m.id)).toEqual(["m-owner", "m-v1", "m-v2"]);
+  });
+
+  it("removes at most one row even when several rows look like the viewer", () => {
+    const raw: RosterMember[] = [
+      { id: "m-owner", name: "Owner", email: "owner@band.be", isLeader: true, userId: "user-joiner" },
+      { id: "m-a", name: "A", email: null, userId: "user-joiner" },
+      { id: "m-b", name: "B", email: null, userId: "user-joiner" },
+    ];
+    const stay = composeBandRoster(
+      raw,
+      { id: "user-joiner", email: "joiner@band.be" },
+      { excludeSelf: true }
+    );
+    expect(stay.map((m) => m.id)).toEqual(["m-owner", "m-b"]);
+  });
+});
+
+/**
  * The roster route resolves profile images through the application-layer
  * account join (Supabase auth keyed by e-mail). These helpers guarantee the
  * avatar precedence and e-mail normalisation that keep that join correct.

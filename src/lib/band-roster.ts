@@ -107,30 +107,44 @@ export function buildCanonicalBandRoster<T extends RosterMember>(
     ? rows.find((m) => rosterEmailKey(m.email) === ownerEmail)
     : undefined;
 
+  const otherRows = rows.filter((m) => m !== ownerRow);
+
+  // Identify the viewer's OWN row when they merely joined the band. `userId` is
+  // shared with virtual members (the owner's account and the joiner's own), so
+  // matching it can hit several rows at once — flagging them all let the card
+  // drop every bandmate who shares that id, leaving a joiner with only the
+  // leaders. E-mail is the only reliable per-person key; userId is a last
+  // resort, used only when it points at exactly one row.
+  const selfRowId = viewerIsOwner
+    ? null
+    : (() => {
+        if (viewerEmail) {
+          const byEmail = otherRows.find((m) => rosterEmailKey(m.email) === viewerEmail);
+          if (byEmail) return byEmail.id;
+        }
+        if (viewer?.id) {
+          const byUserId = otherRows.filter((m) => m.userId != null && m.userId === viewer.id);
+          if (byUserId.length === 1) return byUserId[0].id;
+        }
+        return null;
+      })();
+
   const roster: Array<T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean }> =
-    rows
-      .filter((m) => m !== ownerRow)
-      .map((m) => {
-        const row = {
-          ...m,
-        } as T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean };
-        // Strip userId at runtime: the client must rely on the flags we compute,
-        // never on the internal id (it is shared with every virtual member).
-        delete (row as unknown as Record<string, unknown>).userId;
-        row.isLeader = Boolean(m.isLeader);
-        row.isOwner = false;
-        // Only a regular row can be "me" when the viewer is NOT the owner: the
-        // owner shares userId with every virtual member, so a userId match would
-        // flag all of them. A joiner's userId is unique to their own row.
-        row.isCurrentUser =
-          !viewerIsOwner &&
-          Boolean(
-            (m.userId != null && viewer?.id && m.userId === viewer.id) ||
-              (viewerEmail && rosterEmailKey(m.email) === viewerEmail)
-          );
-        row.claimed = Boolean(m.userId);
-        return row;
-      });
+    otherRows.map((m) => {
+      const row = {
+        ...m,
+      } as T & { isLeader: boolean; isOwner: boolean; isCurrentUser: boolean; claimed: boolean };
+      // Strip userId at runtime: the client must rely on the flags we compute,
+      // never on the internal id (it is shared with every virtual member).
+      delete (row as unknown as Record<string, unknown>).userId;
+      row.isLeader = Boolean(m.isLeader);
+      row.isOwner = false;
+      // At most one row is ever "me" for a non-owner viewer, so the card can
+      // never hide the whole band just because they share an account id.
+      row.isCurrentUser = selfRowId !== null && m.id === selfRowId;
+      row.claimed = Boolean(m.userId);
+      return row;
+    });
 
   // The owner is always present exactly once: their real row when it exists,
   // otherwise a projection from the owner account (never a persisted duplicate).
@@ -194,7 +208,15 @@ export function composeBandRoster<T extends RosterMember>(
 ): T[] {
   const members = Array.isArray(roster) ? roster : [];
   if (!options.excludeSelf) return members;
-  return members.filter((member) => member.isLeader || !isRosterMemberCurrentUser(member, viewer));
+  // Drop exactly ONE row — the viewer's own — and never a leader. Removing
+  // every row that merely *looks* like the viewer collapsed the card to just
+  // the leaders whenever the viewer's account id was shared with virtual
+  // members, so only the first non-leader match is removed.
+  const selfIndex = members.findIndex(
+    (member) => !member.isLeader && isRosterMemberCurrentUser(member, viewer)
+  );
+  if (selfIndex === -1) return members;
+  return members.filter((_, index) => index !== selfIndex);
 }
 
 /**

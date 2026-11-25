@@ -20,6 +20,22 @@ function isRemoteImageSrc(src: string): boolean {
   return src.startsWith("http://") || src.startsWith("https://");
 }
 
+/**
+ * SVGs (e.g. the DiceBear placeholder avatars used for demo band members)
+ * must never go through the Next.js Image Optimizer: with the default
+ * `dangerouslyAllowSVG: false` it rejects them with a 400, so the avatar
+ * silently failed to render. Those sources are drawn with a plain <img>
+ * instead; raster photos keep using <Image> and its optimisation.
+ */
+function isSvgSrc(src: string): boolean {
+  try {
+    const { pathname } = new URL(src);
+    return /\.svg$/i.test(pathname) || /\/svg$/i.test(pathname);
+  } catch {
+    return /\.svg(\?|#|$)/i.test(src) || /\/svg(\?|#|$)/i.test(src);
+  }
+}
+
 type AvatarProps = {
   src?: string | null;
   name?: string | null;
@@ -42,7 +58,10 @@ export default function Avatar({
   const config = SIZE_CONFIG[size];
   const initials = getInitials(name, email);
   const label = alt || name || email || "Avatar";
-  const imageSrc = src && isRemoteImageSrc(src) ? buildHighResImageUrl(src, config.pixels) : src;
+  const remoteSrc = Boolean(src && isRemoteImageSrc(src));
+  const svgSrc = Boolean(src && isSvgSrc(src));
+  const imageSrc =
+    remoteSrc && !svgSrc ? buildHighResImageUrl(src as string, config.pixels) : src;
 
   return (
     <div
@@ -60,7 +79,7 @@ export default function Avatar({
       aria-label={label}
     >
       {imageSrc ? (
-        isRemoteImageSrc(imageSrc) ? (
+        remoteSrc && !svgSrc ? (
           <Image
             src={imageSrc}
             alt={label}

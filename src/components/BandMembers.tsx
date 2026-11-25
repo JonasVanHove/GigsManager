@@ -67,6 +67,7 @@ interface BandMember {
  */
 interface DisplayMember extends BandMember {
   readOnly: boolean;
+  leaderBands?: string[]; // Names of bands where this member is a leader
 }
 
 interface BandMembersProps {
@@ -393,11 +394,13 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
     // The viewer's own rows — the only ones they may edit.
     for (const member of members) {
       if (isRosterMemberCurrentUser(member, viewer)) continue;
-      result.push({ ...member, readOnly: false });
+      result.push({ ...member, readOnly: false, leaderBands: [] });
     }
 
     // Every band's canonical roster.
-    Object.values(rostersByBandId).forEach((roster) => {
+    Object.entries(rostersByBandId).forEach(([bandId, roster]) => {
+      const band = bands.find(b => b.id === bandId);
+      const bandName = band?.name || "";
       for (const rosterMember of roster) {
         if (isRosterMemberCurrentUser(rosterMember, viewer)) continue;
         const existing = result.find((member) => matchesSamePerson(member, rosterMember));
@@ -412,6 +415,10 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
           if (!existing.avatarUrl && rosterMember.avatarUrl) {
             existing.avatarUrl = rosterMember.avatarUrl;
           }
+          // Track which bands this member is a leader in
+          if (rosterMember.isLeader && bandName) {
+            existing.leaderBands = Array.from(new Set([...(existing.leaderBands || []), bandName]));
+          }
         } else {
           result.push({
             ...rosterMember,
@@ -422,13 +429,14 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
             gigsCount: 0,
             gigs: [],
             readOnly: true,
+            leaderBands: rosterMember.isLeader && bandName ? [bandName] : [],
           });
         }
       }
     });
 
     return result;
-  }, [members, rostersByBandId, session]);
+  }, [members, rostersByBandId, session, bands]);
 
   const memberBandOptions = useMemo(() => {
     const set = new Set(
@@ -760,12 +768,12 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                 <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
                   {member.name}
                 </h3>
-                {member.isLeader && (
+                {member.isLeader && member.leaderBands && member.leaderBands.length > 0 && (
                   <span
                     className="inline-flex items-center gap-0.5 rounded-full bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
-                    title={copy.leader}
+                    title={`${copy.leader} in: ${member.leaderBands.join(", ")}`}
                   >
-                    👑 {copy.leader}
+                    👑 {copy.leader} ({member.leaderBands.join(", ")})
                   </span>
                 )}
                 {member.availability && !member.availability.available && (

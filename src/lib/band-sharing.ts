@@ -181,21 +181,4 @@ export async function isBandLeaderOrOwner(
   return Boolean(member);
 }
 
-/**
- * Checks whether a user is a member of the given band.
- */
-export async function isBandMember(
-  bandName: string,
-  userId: string
-): Promise<boolean> {
-  const member = await prisma.bandMember.findFirst({
-    where: {
-      userId,
-      bands: { has: bandName },
-    },
-    select: { id: true },
-  });
-  return Boolean(member);
-}
-
 export { inviteLink };

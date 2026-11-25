@@ -15,6 +15,8 @@ import BandLogoFrame from "./BandLogoFrame";
 import { normalizeArrayResponse } from "@/lib/api-response";
 import { readAsDataUrl } from "@/lib/file-utils";
 import { useModalLock } from "@/hooks/useModalLock";
+import { isRosterMemberCurrentUser, rosterEmailKey } from "@/lib/band-roster";
+import type { MemberLineup, AvailabilityResult } from "@/lib/lineup-manager";
 
 interface BandMemberGig {
   gigId: string;
@@ -42,6 +44,10 @@ interface BandMember {
   avatarUrl?: string | null;
   bands: string[];
   updatedAt: string;
+  isLeader?: boolean;
+  isOwner?: boolean;
+  lineup?: MemberLineup;
+  availability?: AvailabilityResult;
   totalEarned: number;
   totalInvested: number;
   totalPaid: number;
@@ -50,17 +56,31 @@ interface BandMember {
   gigs: BandMemberGig[];
 }
 
+/**
+ * A member row as rendered in the Band Members tab.
+ *
+ * The list is the union of the viewer's own (account-scoped) rows and the
+ * canonical, band-scoped rosters of every band they belong to, so joining a
+ * band makes the band's other members appear here too. `readOnly` marks rows
+ * that come only from a joined band the viewer does not administer: those are
+ * informational and hide the edit / delete / assign-gig actions.
+ */
+interface DisplayMember extends BandMember {
+  readOnly: boolean;
+}
+
 interface BandMembersProps {
   fmtCurrency: (amount: number) => string;
   gigs?: Gig[];
 }
 
 export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMembersProps) {
-  const { getAccessToken } = useAuth();
+  const { getAccessToken, session } = useAuth();
   const { language } = useSettings();
   const toast = useToast();
   const [members, setMembers] = useState<BandMember[]>([]);
   const [bands, setBands] = useState<Band[]>([]);
+  const [rostersByBandId, setRostersByBandId] = useState<Record<string, BandMember[]>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -113,6 +133,9 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
         memberPhoto: "Profielfoto",
         uploadPhoto: "Foto uploaden",
         removePhoto: "Foto verwijderen",
+        leader: "Leider",
+        away: "Afwezig",
+        sharedMemberNote: "Lid van een band die jij niet beheert",
       }
     : {
         notes: "Notes",
@@ -136,6 +159,9 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
         memberPhoto: "Profile photo",
         uploadPhoto: "Upload photo",
         removePhoto: "Remove photo",
+        leader: "Leader",
+        away: "Away",
+        sharedMemberNote: "Member of a band you don't manage",
       };
 
   // Fetch band members
@@ -186,10 +212,55 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
     }
   }, [getAccessToken]);
 
+  /**
+   * Load the canonical, band-scoped roster of every band the viewer belongs
+   * to. This is the only source that lists *the band's* members: the
+   * account-scoped /api/band-members list holds just the viewer's own rows, so
+   * a member who joined someone else's band would otherwise only ever see
+   * themselves. Each band resolves independently — one failing request must
+   * not discard the others.
+   */
+  const fetchRosters = useCallback(async () => {
+    if (bands.length === 0) {
+      setRostersByBandId({});
+      return;
+    }
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const results = await Promise.all(
+        bands.map(async (band) => {
+          try {
+            const response = await fetch(`/api/bands/${band.id}/members`, {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: "no-store",
+            });
+            if (!response.ok) throw new Error(`Failed to load roster for ${band.id}`);
+            return [band.id, normalizeArrayResponse<BandMember>(await response.json())] as const;
+          } catch (error) {
+            console.error("Failed to load band roster:", band.id, error);
+            return [band.id, null] as const;
+          }
+        })
+      );
+      const loaded: Record<string, BandMember[]> = {};
+      for (const [bandId, roster] of results) {
+        if (roster) loaded[bandId] = roster;
+      }
+      setRostersByBandId(loaded);
+    } catch (error) {
+      console.error("Failed to load band rosters:", error);
+    }
+  }, [bands, getAccessToken]);
+
   useEffect(() => {
     fetchMembers();
     fetchBands();
   }, [fetchMembers, fetchBands]);
+
+  useEffect(() => {
+    void fetchRosters();
+  }, [fetchRosters]);
 
   const fetchAllGigs = useCallback(async () => {
     try {
@@ -296,12 +367,75 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
     return new Map(activeMember.gigs.map((gig) => [gig.gigId, gig]));
   }, [activeMember]);
 
+  /**
+   * The list the tab renders: the viewer's own rows plus the members of every
+   * band they belong to, deduplicated and with the viewer removed.
+   *
+   * - The signed-in user is never listed — you are not a band member of
+   *   yourself (owners and joiners both have their own account-scoped row).
+   * - A row present in both sources is merged once: the viewer's own row keeps
+   *   its financial totals while the band roster contributes the lineup,
+   *   availability and owner/leader flags.
+   * - Rows that come only from a joined band's roster are marked `readOnly`.
+   */
+  const displayMembers = useMemo<DisplayMember[]>(() => {
+    const viewer = session?.user ?? null;
+    const matchesSamePerson = (a: DisplayMember, b: BandMember) => {
+      const aId = a.id && !a.id.startsWith("owner-") ? a.id : null;
+      const bId = b.id && !b.id.startsWith("owner-") ? b.id : null;
+      if (aId && bId && aId === bId) return true;
+      const aEmail = rosterEmailKey(a.email);
+      return Boolean(aEmail) && aEmail === rosterEmailKey(b.email);
+    };
+
+    const result: DisplayMember[] = [];
+
+    // The viewer's own rows — the only ones they may edit.
+    for (const member of members) {
+      if (isRosterMemberCurrentUser(member, viewer)) continue;
+      result.push({ ...member, readOnly: false });
+    }
+
+    // Every band's canonical roster.
+    Object.values(rostersByBandId).forEach((roster) => {
+      for (const rosterMember of roster) {
+        if (isRosterMemberCurrentUser(rosterMember, viewer)) continue;
+        const existing = result.find((member) => matchesSamePerson(member, rosterMember));
+        if (existing) {
+          existing.bands = Array.from(
+            new Set([...(existing.bands || []), ...(rosterMember.bands || [])])
+          );
+          existing.isLeader = Boolean(rosterMember.isLeader);
+          existing.isOwner = Boolean(rosterMember.isOwner);
+          existing.lineup = rosterMember.lineup;
+          existing.availability = rosterMember.availability;
+          if (!existing.avatarUrl && rosterMember.avatarUrl) {
+            existing.avatarUrl = rosterMember.avatarUrl;
+          }
+        } else {
+          result.push({
+            ...rosterMember,
+            totalEarned: 0,
+            totalInvested: 0,
+            totalPaid: 0,
+            totalOwed: 0,
+            gigsCount: 0,
+            gigs: [],
+            readOnly: true,
+          });
+        }
+      }
+    });
+
+    return result;
+  }, [members, rostersByBandId, session]);
+
   const memberBandOptions = useMemo(() => {
     const set = new Set(
-      members.flatMap((member) => member.bands || []).filter((name) => name && name.trim())
+      displayMembers.flatMap((member) => member.bands || []).filter((name) => name && name.trim())
     );
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [members]);
+  }, [displayMembers]);
 
   const allBandOptions = useMemo(() => {
     const gigBands = allGigs.map((gig) => gig.performers).filter((name) => name && name.trim());
@@ -337,11 +471,11 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
 
   const filteredMembers = useMemo(() => {
     const band = bandFilter.trim().toLowerCase();
-    return members.filter((member) => {
+    return displayMembers.filter((member) => {
       if (!band) return true;
       return member.bands?.some((name) => name.toLowerCase() === band);
     });
-  }, [members, bandFilter]);
+  }, [displayMembers, bandFilter]);
 
   const sortedMembers = useMemo(() => {
     const copy = [...filteredMembers];
@@ -363,7 +497,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
 
   const groupedMembers = useMemo(() => {
     if (!groupByBand) return null;
-    const groups = new Map<string, BandMember[]>();
+    const groups = new Map<string, DisplayMember[]>();
     const withBand = sortedMembers.filter((member) => member.bands?.length);
     const noBand = sortedMembers.filter((member) => !member.bands?.length);
 
@@ -599,6 +733,161 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
     } finally {
       setUploadingLogo(false);
     }
+  };
+
+  /**
+   * One member card. Read-only rows — members of a joined band the viewer does
+   * not administer — show their identity, bands and lineup status but hide the
+   * edit/delete/assign actions and the viewer's private financials, which are
+   * only tracked for the viewer's own rows.
+   */
+  const renderMemberCard = (member: DisplayMember, keyPrefix = "") => {
+    const primaryBand = member.bands?.[0] || "";
+    const bandData = bands.find((band) => band.name === primaryBand);
+    const bandStyles = getBandColorStyles(primaryBand, bandData?.color);
+
+    return (
+      <div
+        key={`${keyPrefix}${member.id}`}
+        className="group flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition hover:shadow-md dark:bg-slate-900"
+        style={{ borderColor: bandStyles.solid.backgroundColor }}
+      >
+        <div className="border-b px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <Avatar src={member.avatarUrl} name={member.name} email={member.email} size="md" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
+                  {member.name}
+                </h3>
+                {member.isLeader && (
+                  <span
+                    className="inline-flex items-center gap-0.5 rounded-full bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                    title={copy.leader}
+                  >
+                    👑 {copy.leader}
+                  </span>
+                )}
+                {member.availability && !member.availability.available && (
+                  <span
+                    className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                    title={member.availability.reason}
+                  >
+                    {member.availability.badgeLabel || copy.away}
+                  </span>
+                )}
+              </div>
+              {member.email && (
+                <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                  <a
+                    href={`mailto:${member.email}`}
+                    className="text-slate-500 transition-colors hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400"
+                  >
+                    {member.email}
+                  </a>
+                </p>
+              )}
+              {member.phone && (
+                <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                  <a
+                    href={`tel:${member.phone}`}
+                    className="text-slate-500 transition-colors hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400"
+                  >
+                    {member.phone}
+                  </a>
+                </p>
+              )}
+              {member.bands?.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {member.bands.map((bandName) => (
+                    <BandTag key={bandName} name={bandName} variant="soft" />
+                  ))}
+                </div>
+              )}
+            </div>
+            {!member.readOnly && (
+              <div className="ml-2 flex gap-1">
+                <button
+                  onClick={() => openGigPicker(member)}
+                  className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
+                  title={copy.assignGigs}
+                >
+                  <Icons.Calendar className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleEdit(member)}
+                  className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
+                  title={copy.edit}
+                >
+                  <Icons.Edit className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(member.id, member.name)}
+                  className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                  title={copy.delete}
+                >
+                  <Icons.Trash className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {member.readOnly ? (
+          <div className="flex flex-1 items-center px-4 py-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">{copy.sharedMemberNote}</p>
+          </div>
+        ) : (
+          <div className="space-y-3 px-4 py-3">
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Total Earned
+                </p>
+                <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
+                  {fmtCurrency(member.totalEarned)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  {copy.invested}
+                </p>
+                <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
+                  {fmtCurrency(member.totalInvested)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Gigs
+                </p>
+                <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
+                  {member.gigsCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
+                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  Received
+                </p>
+                <p className="mt-0.5 text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                  {fmtCurrency(member.totalPaid)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                  Pending
+                </p>
+                <p className="mt-0.5 text-lg font-bold text-amber-700 dark:text-amber-300">
+                  {fmtCurrency(member.totalOwed)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -846,7 +1135,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
         </div>
       )}
 
-      {members.length > 0 && (
+      {displayMembers.length > 0 && (
         <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -895,7 +1184,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
       )}
 
       {/* Members List */}
-      {members.length === 0 ? (
+      {displayMembers.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
           <Icons.People className="mx-auto h-12 w-12 text-slate-500" />
             <h3 className="mt-4 text-lg font-semibold text-slate-900 dark:text-white">
@@ -915,127 +1204,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
                     {band}
                   </h3>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {grouped.map((member) => {
-                      const primaryBand = member.bands?.[0] || "";
-                      const bandData = bands.find(b => b.name === primaryBand);
-                      const bandStyles = getBandColorStyles(primaryBand, bandData?.color);
-                      return (
-                        <div
-                          key={`${band}-${member.id}`}
-                          className="group overflow-hidden rounded-xl border bg-white shadow-sm transition hover:shadow-md dark:bg-slate-900"
-                          style={{ borderColor: bandStyles.solid.backgroundColor }}
-                        >
-                          <div className="border-b px-4 py-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <Avatar src={member.avatarUrl} name={member.name} email={member.email} size="md" />
-                              <div className="min-w-0 flex-1">
-                                <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
-                                  {member.name}
-                                </h3>
-                                {member.email && (
-                                  <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                                    <a
-                                      href={`mailto:${member.email}`}
-                                      className="text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 transition-colors"
-                                    >
-                                      {member.email}
-                                    </a>
-                                  </p>
-                                )}
-                                {member.phone && (
-                                  <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                                    <a
-                                      href={`tel:${member.phone}`}
-                                      className="text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 transition-colors"
-                                    >
-                                      {member.phone}
-                                    </a>
-                                  </p>
-                                )}
-                                {member.bands?.length > 0 && (
-                                  <div className="mt-2 flex flex-wrap gap-1.5">
-                                    {member.bands.map((bandName) => (
-                                      <BandTag key={bandName} name={bandName} variant="soft" />
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            <div className="ml-2 flex gap-1">
-                              <button
-                                onClick={() => openGigPicker(member)}
-                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
-                                title={copy.assignGigs}
-                              >
-                                <Icons.Calendar className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleEdit(member)}
-                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
-                                title={copy.edit}
-                              >
-                                <Icons.Edit className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(member.id, member.name)}
-                                className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                                title={copy.delete}
-                              >
-                                <Icons.Trash className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 px-4 py-3">
-                          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                            <div>
-                              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                                Total Earned
-                              </p>
-                              <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-                                {fmtCurrency(member.totalEarned)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                                {copy.invested}
-                              </p>
-                              <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-                                {fmtCurrency(member.totalInvested)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                                Gigs
-                              </p>
-                              <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-                                {member.gigsCount}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
-                              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                Received
-                              </p>
-                              <p className="mt-0.5 text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                                {fmtCurrency(member.totalPaid)}
-                              </p>
-                            </div>
-                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
-                              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                                Pending
-                              </p>
-                              <p className="mt-0.5 text-lg font-bold text-amber-700 dark:text-amber-300">
-                                {fmtCurrency(member.totalOwed)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      );
-                    })}
+                    {grouped.map((member) => renderMemberCard(member, `${band}-`))}
                   </div>
                 </div>
               ))}
@@ -1046,112 +1215,7 @@ export default function BandMembers({ fmtCurrency, gigs: preloadedGigs }: BandMe
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedMembers.map((member) => {
-                const primaryBand = member.bands?.[0] || "";
-                const bandData = bands.find(b => b.name === primaryBand);
-                const bandStyles = getBandColorStyles(primaryBand, bandData?.color);
-                return (
-                  <div
-                    key={member.id}
-                    className="group overflow-hidden rounded-xl border bg-white shadow-sm transition hover:shadow-md dark:bg-slate-900"
-                    style={{ borderColor: bandStyles.solid.backgroundColor }}
-                  >
-                    <div className="border-b px-4 py-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <Avatar src={member.avatarUrl} name={member.name} email={member.email} size="md" />
-                        <div className="min-w-0 flex-1">
-                          <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-cyan-300">
-                            {member.name}
-                          </h3>
-                          {member.email && (
-                            <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                              {member.email}
-                            </p>
-                          )}
-                          {member.bands?.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {member.bands.map((bandName) => (
-                                <BandTag key={bandName} name={bandName} variant="soft" />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      <div className="ml-2 flex gap-1">
-                        <button
-                          onClick={() => openGigPicker(member)}
-                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
-                          title="Assign gigs"
-                        >
-                          <Icons.Calendar className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(member)}
-                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/20"
-                          title="Edit"
-                        >
-                          <Icons.Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(member.id, member.name)}
-                          className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-0 text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                          title="Delete"
-                        >
-                          <Icons.Trash className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 px-4 py-3">
-                    <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                          Total Earned
-                        </p>
-                        <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-                          {fmtCurrency(member.totalEarned)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                          {copy.invested}
-                        </p>
-                        <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-                          {fmtCurrency(member.totalInvested)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                          Gigs
-                        </p>
-                        <p className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">
-                          {member.gigsCount}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-900/20">
-                        <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                          Received
-                        </p>
-                        <p className="mt-0.5 text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                          {fmtCurrency(member.totalPaid)}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-900/20">
-                        <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                          Pending
-                        </p>
-                        <p className="mt-0.5 text-lg font-bold text-amber-700 dark:text-amber-300">
-                          {fmtCurrency(member.totalOwed)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                );
-              })}
+              {sortedMembers.map((member) => renderMemberCard(member))}
             </div>
           )}
         </>

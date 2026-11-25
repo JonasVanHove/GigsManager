@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedUserIdFromHeader } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateInviteCode, inviteLink, findBandByInviteCode } from "@/lib/band-invites";
-import { isBandLeaderOrOwner, isBandMember } from "@/lib/band-sharing";
+import { isBandLeaderOrOwner } from "@/lib/band-sharing";
 
 export const runtime = "nodejs";
 

@@ -8,6 +8,12 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { notifyPaymentReceived } from "@/lib/notification-service";
 import { webhookPaymentReceived } from "@/lib/webhook-service";
 import { getBandAccess } from "@/lib/band-access";
+import {
+  findSharedGigIds,
+  getBandEditPermissions,
+  redactGigForBandmate,
+  canEditSharedGig,
+} from "@/lib/band-sharing";
 
 // Auth middleware
 
@@ -61,12 +67,34 @@ export async function GET(
       return NextResponse.json({ error: "Gig not found" }, { status: 404 });
     }
     
-    // Check ownership
-    if (gig.userId !== user.id) {
+    // The owner sees the gig in full.
+    if (gig.userId === user.id) {
+      return NextResponse.json(gig);
+    }
+
+    // A bandmate may read a gig that is actually shared with them. This mirrors
+    // GET /api/gigs (list), which already returns those gigs redacted — an
+    // owner-only check here would make a gig visible in the list 403 on open.
+    const sharedGigIds = await findSharedGigIds(user.id);
+    if (!sharedGigIds.has(gig.id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    
-    return NextResponse.json(gig);
+
+    const editPermissions = await getBandEditPermissions(user.id);
+    const bandName = gig.bandId
+      ? (await prisma.bands.findUnique({
+          where: { id: gig.bandId },
+          select: { name: true },
+        }))?.name ?? gig.performers
+      : gig.performers;
+
+    return NextResponse.json(
+      redactGigForBandmate(gig, {
+        isOwner: false,
+        // Same per-band rule as the list: leading one band never unlocks another.
+        canEdit: canEditSharedGig(editPermissions, bandName),
+      })
+    );
   } catch (error) {
     console.error(`[GET /api/gigs/${params.id}]`, error);
     return NextResponse.json(

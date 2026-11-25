@@ -383,7 +383,7 @@ export default function BandsTab() {
   };
 
   const handleToggleLeader = async (member: BandMember, band: Band) => {
-    if (member.id === "current-user") {
+    if (isMemberCurrentUser(member)) {
       toast.warning(
         language === "nl"
           ? "Je eigen leiderschapsrol kan hier niet aangepast worden"
@@ -524,6 +524,9 @@ export default function BandsTab() {
   };
 
 
+  // The "Bandleden" list on a band card NEVER contains the signed-in viewer:
+  // you cannot be a band member of yourself, so a joining member must not see
+  // their own row listed among the band's members.
   const getBandMembers = (bandId: string) =>
     // Only the canonical, band-scoped roster may be rendered as "the band".
     // The legacy account-scoped /api/band-members list is never a fallback:
@@ -532,8 +535,16 @@ export default function BandsTab() {
     // loading (or after it failed) the card shows a loading/error placeholder
     // instead of a misleading partial roster.
     composeBandCardRoster(bandMembersByBandId, bandId, session?.user ?? null, {
-      excludeSelf: excludeSelfFromMemberCount,
+      excludeSelf: true,
     });
+
+  // The member COUNT is a separate, user-configurable concern: it still honours
+  // the "include me in the band member count" preference even though the list
+  // above always drops the viewer.
+  const getBandMemberCount = (bandId: string) =>
+    composeBandCardRoster(bandMembersByBandId, bandId, session?.user ?? null, {
+      excludeSelf: excludeSelfFromMemberCount,
+    }).length;
 
   if (loading) {
     return (
@@ -1130,7 +1141,7 @@ export default function BandsTab() {
                                 ? language === "nl"
                                   ? "leden laden…"
                                   : "loading members…"
-                                : `${bandMembers.length} ${language === "nl" ? "leden" : "members"}`}
+                                : `${getBandMemberCount(band.id)} ${language === "nl" ? "leden" : "members"}`}
                             </p>
                           </div>
                         </div>
@@ -1180,7 +1191,6 @@ export default function BandsTab() {
                           <p className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">{t('bands.bandMembers')}</p>
                           <div className="flex flex-wrap gap-2">
                             {bandMembers.map((member) => {
-                              const isCurrent = isMemberCurrentUser(member);
                               const isOwner = isMemberBandOwner(member, band);
                               return (
                                 <span
@@ -1195,22 +1205,8 @@ export default function BandsTab() {
                                     name={member.name}
                                     email={member.email}
                                     avatarUrl={member.avatarUrl}
-                                    // The signed-in user's own profile image always
-                                    // falls back to their Supabase session avatar,
-                                    // even when no BandMember row stores one (e.g. the
-                                    // owner projection with avatarUrl=null).
-                                    fallbackAvatarUrl={
-                                      isCurrent
-                                        ? session?.user?.user_metadata?.avatar_url || null
-                                        : null
-                                    }
                                   />
                                   <span className="font-medium">{member.name}</span>
-                                  {isCurrent && (
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                      ({t('bands.you')})
-                                    </span>
-                                  )}
                                   {member.isLeader && (
                                     <span
                                       data-testid={`leader-badge-${member.id}`}
@@ -1228,22 +1224,7 @@ export default function BandsTab() {
                                       {member.availability.badgeLabel || (language === "nl" ? "Afwezig" : "Away")}
                                     </span>
                                   )}
-                                  {isCurrent && (
-                                    <button
-                                      type="button"
-                                      data-testid={`leave-band-chip-${member.id}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setConfirmLeaveBand(band);
-                                      }}
-                                      className="rounded-full p-0.5 text-slate-400 hover:text-amber-600 transition-colors"
-                                      title={t('bands.leaveBand')}
-                                      aria-label={t('bands.leaveBand')}
-                                    >
-                                      <Icons.Logout className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                  {isLeaderOrOwner && !isCurrent && member.id !== "current-user" && (
+                                  {isLeaderOrOwner && (
                                     <div className="flex items-center gap-1 ml-0.5">
                                       <button
                                         type="button"
@@ -1375,7 +1356,7 @@ export default function BandsTab() {
           title={t('bands.leaveBand')}
           message={
             confirmLeaveBand.isOwner
-              ? getBandMembers(confirmLeaveBand.id).filter((m) => !isMemberCurrentUser(m)).length > 0
+              ? getBandMembers(confirmLeaveBand.id).length > 0
                 ? t('bands.confirmLeaveBandOwner', { bandName: confirmLeaveBand.name })
                 : t('bands.confirmLeaveBandOwnerSole', { bandName: confirmLeaveBand.name })
               : t('bands.confirmLeaveBand', { bandName: confirmLeaveBand.name })

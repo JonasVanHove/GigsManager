@@ -1,19 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { authGetUser, getOrCreateUser, gigFindUnique, gigUpdate, gigDelete } = vi.hoisted(() => ({
+const {
+  authGetUser,
+  getOrCreateUser,
+  gigFindUnique,
+  gigFindMany,
+  gigUpdate,
+  gigDelete,
+  gigBandMemberFindMany,
+  bandMemberFindMany,
+  bandsFindUnique,
+  bandsFindMany,
+} = vi.hoisted(() => ({
   authGetUser: vi.fn(),
   getOrCreateUser: vi.fn(),
   gigFindUnique: vi.fn(),
+  gigFindMany: vi.fn(),
   gigUpdate: vi.fn(),
   gigDelete: vi.fn(),
+  gigBandMemberFindMany: vi.fn(),
+  bandMemberFindMany: vi.fn(),
+  bandsFindUnique: vi.fn(),
+  bandsFindMany: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase-admin", () => ({ supabaseAdmin: { auth: { getUser: authGetUser } } }));
 vi.mock("@/lib/auth-helpers", () => ({ getOrCreateUser }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    gig: { findUnique: gigFindUnique, update: gigUpdate, delete: gigDelete },
+    gig: { findUnique: gigFindUnique, findMany: gigFindMany, update: gigUpdate, delete: gigDelete },
+    gigBandMember: { findMany: gigBandMemberFindMany },
+    bandMember: { findMany: bandMemberFindMany },
+    bands: { findUnique: bandsFindUnique, findMany: bandsFindMany },
   },
 }));
 vi.mock("@/lib/notification-service", () => ({ notifyPaymentReceived: vi.fn() }));
@@ -43,12 +62,33 @@ beforeEach(() => {
     bandId: "band-a",
     setlistId: null,
   });
+  // Default: the viewer is not linked to any band, so nothing is shared.
+  gigBandMemberFindMany.mockResolvedValue([]);
+  bandMemberFindMany.mockResolvedValue([]);
+  gigFindMany.mockResolvedValue([]);
+  bandsFindUnique.mockResolvedValue(null);
+  bandsFindMany.mockResolvedValue([]);
 });
 
 describe("gig route tenant isolation", () => {
   it("forbids direct reads of another user's gig", async () => {
     const response = await GET(request("GET"), params);
     expect(response.status).toBe(403);
+  });
+
+  it("allows a bandmate to read a gig shared with them, redacted", async () => {
+    // The viewer is linked to gig-1 through their own band member row, which is
+    // exactly the rule GET /api/gigs uses to decide what is shared.
+    gigBandMemberFindMany.mockResolvedValue([{ gigId: "gig-1" }]);
+    bandMemberFindMany.mockResolvedValue([{ bands: ["Band A"], isLeader: false }]);
+    bandsFindUnique.mockResolvedValue({ name: "Band A" });
+
+    const response = await GET(request("GET"), params);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.sharedWithMe).toBe(true);
+    expect(body.canEdit).toBe(false);
   });
 
   it("forbids updates and deletes of another user's gig", async () => {

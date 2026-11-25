@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
       return authResult;
     }
 
-    const { user } = authResult as { user: { id: string } };
+    const { user } = authResult as { user: { id: string; email?: string | null } };
     if (!user?.id) {
       console.warn("[API /api/band-members Error]: Missing active user after auth check");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -220,6 +220,16 @@ export async function GET(req: NextRequest) {
         notes: member.notes,
         avatarUrl: member.avatarUrl,
         isLeader: Boolean(member.isLeader),
+        // Account-scoped rows are all owned by the viewer, so the only way to
+        // tell the viewer's *own* member row apart from the virtual members
+        // they created is the e-mail — the single per-person key. Flagging it
+        // here lets every client exclude "me" the same way, instead of each
+        // one re-deriving it from the session.
+        isCurrentUser: Boolean(
+          user.email &&
+            member.email &&
+            member.email.toLowerCase() === user.email.toLowerCase()
+        ),
         bands: Array.isArray(member.bands) ? member.bands : [],
         updatedAt: member.updatedAt,
         totalEarned,

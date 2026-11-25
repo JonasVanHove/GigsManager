@@ -524,11 +524,10 @@ export default function BandsTab() {
   };
 
 
-  // The "Bandleden" list on a band card never lists a plain joining member's
-  // own row: you cannot be a band member of yourself. A leader is always kept,
-  // though — the band owner is a leader by definition, so hiding them removed
-  // the leader crown (and emptied the card for a solo band). The helper enforces
-  // exactly that rule.
+  // The "Bandleden" list on a band card shows the full band lineup, including
+  // the joining member themselves. Unlike the account-scoped tab=band-members
+  // list (which shows all people the viewer plays with), this is band-scoped
+  // and must show who is in THIS band — the viewer is a member too.
   const getBandMembers = (bandId: string) =>
     // Only the canonical, band-scoped roster may be rendered as "the band".
     // The legacy account-scoped /api/band-members list is never a fallback:
@@ -537,7 +536,7 @@ export default function BandsTab() {
     // loading (or after it failed) the card shows a loading/error placeholder
     // instead of a misleading partial roster.
     composeBandCardRoster(bandMembersByBandId, bandId, session?.user ?? null, {
-      excludeSelf: true,
+      excludeSelf: false,
     });
 
   // The member COUNT is a separate, user-configurable concern: it honours the
